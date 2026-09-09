@@ -264,6 +264,38 @@ export const rmService = {
         return { intent, message, cta: { label: alerts[0].actionLabel, link: alerts[0].actionLink }, data: alerts };
       }
 
+      case 'TRANSFER': {
+        return {
+          intent,
+          message: 'Anh/chị có thể lập lệnh chuyển tiền ngay tại đây — chọn tài khoản nguồn, nhập người thụ hưởng và số tiền là xong.',
+          cta: { label: 'Chuyển tiền ngay', link: '/payments/single-transfer' },
+        };
+      }
+
+      case 'BATCH_TRANSFER': {
+        return {
+          intent,
+          message: 'Anh/chị có thể tải lên danh sách chi lương hoặc thanh toán nhà cung cấp hàng loạt tại đây.',
+          cta: { label: 'Chuyển tiền hàng loạt', link: '/payments/batch-transfer' },
+        };
+      }
+
+      case 'REPORTS': {
+        return {
+          intent,
+          message: 'Anh/chị có thể xem báo cáo dòng tiền theo danh mục và các số liệu tổng hợp tại trang Báo cáo.',
+          cta: { label: 'Xem báo cáo', link: '/reports' },
+        };
+      }
+
+      case 'DASHBOARD': {
+        return {
+          intent,
+          message: 'Đưa anh/chị về trang tổng quan ngay đây.',
+          cta: { label: 'Về Dashboard', link: '/dashboard' },
+        };
+      }
+
       default:
         return unknownAnswer();
     }

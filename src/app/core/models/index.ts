@@ -116,6 +116,10 @@ export type Intent =
   | 'CONTRACT'
   | 'COMPANY_INFO'
   | 'ALERT'
+  | 'TRANSFER'
+  | 'BATCH_TRANSFER'
+  | 'REPORTS'
+  | 'DASHBOARD'
   | 'UNKNOWN';
 
 export interface RmAnswer {

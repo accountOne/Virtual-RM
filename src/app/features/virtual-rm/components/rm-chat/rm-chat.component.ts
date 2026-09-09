@@ -8,9 +8,10 @@ import { RmDataService } from '../../../../core/services/rm-data.service';
 
 const SUGGESTED_QUESTIONS = [
   'Số dư hiện tại?',
+  'Tôi muốn chuyển tiền',
+  'Phê duyệt giao dịch',
   'Hôm qua chi bao nhiêu?',
   'Giao dịch lớn nhất?',
-  'Có giao dịch nào chờ duyệt?',
   'Tôi còn việc gì?',
   'Sản phẩm nào phù hợp?',
   'Thông tin công ty?',
