@@ -36,6 +36,12 @@ function pickRandom<T>(items: T[]): T | undefined {
   return items[Math.floor(Math.random() * items.length)];
 }
 
+/** Reference FX rates — kept in sync with the static table shown on the /fx page. */
+const FX_RATES = {
+  USD: { buy: 25180, sell: 25480 },
+  EUR: { buy: 27050, sell: 27480 },
+};
+
 export const rmService = {
   getBriefing(): Briefing {
     const customer = customerService.get();
@@ -172,6 +178,90 @@ export const rmService = {
         }
         const message = `Dựa trên hoạt động của doanh nghiệp, tôi gợi ý: ${active.map((r) => r.title).join(', ')}.`;
         return { intent, message, cta: { label: 'Xem giải pháp', link: '/products' }, data: active };
+      }
+
+      case 'GREETING': {
+        const customer = customerService.get();
+        return {
+          intent,
+          message: `Chào anh/chị${customer ? ', ' + customer.companyName : ''} 👋 Tôi là Virtual RM, sẵn sàng hỗ trợ doanh nghiệp. Anh/chị cần tôi giúp gì hôm nay?`,
+        };
+      }
+
+      case 'THANKS': {
+        return { intent, message: 'Rất vui được hỗ trợ anh/chị. Nếu cần thêm thông tin gì, cứ hỏi tôi bất cứ lúc nào nhé!' };
+      }
+
+      case 'HELP': {
+        const messages = rmMessagesRepository.read();
+        return {
+          intent,
+          message:
+            'Tôi có thể giúp anh/chị: xem số dư và giao dịch, kiểm tra và xử lý phê duyệt, theo dõi việc cần làm, tra cứu thông tin doanh nghiệp/khoản vay/hợp đồng, và gợi ý sản phẩm phù hợp. Anh/chị có thể hỏi theo gợi ý bên dưới.',
+          data: { suggestedQuestions: messages.suggestedQuestions },
+        };
+      }
+
+      case 'LOAN': {
+        const loanAlert = alertsService.list().find((a) => /vay/i.test(a.title) || /vay/i.test(a.description));
+        if (loanAlert) {
+          return {
+            intent,
+            message: `${loanAlert.title}. ${loanAlert.description}`,
+            cta: { label: 'Xem khoản vay', link: '/loans' },
+            data: loanAlert,
+          };
+        }
+        return {
+          intent,
+          message: 'Hiện doanh nghiệp không có khoản vay nào cần chú ý. Anh/chị có thể xem chi tiết hạn mức tín dụng tại trang Khoản vay.',
+          cta: { label: 'Xem khoản vay', link: '/loans' },
+        };
+      }
+
+      case 'FX_RATE': {
+        return {
+          intent,
+          message: `Tỷ giá tham khảo hôm nay: USD ${formatVnd(FX_RATES.USD.buy)} mua vào / ${formatVnd(FX_RATES.USD.sell)} bán ra; EUR ${formatVnd(FX_RATES.EUR.buy)} / ${formatVnd(FX_RATES.EUR.sell)}. Xem đầy đủ tại trang FX Business.`,
+          cta: { label: 'Xem giải pháp FX', link: '/fx' },
+          data: FX_RATES,
+        };
+      }
+
+      case 'CONTRACT': {
+        const contractTask = tasksService.list().find((t) => /hợp đồng/i.test(t.title) || /hợp đồng/i.test(t.description));
+        if (contractTask && contractTask.status === 'OPEN') {
+          return {
+            intent,
+            message: `${contractTask.title}: ${contractTask.description} (hạn ${contractTask.dueDate}).`,
+            cta: { label: 'Ký hợp đồng', link: '/contracts/sign' },
+            data: contractTask,
+          };
+        }
+        return {
+          intent,
+          message: 'Hiện không có hợp đồng nào đang chờ ký. Tôi sẽ báo ngay khi có hợp đồng mới cần xử lý.',
+          cta: { label: 'Xem hợp đồng', link: '/contracts/sign' },
+        };
+      }
+
+      case 'COMPANY_INFO': {
+        const customer = customerService.get();
+        return {
+          intent,
+          message: `${customer.companyName} (Mã KH: ${customer.customerId}) — Ngành: ${customer.industry}, Quy mô: ${customer.companySize}, Phân khúc: ${customer.segment}. Chuyên viên quan hệ khách hàng: ${customer.rmName} (${customer.rmContact}).`,
+          cta: { label: 'Xem hồ sơ doanh nghiệp', link: '/company/profile' },
+          data: customer,
+        };
+      }
+
+      case 'ALERT': {
+        const alerts = alertsService.list();
+        if (alerts.length === 0) {
+          return { intent, message: 'Hiện không có cảnh báo nào cần chú ý.', cta: { label: 'Xem Virtual RM', link: '/virtual-rm' } };
+        }
+        const message = `Anh/chị có ${alerts.length} cảnh báo cần chú ý: ${alerts.map((a) => a.title).join('; ')}.`;
+        return { intent, message, cta: { label: alerts[0].actionLabel, link: alerts[0].actionLink }, data: alerts };
       }
 
       default:

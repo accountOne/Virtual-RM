@@ -99,6 +99,9 @@ export interface Briefing {
 }
 
 export type Intent =
+  | 'GREETING'
+  | 'HELP'
+  | 'THANKS'
   | 'BALANCE'
   | 'TRANSACTION_SUMMARY'
   | 'LARGEST_TRANSACTION'
@@ -108,6 +111,11 @@ export type Intent =
   | 'ACCOUNT'
   | 'TASK'
   | 'PRODUCT'
+  | 'LOAN'
+  | 'FX_RATE'
+  | 'CONTRACT'
+  | 'COMPANY_INFO'
+  | 'ALERT'
   | 'UNKNOWN';
 
 export interface RmAnswer {

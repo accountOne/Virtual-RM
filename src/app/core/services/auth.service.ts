@@ -49,6 +49,11 @@ export class AuthService {
   logout(): void {
     this.currentUser.set(null);
     persist(null);
+    try {
+      localStorage.removeItem('vrm_chat_messages');
+    } catch {
+      // ignore
+    }
   }
 
   isAuthenticated(): boolean {

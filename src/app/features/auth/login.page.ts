@@ -10,10 +10,11 @@ interface DemoAccount {
   password: string;
 }
 
+// Admin (msb_ad) is intentionally not advertised here — it still works if typed
+// manually, it's just not surfaced as a one-tap option on the login screen.
 const DEMO_ACCOUNTS: DemoAccount[] = [
   { role: 'Maker', username: 'msb_mk', password: 'msb_mk@2026' },
   { role: 'Checker', username: 'msb_ck', password: 'msb_ck@2026' },
-  { role: 'Admin', username: 'msb_ad', password: 'msb_ad@2026' },
 ];
 
 @Component({

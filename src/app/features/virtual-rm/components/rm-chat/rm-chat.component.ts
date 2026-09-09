@@ -3,6 +3,7 @@ import { Component, ElementRef, ViewChild, inject, signal } from '@angular/core'
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ChatMessage } from '../../../../core/models';
+import { ChatUiService } from '../../../../core/services/chat-ui.service';
 import { RmDataService } from '../../../../core/services/rm-data.service';
 
 const SUGGESTED_QUESTIONS = [
@@ -12,7 +13,12 @@ const SUGGESTED_QUESTIONS = [
   'Có giao dịch nào chờ duyệt?',
   'Tôi còn việc gì?',
   'Sản phẩm nào phù hợp?',
+  'Thông tin công ty?',
+  'Khoản vay sắp đến hạn?',
+  'Tỷ giá USD hôm nay?',
 ];
+
+const CHAT_STORAGE_KEY = 'vrm_chat_messages';
 
 let idCounter = 0;
 
@@ -56,6 +62,10 @@ let idCounter = 0;
         </button>
       </div>
 
+      <div class="px-4 pb-1" *ngIf="messages().length > 1">
+        <button class="text-[11px] text-ink-400 hover:text-ink-600" (click)="resetChat()">↺ Bắt đầu cuộc trò chuyện mới</button>
+      </div>
+
       <form class="p-3 border-t border-ink-100 flex gap-2" (ngSubmit)="submit()">
         <input
           [(ngModel)]="draft"
@@ -72,6 +82,7 @@ let idCounter = 0;
 export class RmChatComponent {
   private readonly rmData = inject(RmDataService);
   private readonly router = inject(Router);
+  private readonly chatUi = inject(ChatUiService);
 
   @ViewChild('scrollEl') scrollEl?: ElementRef<HTMLDivElement>;
 
@@ -81,9 +92,21 @@ export class RmChatComponent {
   draft = '';
 
   constructor() {
+    const restored = restoreMessages();
+    if (restored && restored.length > 0) {
+      this.messages.set(restored);
+      this.scrollToBottom();
+    } else {
+      this.messages.set([{ id: 'greet', from: 'RM', text: this.buildGreeting(), timestamp: Date.now() }]);
+    }
+  }
+
+  private buildGreeting(): string {
     const customer = this.rmData.customer();
-    const greetingText = this.rmData.briefing()?.greeting ?? `Chào anh/chị${customer ? ', ' + customer.companyName : ''} 👋 Tôi là Virtual RM của doanh nghiệp. Anh/chị cần tôi hỗ trợ gì?`;
-    this.messages.set([{ id: 'greet', from: 'RM', text: greetingText, timestamp: Date.now() }]);
+    return (
+      this.rmData.briefing()?.greeting ??
+      `Chào anh/chị${customer ? ', ' + customer.companyName : ''} 👋 Tôi là Virtual RM của doanh nghiệp. Anh/chị cần tôi hỗ trợ gì?`
+    );
   }
 
   ask(question: string): void {
@@ -109,11 +132,18 @@ export class RmChatComponent {
   }
 
   goTo(link: string): void {
+    this.chatUi.closeAll();
     this.router.navigateByUrl(link);
+  }
+
+  resetChat(): void {
+    this.messages.set([{ id: 'greet', from: 'RM', text: this.buildGreeting(), timestamp: Date.now() }]);
+    persistMessages(this.messages());
   }
 
   private pushMessage(msg: Omit<ChatMessage, 'id' | 'timestamp'>): void {
     this.messages.update((list) => [...list, { ...msg, id: `m${idCounter++}`, timestamp: Date.now() }]);
+    persistMessages(this.messages());
     this.scrollToBottom();
   }
 
@@ -122,5 +152,22 @@ export class RmChatComponent {
       const el = this.scrollEl?.nativeElement;
       if (el) el.scrollTop = el.scrollHeight;
     });
+  }
+}
+
+function restoreMessages(): ChatMessage[] | null {
+  try {
+    const raw = localStorage.getItem(CHAT_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as ChatMessage[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistMessages(messages: ChatMessage[]): void {
+  try {
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+  } catch {
+    // ignore — chat just won't survive a reload
   }
 }

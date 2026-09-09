@@ -24,4 +24,12 @@ export class ChatUiService {
   showTeaser(): void {
     this.chatMode.set(false);
   }
+
+  /** Closes the mobile bottom sheet and collapses the desktop panel back to the
+   * teaser view — used after a chat CTA navigates somewhere, so the destination
+   * page is actually visible instead of staying hidden behind the widget. */
+  closeAll(): void {
+    this.mobileSheetOpen.set(false);
+    this.chatMode.set(false);
+  }
 }
