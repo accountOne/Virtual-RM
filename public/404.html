@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>MSB Business Banking — Virtual RM</title>
+  <script>
+    // GitHub Pages only serves static files, so a hard refresh/deep link on a
+    // client-side route (e.g. /Virtual-RM/virtual-rm) 404s. This redirects
+    // that request back to index.html with the original path encoded in the
+    // query string; a matching script in index.html restores it via
+    // history.replaceState before Angular's router boots.
+    // Classic "spa-github-pages" trick — https://github.com/rafgraph/spa-github-pages
+    var pathSegmentsToKeep = 1; // keep "/Virtual-RM" (the project-page base path)
+    var l = window.location;
+    l.replace(
+      l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+      l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+      l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+      (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+      l.hash
+    );
+  </script>
+</head>
+<body></body>
+</html>

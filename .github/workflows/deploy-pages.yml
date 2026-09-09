@@ -1,0 +1,65 @@
+name: Deploy frontend to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - claude/virtual-rm-demo-platform-k36qiq
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Inject backend API URL
+        # Set the API_URL repository variable (Settings -> Secrets and variables ->
+        # Actions -> Variables) to your deployed backend's origin, e.g.
+        # https://virtual-rm-api.onrender.com (no trailing slash). Leave it unset
+        # to build with a relative "/api/..." base (only correct if the frontend
+        # and backend share an origin, which is NOT the case on GitHub Pages).
+        run: |
+          API_URL="${{ vars.API_URL }}"
+          if [ -n "$API_URL" ]; then
+            sed -i "s#%%API_URL%%#${API_URL}#g" src/environments/environment.prod.ts
+          else
+            echo "::warning::API_URL repository variable is not set — the deployed frontend will not be able to reach a backend. Set it under Settings > Secrets and variables > Actions > Variables."
+          fi
+          cat src/environments/environment.prod.ts
+
+      - name: Build (production, GitHub Pages base href)
+        run: npx ng build --configuration production --base-href "/${{ github.event.repository.name }}/"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/client/browser
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

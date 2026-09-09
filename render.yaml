@@ -1,0 +1,23 @@
+# Render Blueprint — deploys the backend only (server/). The frontend is deployed
+# separately to GitHub Pages via .github/workflows/deploy-pages.yml.
+#
+# To use: on https://dashboard.render.com choose "New +" -> "Blueprint", connect
+# this GitHub repo, and Render will read this file automatically. Free plan spins
+# down after ~15 minutes of inactivity — the first request after idle takes
+# 30-60s to wake up (fine for demo/testing, not for a live presentation).
+#
+# After it deploys, copy the service's https://<name>.onrender.com URL into the
+# API_URL repository variable (Settings -> Secrets and variables -> Actions ->
+# Variables) and re-run the "Deploy frontend to GitHub Pages" workflow.
+
+services:
+  - type: web
+    name: virtual-rm-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: node dist/server.js
+    envVars:
+      - key: NODE_VERSION
+        value: 20

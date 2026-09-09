@@ -285,6 +285,50 @@ To integrate a real backend later: implement a new repository (e.g.
 
 ---
 
+## 13. Publishing to a public URL for testing (GitHub Pages + Render)
+
+GitHub Pages only serves static files — it cannot run the Express backend. So the
+frontend is published to GitHub Pages and the backend is deployed separately (Render's
+free tier is the path wired up here); the frontend calls the backend cross-origin.
+
+**One-time setup:**
+
+1. **Deploy the backend.** On [render.com](https://dashboard.render.com), "New +" →
+   "Blueprint" → connect this repo. Render reads `render.yaml` at the repo root and
+   deploys `server/` automatically. Copy the resulting `https://<name>.onrender.com`
+   URL. (Free plan sleeps after ~15 min idle; the first request after that takes
+   30–60s to wake up — fine for testing, not for a live pitch.)
+2. **Point the frontend at it.** In the GitHub repo: Settings → Secrets and variables →
+   Actions → Variables → New repository variable → name `API_URL`, value the Render URL
+   from step 1 (no trailing slash).
+3. **Enable GitHub Pages.** Settings → Pages → Source → "GitHub Actions" (only needed
+   once; `.github/workflows/deploy-pages.yml` handles the rest).
+
+**Every push** to `main` (or `claude/virtual-rm-demo-platform-k36qiq`, or a manual run
+from the Actions tab) rebuilds the Angular app with `--base-href /<repo-name>/` and the
+`API_URL` baked in, then publishes it to
+`https://<owner>.github.io/<repo-name>/`.
+
+How it fits together:
+
+- `src/environments/environment.prod.ts` holds a `%%API_URL%%` placeholder; the workflow
+  substitutes it with the `API_URL` variable before building. Left unreplaced (e.g. a
+  local `ng build --configuration production`), the app falls back to relative
+  `/api/...` calls (same-origin only).
+- `src/app/core/interceptors/api-url.interceptor.ts` prefixes every `/api/...` request
+  with `environment.apiUrl` when it's configured — no call-site changes needed.
+- The backend's CORS is open (`cors()` with no origin restriction in `server/src/app.ts`),
+  so cross-origin calls from the `github.io` origin work out of the box.
+- `public/404.html` + a small restore script in `src/index.html` implement the standard
+  [spa-github-pages](https://github.com/rafgraph/spa-github-pages) trick, so deep links
+  and page refreshes on client-side routes (e.g. `/virtual-rm`, `/payments/approval`)
+  don't 404 on GitHub Pages.
+
+Once merged/pushed with `API_URL` set, "Reset Demo Data" in `/admin/demo-data` on the
+published site resets the Render-hosted `server/data/*.json`, exactly like local dev.
+
+---
+
 ## Notes
 
 - No real authentication — a single simulated logged-in customer (**ABC Manufacturing
