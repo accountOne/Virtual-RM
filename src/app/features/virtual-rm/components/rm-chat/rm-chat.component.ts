@@ -27,8 +27,8 @@ let idCounter = 0;
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="flex flex-col h-full">
-      <div #scrollEl class="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+    <div class="flex flex-col h-full min-h-0">
+      <div #scrollEl class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-3">
         <div *ngFor="let msg of messages()" class="flex" [class.justify-end]="msg.from === 'USER'">
           <div
             class="max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed"
@@ -52,7 +52,7 @@ let idCounter = 0;
         </div>
       </div>
 
-      <div class="px-4 pb-2 flex gap-1.5 flex-wrap" *ngIf="messages().length <= 1">
+      <div class="px-4 pb-2 flex gap-1.5 flex-wrap shrink-0" *ngIf="messages().length <= 1">
         <button
           *ngFor="let q of suggested"
           (click)="ask(q)"
@@ -62,11 +62,11 @@ let idCounter = 0;
         </button>
       </div>
 
-      <div class="px-4 pb-1" *ngIf="messages().length > 1">
+      <div class="px-4 pb-1 shrink-0" *ngIf="messages().length > 1">
         <button class="text-[11px] text-ink-400 hover:text-ink-600" (click)="resetChat()">↺ Bắt đầu cuộc trò chuyện mới</button>
       </div>
 
-      <form class="p-3 border-t border-ink-100 flex gap-2" (ngSubmit)="submit()">
+      <form class="p-3 border-t border-ink-100 flex gap-2 shrink-0" (ngSubmit)="submit()">
         <input
           [(ngModel)]="draft"
           name="draft"

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ChatUiService } from '../../../../core/services/chat-ui.service';
 import { RmDataService } from '../../../../core/services/rm-data.service';
@@ -43,26 +43,31 @@ interface Point {
       👩‍💼
     </button>
 
-    <!-- Mobile bottom sheet -->
-    <div *ngIf="chatUi.mobileSheetOpen()" class="lg:hidden fixed inset-0 z-40 bg-ink-900/40" (click)="chatUi.closeMobileSheet()"></div>
+    <!-- Mobile bottom sheet — fixed height (half the viewport) so the input never gets
+         pushed off-screen by a long conversation; messages scroll internally instead. -->
     <div
-      class="lg:hidden fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-pop max-h-[85vh] flex flex-col transition-transform duration-200"
+      *ngIf="chatUi.mobileSheetOpen()"
+      class="lg:hidden fixed inset-0 z-40 bg-ink-900/40 touch-none"
+      (click)="chatUi.closeMobileSheet()"
+    ></div>
+    <div
+      class="lg:hidden fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-pop h-[50vh] flex flex-col overflow-hidden overscroll-contain transition-transform duration-200"
       [class.translate-y-full]="!chatUi.mobileSheetOpen()"
     >
-      <div class="flex justify-center pt-2">
+      <div class="flex justify-center pt-2 shrink-0">
         <div class="w-10 h-1 rounded-full bg-ink-200"></div>
       </div>
-      <div class="flex items-center justify-between px-4 pt-2">
+      <div class="flex items-center justify-between px-4 pt-2 shrink-0">
         <span class="text-sm font-semibold text-ink-800">Virtual RM</span>
         <button class="text-ink-400 p-1" (click)="chatUi.closeMobileSheet()">✕</button>
       </div>
-      <div class="flex-1 min-h-[50vh] overflow-hidden">
+      <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
         <ng-container *ngTemplateOutlet="panelContent"></ng-container>
       </div>
     </div>
 
     <ng-template #panelContent>
-      <div class="flex items-center gap-3 px-4 py-4 border-b border-ink-100">
+      <div class="flex items-center gap-3 px-4 py-4 border-b border-ink-100 shrink-0">
         <div class="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-xl">👩‍💼</div>
         <div>
           <p class="text-sm font-semibold text-ink-800">Virtual RM</p>
@@ -73,7 +78,7 @@ interface Point {
       </div>
 
       <ng-container *ngIf="!chatUi.chatMode(); else chatView">
-        <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
           <p class="text-sm text-ink-600 leading-relaxed">{{ rmData.briefing()?.greeting }}</p>
 
           <div class="grid grid-cols-3 gap-2">
@@ -105,16 +110,16 @@ interface Point {
           </a>
         </div>
 
-        <div class="p-4 border-t border-ink-100">
+        <div class="p-4 border-t border-ink-100 shrink-0">
           <button class="btn-primary w-full" (click)="chatUi.chatMode.set(true)">💬 Hỏi Virtual RM</button>
         </div>
       </ng-container>
 
       <ng-template #chatView>
-        <div class="px-4 py-2 border-b border-ink-100">
+        <div class="px-4 py-2 border-b border-ink-100 shrink-0">
           <button class="text-xs text-ink-500 hover:text-ink-700" (click)="chatUi.showTeaser()">← Quay lại</button>
         </div>
-        <div class="flex-1 min-h-0">
+        <div class="flex-1 min-h-0 flex flex-col">
           <app-rm-chat class="h-full block" />
         </div>
       </ng-template>
@@ -131,6 +136,17 @@ export class RmWidgetComponent {
   private moved = false;
   private lastX = 0;
   private lastY = 0;
+
+  constructor() {
+    // Lock body scroll while the mobile bottom sheet is open so a swipe inside it
+    // doesn't also scroll the page behind it. Only applies below the `lg` breakpoint —
+    // openChat()/openTeaser() can be triggered from desktop too, where the sheet stays
+    // hidden and the page should keep scrolling normally.
+    effect(() => {
+      const shouldLock = isMobileViewport() && this.chatUi.mobileSheetOpen();
+      document.body.style.overflow = shouldLock ? 'hidden' : '';
+    });
+  }
 
   onPointerDown(ev: PointerEvent): void {
     this.dragging = true;
@@ -166,6 +182,11 @@ export class RmWidgetComponent {
       this.chatUi.openTeaser();
     }
   }
+}
+
+/** Matches Tailwind's `lg` breakpoint (1024px) used for `lg:hidden` on the mobile sheet. */
+function isMobileViewport(): boolean {
+  return window.matchMedia('(max-width: 1023.98px)').matches;
 }
 
 function defaultPos(): Point {

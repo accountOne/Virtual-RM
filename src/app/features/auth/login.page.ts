@@ -68,14 +68,30 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
             </div>
             <div>
               <label class="text-xs font-medium text-ink-600 mb-1 block">Mật khẩu</label>
-              <input
-                [(ngModel)]="password"
-                name="password"
-                type="password"
-                autocomplete="current-password"
-                class="input"
-                placeholder="••••••••"
-              />
+              <div class="relative">
+                <input
+                  [(ngModel)]="password"
+                  name="password"
+                  [type]="passwordVisible() ? 'text' : 'password'"
+                  autocomplete="current-password"
+                  class="input pr-10"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  (click)="passwordVisible.set(!passwordVisible())"
+                  class="absolute inset-y-0 right-0 px-3 flex items-center text-ink-400 hover:text-ink-600"
+                  [attr.aria-label]="passwordVisible() ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+                >
+                  <svg *ngIf="!passwordVisible()" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/>
+                  </svg>
+                  <svg *ngIf="passwordVisible()" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.24 4.24M9.9 5.1A11.6 11.6 0 0 1 12 5c7 0 11 7 11 7a13.4 13.4 0 0 1-3.2 3.9M6.6 6.6C3.5 8.6 1 12 1 12s4 7 11 7a10.6 10.6 0 0 0 4.2-.86" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <p *ngIf="error()" class="text-sm text-negative">{{ error() }}</p>
@@ -116,6 +132,7 @@ export class LoginPageComponent {
 
   readonly demoAccounts = DEMO_ACCOUNTS;
   readonly error = signal('');
+  readonly passwordVisible = signal(false);
   readonly heroBg = 'radial-gradient(120% 140% at 0% 0%, #ff9f6e 0%, #ef4b2a 45%, #8a1e17 100%)';
 
   username = '';
