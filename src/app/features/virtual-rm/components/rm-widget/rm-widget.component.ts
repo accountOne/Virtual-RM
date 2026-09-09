@@ -43,38 +43,47 @@ interface Point {
       👩‍💼
     </button>
 
-    <!-- Mobile bottom sheet — fixed height (half the viewport) so the input never gets
-         pushed off-screen by a long conversation; messages scroll internally instead. -->
+    <!-- Mobile bottom sheet — fixed height (half the viewport, using dvh so mobile
+         Safari's collapsing address bar can't push the input off-screen) so the input
+         never gets lost behind a long conversation; messages scroll internally instead. -->
     <div
       *ngIf="chatUi.mobileSheetOpen()"
       class="lg:hidden fixed inset-0 z-40 bg-ink-900/40 touch-none"
       (click)="chatUi.closeMobileSheet()"
     ></div>
     <div
-      class="lg:hidden fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-pop h-[50vh] flex flex-col overflow-hidden overscroll-contain transition-transform duration-200"
+      class="lg:hidden fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-pop h-[50dvh] flex flex-col overflow-hidden overscroll-contain transition-transform duration-200"
       [class.translate-y-full]="!chatUi.mobileSheetOpen()"
     >
-      <div class="flex justify-center pt-2 shrink-0">
-        <div class="w-10 h-1 rounded-full bg-ink-200"></div>
-      </div>
-      <div class="flex items-center justify-between px-4 pt-2 shrink-0">
-        <span class="text-sm font-semibold text-ink-800">Virtual RM</span>
-        <button class="text-ink-400 p-1" (click)="chatUi.closeMobileSheet()">✕</button>
+      <div class="flex justify-center pt-1.5 pb-0.5 shrink-0">
+        <div class="w-9 h-1 rounded-full bg-ink-200"></div>
       </div>
       <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
         <ng-container *ngTemplateOutlet="panelContent"></ng-container>
       </div>
     </div>
 
+    <!-- Single compact header — shared by desktop panel and mobile sheet, with an
+         inline back button in chat mode instead of a separate full-height row, and a
+         close button that only renders on mobile (the desktop panel has no "close"). -->
     <ng-template #panelContent>
-      <div class="flex items-center gap-3 px-4 py-4 border-b border-ink-100 shrink-0">
-        <div class="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-xl">👩‍💼</div>
-        <div>
-          <p class="text-sm font-semibold text-ink-800">Virtual RM</p>
-          <p class="text-xs text-positive flex items-center gap-1">
+      <div class="flex items-center gap-2.5 px-4 py-2.5 border-b border-ink-100 shrink-0">
+        <button
+          *ngIf="chatUi.chatMode()"
+          (click)="chatUi.showTeaser()"
+          class="text-ink-500 hover:text-ink-700 p-1 -ml-1 shrink-0"
+          aria-label="Quay lại"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-base shrink-0">👩‍💼</div>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-semibold text-ink-800 truncate">Virtual RM</p>
+          <p class="text-[11px] text-positive flex items-center gap-1">
             <span class="w-1.5 h-1.5 rounded-full bg-positive inline-block"></span> Đang hoạt động
           </p>
         </div>
+        <button class="lg:hidden text-ink-400 hover:text-ink-600 p-1 shrink-0" (click)="chatUi.closeMobileSheet()" aria-label="Đóng">✕</button>
       </div>
 
       <ng-container *ngIf="!chatUi.chatMode(); else chatView">
@@ -110,15 +119,12 @@ interface Point {
           </a>
         </div>
 
-        <div class="p-4 border-t border-ink-100 shrink-0">
+        <div class="p-3 border-t border-ink-100 shrink-0">
           <button class="btn-primary w-full" (click)="chatUi.chatMode.set(true)">💬 Hỏi Virtual RM</button>
         </div>
       </ng-container>
 
       <ng-template #chatView>
-        <div class="px-4 py-2 border-b border-ink-100 shrink-0">
-          <button class="text-xs text-ink-500 hover:text-ink-700" (click)="chatUi.showTeaser()">← Quay lại</button>
-        </div>
         <div class="flex-1 min-h-0 flex flex-col">
           <app-rm-chat class="h-full block" />
         </div>

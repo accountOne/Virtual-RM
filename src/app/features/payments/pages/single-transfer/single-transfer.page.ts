@@ -53,7 +53,7 @@ import { VndPipe } from '../../../../shared/pipes/vnd.pipe';
   styles: [
     `
       .input {
-        @apply w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400;
+        @apply w-full rounded-lg border border-ink-200 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400;
       }
     `,
   ],

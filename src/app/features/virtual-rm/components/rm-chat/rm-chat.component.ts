@@ -72,7 +72,7 @@ let idCounter = 0;
           name="draft"
           type="text"
           placeholder="Hỏi Virtual RM..."
-          class="flex-1 rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
+          class="flex-1 min-w-0 rounded-lg border border-ink-200 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
         />
         <button type="submit" class="btn-primary" [disabled]="!draft.trim() || thinking()">Gửi</button>
       </form>
