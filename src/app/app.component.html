@@ -1,0 +1,16 @@
+<div class="min-h-screen flex flex-col bg-ink-50">
+  <app-header (menuToggle)="mobileMenuOpen.set(true)" />
+
+  <div class="flex flex-1 min-h-0">
+    <app-sidebar [open]="mobileMenuOpen()" (close)="mobileMenuOpen.set(false)" />
+
+    <main class="flex-1 min-w-0">
+      <router-outlet />
+    </main>
+
+    <app-rm-widget />
+  </div>
+
+  <app-toast-container />
+  <app-confirm-dialog />
+</div>

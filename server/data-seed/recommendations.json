@@ -1,0 +1,52 @@
+[
+  {
+    "id": "rec-001",
+    "title": "FX Business",
+    "reason": "Doanh nghiệp đã thực hiện 12 giao dịch ngoại tệ trong 30 ngày qua. Giải pháp FX Business có thể giúp doanh nghiệp quản lý nhu cầu ngoại tệ hiệu quả hơn.",
+    "productId": "prod-fx",
+    "cta": "Xem giải pháp",
+    "ctaLink": "/fx",
+    "priority": "HIGH",
+    "ruleKey": "FX_HIGH_USAGE"
+  },
+  {
+    "id": "rec-002",
+    "title": "Trade Finance",
+    "reason": "Doanh nghiệp có hoạt động mở L/C và nhờ thu xuất khẩu thường xuyên. Trade Finance giúp tối ưu chi phí và rút ngắn thời gian xử lý giao dịch quốc tế.",
+    "productId": "prod-trade-finance",
+    "cta": "Xem giải pháp",
+    "ctaLink": "/products",
+    "priority": "HIGH",
+    "ruleKey": "TRADE_FINANCE_ACTIVITY"
+  },
+  {
+    "id": "rec-003",
+    "title": "Term Deposit",
+    "reason": "Số dư bình quân tài khoản của doanh nghiệp đang ở mức cao. Gửi tiền có kỳ hạn giúp tối ưu hoá nguồn vốn nhàn rỗi với lãi suất ưu đãi.",
+    "productId": "prod-term-deposit",
+    "cta": "Xem lãi suất",
+    "ctaLink": "/products",
+    "priority": "MEDIUM",
+    "ruleKey": "TERM_DEPOSIT_HIGH_BALANCE"
+  },
+  {
+    "id": "rec-004",
+    "title": "Payroll",
+    "reason": "Doanh nghiệp thực hiện chi lương định kỳ hàng tháng. Giải pháp Payroll giúp tự động hoá quy trình chi lương và tiết kiệm thời gian vận hành nhân sự.",
+    "productId": "prod-payroll",
+    "cta": "Tìm hiểu thêm",
+    "ctaLink": "/products",
+    "priority": "MEDIUM",
+    "ruleKey": "PAYROLL_HIGH_VOLUME"
+  },
+  {
+    "id": "rec-005",
+    "title": "Cash Management",
+    "reason": "Doanh nghiệp đang vận hành nhiều tài khoản. Cash Management giúp quản lý dòng tiền tập trung và theo dõi thu chi theo thời gian thực.",
+    "productId": "prod-cash-management",
+    "cta": "Xem giải pháp",
+    "ctaLink": "/products",
+    "priority": "LOW",
+    "ruleKey": "MULTI_ACCOUNT_CASH_MGMT"
+  }
+]

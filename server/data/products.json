@@ -1,0 +1,56 @@
+[
+  {
+    "id": "prod-fx",
+    "name": "FX Business",
+    "description": "Giải pháp quản lý ngoại tệ toàn diện: mua/bán kỳ hạn, phòng ngừa rủi ro tỷ giá cho doanh nghiệp có hoạt động xuất nhập khẩu.",
+    "category": "FX",
+    "cta": "Xem giải pháp",
+    "ctaLink": "/fx",
+    "eligibility": "Doanh nghiệp có giao dịch ngoại tệ thường xuyên"
+  },
+  {
+    "id": "prod-payroll",
+    "name": "Payroll",
+    "description": "Chi lương tự động hàng loạt cho toàn bộ nhân viên chỉ với một lệnh duyệt, tiết kiệm thời gian vận hành nhân sự.",
+    "category": "Payroll",
+    "cta": "Tìm hiểu thêm",
+    "ctaLink": "/products",
+    "eligibility": "Doanh nghiệp từ 20 nhân viên trở lên"
+  },
+  {
+    "id": "prod-term-deposit",
+    "name": "Term Deposit",
+    "description": "Tiền gửi có kỳ hạn lãi suất ưu đãi dành cho doanh nghiệp có số dư nhàn rỗi, linh hoạt kỳ hạn từ 1-12 tháng.",
+    "category": "Term Deposit",
+    "cta": "Xem lãi suất",
+    "ctaLink": "/products",
+    "eligibility": "Số dư bình quân từ 5 tỷ VNĐ"
+  },
+  {
+    "id": "prod-business-loan",
+    "name": "Business Loan",
+    "description": "Vay vốn lưu động hoặc đầu tư trung dài hạn với thủ tục thẩm định nhanh, hạn mức linh hoạt theo doanh thu.",
+    "category": "Business Loan",
+    "cta": "Đăng ký tư vấn",
+    "ctaLink": "/loans",
+    "eligibility": "Doanh nghiệp hoạt động từ 2 năm trở lên"
+  },
+  {
+    "id": "prod-trade-finance",
+    "name": "Trade Finance",
+    "description": "Tài trợ thương mại: mở L/C, nhờ thu, bảo lãnh thanh toán cho hoạt động xuất nhập khẩu.",
+    "category": "Trade Finance",
+    "cta": "Xem giải pháp",
+    "ctaLink": "/products",
+    "eligibility": "Doanh nghiệp có hoạt động xuất nhập khẩu"
+  },
+  {
+    "id": "prod-cash-management",
+    "name": "Cash Management",
+    "description": "Quản lý dòng tiền tập trung đa tài khoản, tự động hoá thu chi và báo cáo dòng tiền theo thời gian thực.",
+    "category": "Cash Management",
+    "cta": "Xem giải pháp",
+    "ctaLink": "/products",
+    "eligibility": "Doanh nghiệp có nhiều tài khoản/chi nhánh"
+  }
+]

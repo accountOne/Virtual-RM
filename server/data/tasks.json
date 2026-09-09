@@ -1,0 +1,53 @@
+[
+  {
+    "id": "task-001",
+    "title": "Duyệt giao dịch",
+    "description": "3 giao dịch đang chờ phê duyệt, tổng giá trị 850.000.000 VNĐ",
+    "priority": "HIGH",
+    "dueDate": "2026-09-09",
+    "status": "OPEN",
+    "actionLabel": "Thực hiện",
+    "actionLink": "/payments/approval",
+    "meta": { "count": 3, "amount": 850000000, "currency": "VND" }
+  },
+  {
+    "id": "task-002",
+    "title": "Bổ sung hồ sơ doanh nghiệp",
+    "description": "Cập nhật Giấy chứng nhận đăng ký kinh doanh bản mới nhất",
+    "priority": "MEDIUM",
+    "dueDate": "2026-09-12",
+    "status": "OPEN",
+    "actionLabel": "Thực hiện",
+    "actionLink": "/company/profile"
+  },
+  {
+    "id": "task-003",
+    "title": "Ký hợp đồng dịch vụ",
+    "description": "Hợp đồng gia hạn dịch vụ Cash Management năm 2026",
+    "priority": "MEDIUM",
+    "dueDate": "2026-09-15",
+    "status": "OPEN",
+    "actionLabel": "Thực hiện",
+    "actionLink": "/contracts/sign"
+  },
+  {
+    "id": "task-004",
+    "title": "Xác nhận hạn mức tín dụng mới",
+    "description": "MSB đã duyệt hạn mức tín dụng mới, cần xác nhận trước khi kích hoạt",
+    "priority": "MEDIUM",
+    "dueDate": "2026-09-18",
+    "status": "OPEN",
+    "actionLabel": "Thực hiện",
+    "actionLink": "/loans"
+  },
+  {
+    "id": "task-005",
+    "title": "Cập nhật thông tin người đại diện pháp luật",
+    "description": "Bổ sung giấy tờ tuỳ thân người đại diện pháp luật theo quy định mới",
+    "priority": "LOW",
+    "dueDate": "2026-09-20",
+    "status": "OPEN",
+    "actionLabel": "Thực hiện",
+    "actionLink": "/company/profile"
+  }
+]

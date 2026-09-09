@@ -1,0 +1,21 @@
+{
+  "greetings": [
+    "Chào anh/chị, tôi có thể giúp gì cho doanh nghiệp hôm nay?",
+    "Tôi vừa cập nhật tình hình tài khoản, anh/chị muốn xem ngay không?",
+    "Có vài việc cần anh/chị xử lý hôm nay, tôi tóm tắt nhanh nhé?"
+  ],
+  "fallback": [
+    "Xin lỗi, tôi chưa hiểu rõ câu hỏi này. Anh/chị có thể hỏi theo một trong các gợi ý bên dưới.",
+    "Tôi chưa có đủ thông tin để trả lời chính xác câu hỏi này. Anh/chị thử hỏi theo gợi ý bên dưới nhé.",
+    "Câu hỏi này hơi vượt ngoài phạm vi hỗ trợ hiện tại của tôi. Anh/chị có thể tham khảo các câu hỏi gợi ý bên dưới."
+  ],
+  "suggestedQuestions": [
+    "Số dư tài khoản hiện tại là bao nhiêu?",
+    "Hôm qua công ty tôi chi bao nhiêu tiền?",
+    "Giao dịch lớn nhất hôm qua là gì?",
+    "Có giao dịch nào đang chờ duyệt không?",
+    "Tháng này công ty nhận bao nhiêu tiền?",
+    "Tôi còn việc gì cần xử lý?",
+    "Ngân hàng có sản phẩm nào phù hợp với doanh nghiệp?"
+  ]
+}

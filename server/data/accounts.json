@@ -1,0 +1,20 @@
+[
+  {
+    "id": "acc-001",
+    "accountNumber": "0071001234567",
+    "accountName": "Tài khoản thanh toán VNĐ",
+    "currency": "VND",
+    "balance": 12500000000,
+    "availableBalance": 11850000000,
+    "type": "Tài khoản thanh toán"
+  },
+  {
+    "id": "acc-002",
+    "accountNumber": "0071009876543",
+    "accountName": "Tài khoản ngoại tệ USD",
+    "currency": "USD",
+    "balance": 185000,
+    "availableBalance": 185000,
+    "type": "Tài khoản ngoại tệ"
+  }
+]

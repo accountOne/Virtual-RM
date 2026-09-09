@@ -1,0 +1,47 @@
+[
+  {
+    "id": "alert-001",
+    "title": "Cần chú ý: 3 giao dịch đang chờ phê duyệt",
+    "description": "Tổng giá trị 850.000.000 VNĐ. Giao dịch cần được phê duyệt để không ảnh hưởng tới đối tác.",
+    "severity": "CRITICAL",
+    "date": "2026-09-09",
+    "actionLabel": "Kiểm tra ngay",
+    "actionLink": "/payments/approval"
+  },
+  {
+    "id": "alert-002",
+    "title": "Khoản vay sắp đến hạn thanh toán",
+    "description": "Khoản vay 2 tỷ VNĐ sẽ đến kỳ thanh toán sau 5 ngày.",
+    "severity": "WARNING",
+    "date": "2026-09-09",
+    "actionLabel": "Xem khoản vay",
+    "actionLink": "/loans"
+  },
+  {
+    "id": "alert-003",
+    "title": "Số dư tài khoản thanh toán thấp hơn thông thường",
+    "description": "Số dư khả dụng giảm nhẹ so với mức trung bình 30 ngày gần nhất.",
+    "severity": "WARNING",
+    "date": "2026-09-08",
+    "actionLabel": "Xem tài khoản",
+    "actionLink": "/accounts"
+  },
+  {
+    "id": "alert-004",
+    "title": "Tỷ giá USD/VND biến động mạnh",
+    "description": "Tỷ giá USD tăng 0,8% trong tuần qua, có thể ảnh hưởng tới chi phí nhập khẩu.",
+    "severity": "INFO",
+    "date": "2026-09-07",
+    "actionLabel": "Xem giải pháp FX",
+    "actionLink": "/fx"
+  },
+  {
+    "id": "alert-005",
+    "title": "Hồ sơ doanh nghiệp cần được cập nhật",
+    "description": "Giấy chứng nhận đăng ký kinh doanh sắp hết hạn hiệu lực tra cứu, cần bổ sung bản mới.",
+    "severity": "INFO",
+    "date": "2026-09-06",
+    "actionLabel": "Cập nhật hồ sơ",
+    "actionLink": "/company/profile"
+  }
+]
