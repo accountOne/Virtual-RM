@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../core/services/auth.service';
 import { RmDataService } from '../../core/services/rm-data.service';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { VndPipe } from '../../shared/pipes/vnd.pipe';
@@ -39,7 +40,7 @@ import { VndPipe } from '../../shared/pipes/vnd.pipe';
               <span class="text-xl">💸</span>
               <span>Chuyển tiền</span>
             </a>
-            <a routerLink="/payments/approval" class="quick-action">
+            <a *ngIf="auth.hasRole('CHECKER', 'ADMIN')" routerLink="/payments/approval" class="quick-action">
               <span class="text-xl">✅</span>
               <span>Phê duyệt</span>
               <span *ngIf="rmData.pendingTransactions().length > 0" class="absolute top-2 right-2 badge bg-red-50 text-negative !px-1.5">
@@ -87,4 +88,5 @@ import { VndPipe } from '../../shared/pipes/vnd.pipe';
 })
 export class DashboardPageComponent {
   readonly rmData = inject(RmDataService);
+  readonly auth = inject(AuthService);
 }

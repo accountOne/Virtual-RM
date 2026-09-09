@@ -1,11 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { AuthService } from '../../../core/services/auth.service';
 
 interface NavItem {
   label: string;
   link: string;
   icon: string;
+  /** Omit to show for every logged-in role. */
+  rolesAllowed?: ('MAKER' | 'CHECKER' | 'ADMIN')[];
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -13,7 +16,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Virtual RM', link: '/virtual-rm', icon: '👩‍💼' },
   { label: 'Tài khoản', link: '/accounts', icon: '💳' },
   { label: 'Thanh toán', link: '/payments', icon: '💸' },
-  { label: 'Phê duyệt', link: '/payments/approval', icon: '✅' },
+  { label: 'Phê duyệt', link: '/payments/approval', icon: '✅', rolesAllowed: ['CHECKER', 'ADMIN'] },
   { label: 'Báo cáo', link: '/reports', icon: '📊' },
 ];
 
@@ -39,10 +42,10 @@ const NAV_ITEMS: NavItem[] = [
 
       <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         <a
-          *ngFor="let item of navItems"
+          *ngFor="let item of visibleNavItems()"
           [routerLink]="item.link"
           routerLinkActive="bg-brand-50 text-brand-700"
-          [routerLinkActiveOptions]="{ exact: item.link === '/dashboard' }"
+          [routerLinkActiveOptions]="{ exact: true }"
           (click)="close.emit()"
           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-600 hover:bg-ink-50 transition-colors"
         >
@@ -55,13 +58,18 @@ const NAV_ITEMS: NavItem[] = [
         <a
           routerLink="/demo"
           routerLinkActive="bg-brand-50 text-brand-700"
+          [routerLinkActiveOptions]="{ exact: true }"
+          (click)="close.emit()"
           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-500 hover:bg-ink-50 transition-colors"
         >
           <span class="text-base">🎬</span> Demo Mode
         </a>
         <a
+          *ngIf="auth.hasRole('ADMIN')"
           routerLink="/admin/demo-data"
           routerLinkActive="bg-brand-50 text-brand-700"
+          [routerLinkActiveOptions]="{ exact: true }"
+          (click)="close.emit()"
           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-500 hover:bg-ink-50 transition-colors"
         >
           <span class="text-base">⚙️</span> Admin
@@ -73,5 +81,10 @@ const NAV_ITEMS: NavItem[] = [
 export class SidebarComponent {
   @Input() open = false;
   @Output() close = new EventEmitter<void>();
-  readonly navItems = NAV_ITEMS;
+
+  readonly auth = inject(AuthService);
+
+  readonly visibleNavItems = computed(() =>
+    NAV_ITEMS.filter((item) => !item.rolesAllowed || this.auth.hasRole(...item.rolesAllowed)),
+  );
 }

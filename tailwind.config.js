@@ -8,16 +8,17 @@ module.exports = {
       },
       colors: {
         brand: {
-          50: "#eef2ff",
-          100: "#e0e7ff",
-          200: "#c7d2fe",
-          300: "#a5b4fc",
-          400: "#818cf8",
-          500: "#4f46e5",
-          600: "#4338ca",
-          700: "#3730a3",
-          800: "#1e1b4b",
-          900: "#161339",
+          // MSB brand palette (warm orange-red), replacing the earlier indigo placeholder.
+          50: "#fff4ed",
+          100: "#ffe4d3",
+          200: "#ffc6a6",
+          300: "#ff9f6e",
+          400: "#f97545",
+          500: "#ef4b2a",
+          600: "#d6331c",
+          700: "#b02417",
+          800: "#8a1e17",
+          900: "#5c1512",
         },
         ink: {
           50: "#f8fafc",

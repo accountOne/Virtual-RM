@@ -1,6 +1,6 @@
 # Virtual RM — Digital Business Banking Demo Platform
 
-An interactive demo of a **Virtual Relationship Manager ("Mai")** embedded inside a
+An interactive demo of a **Virtual Relationship Manager** embedded inside a
 Digital Business Banking application, built for corporate/business banking customers
 (CFO, Finance Manager, Accountant, Business Owner, Authorized Approver).
 
@@ -248,8 +248,8 @@ A guided, clickable walkthrough is built into the app at **`/demo`** — each st
 navigates you to the real screen to perform it live. It follows this story
 (customer: **ABC Manufacturing JSC**, persona: **CFO**):
 
-1. Login (simulated) → Dashboard
-2. Virtual RM "Mai" greets the customer → `/virtual-rm`
+1. Login as **Checker** (`msb_ck` / `msb_ck@2026`, needed for step 5–6's approval) → Dashboard
+2. Virtual RM greets the customer → `/virtual-rm`
 3. RM shows today's Business Briefing (balance, cash in/out, insight)
 4. RM highlights 3 pending approvals (850,000,000 VNĐ)
 5–6. Customer opens `/payments/approval`, approves a payment → pending count updates live
@@ -331,9 +331,18 @@ published site resets the Render-hosted `server/data/*.json`, exactly like local
 
 ## Notes
 
-- No real authentication — a single simulated logged-in customer (**ABC Manufacturing
-  JSC**, CFO) is used throughout. `/admin` is reachable without a separate login, as a
-  simple "demo switch."
+- **Demo login (no real identity provider).** `/login` gates the whole app behind three
+  hardcoded role accounts, all for customer **ABC Manufacturing JSC**:
+  - Maker — `msb_mk` / `msb_mk@2026` — every feature except approvals (no "Phê duyệt"
+    menu, route blocked)
+  - Checker — `msb_ck` / `msb_ck@2026` — everything a Maker has, plus transaction
+    approvals
+  - Admin — `msb_ad` / `msb_ad@2026` — everything a Checker has, plus `/admin/demo-data`
+
+  The session is a signed-nothing `AuthService` signal persisted to `localStorage`
+  (see `src/app/core/services/auth.service.ts`), enforced by route guards in
+  `src/app/core/guards/auth.guard.ts`. There is no backend-side auth — the Express API
+  itself is unauthenticated, matching the "no real banking API/auth server" constraint.
 - All amounts are illustrative VND figures for demo purposes only.
 - UI is in Vietnamese, styled with Tailwind CSS and the Satoshi typeface, following a
   minimalist, modern banking design language.

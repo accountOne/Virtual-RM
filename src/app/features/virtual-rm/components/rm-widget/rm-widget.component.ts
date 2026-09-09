@@ -1,10 +1,20 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ChatUiService } from '../../../../core/services/chat-ui.service';
 import { RmDataService } from '../../../../core/services/rm-data.service';
 import { VndShortPipe } from '../../../../shared/pipes/vnd.pipe';
 import { RmChatComponent } from '../rm-chat/rm-chat.component';
+
+const BUTTON_SIZE = 56;
+const EDGE_MARGIN = 8;
+const DRAG_THRESHOLD = 6;
+const POS_STORAGE_KEY = 'vrm_widget_pos';
+
+interface Point {
+  x: number;
+  y: number;
+}
 
 @Component({
   selector: 'app-rm-widget',
@@ -16,12 +26,19 @@ import { RmChatComponent } from '../rm-chat/rm-chat.component';
       <ng-container *ngTemplateOutlet="panelContent"></ng-container>
     </aside>
 
-    <!-- Mobile floating button -->
+    <!-- Mobile floating button — drag anywhere within the viewport; tap (no drag) opens the widget -->
     <button
       *ngIf="!chatUi.mobileSheetOpen()"
-      (click)="chatUi.openTeaser()"
-      class="lg:hidden fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-brand-500 text-white shadow-pop flex items-center justify-center text-2xl"
-      aria-label="Mở Virtual RM"
+      (pointerdown)="onPointerDown($event)"
+      (pointermove)="onPointerMove($event)"
+      (pointerup)="onPointerUp($event)"
+      (pointercancel)="onPointerUp($event)"
+      class="lg:hidden fixed z-40 w-14 h-14 rounded-full bg-brand-500 text-white shadow-pop flex items-center justify-center text-2xl select-none touch-none"
+      [class.right-5]="!buttonPos()"
+      [class.bottom-5]="!buttonPos()"
+      [style.left.px]="buttonPos()?.x ?? null"
+      [style.top.px]="buttonPos()?.y ?? null"
+      aria-label="Mở Virtual RM (giữ để kéo di chuyển)"
     >
       👩‍💼
     </button>
@@ -48,7 +65,7 @@ import { RmChatComponent } from '../rm-chat/rm-chat.component';
       <div class="flex items-center gap-3 px-4 py-4 border-b border-ink-100">
         <div class="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-xl">👩‍💼</div>
         <div>
-          <p class="text-sm font-semibold text-ink-800">Mai — Virtual RM</p>
+          <p class="text-sm font-semibold text-ink-800">Virtual RM</p>
           <p class="text-xs text-positive flex items-center gap-1">
             <span class="w-1.5 h-1.5 rounded-full bg-positive inline-block"></span> Đang hoạt động
           </p>
@@ -107,4 +124,80 @@ import { RmChatComponent } from '../rm-chat/rm-chat.component';
 export class RmWidgetComponent {
   readonly rmData = inject(RmDataService);
   readonly chatUi = inject(ChatUiService);
+
+  readonly buttonPos = signal<Point | null>(restorePos());
+
+  private dragging = false;
+  private moved = false;
+  private lastX = 0;
+  private lastY = 0;
+
+  onPointerDown(ev: PointerEvent): void {
+    this.dragging = true;
+    this.moved = false;
+    this.lastX = ev.clientX;
+    this.lastY = ev.clientY;
+    (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
+  }
+
+  onPointerMove(ev: PointerEvent): void {
+    if (!this.dragging) return;
+    const dx = ev.clientX - this.lastX;
+    const dy = ev.clientY - this.lastY;
+    if (!this.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+    this.moved = true;
+
+    const base = this.buttonPos() ?? defaultPos();
+    const next = clamp({ x: base.x + dx, y: base.y + dy });
+    this.buttonPos.set(next);
+    this.lastX = ev.clientX;
+    this.lastY = ev.clientY;
+  }
+
+  onPointerUp(_ev: PointerEvent): void {
+    if (!this.dragging) return;
+    this.dragging = false;
+
+    if (this.moved) {
+      const pos = this.buttonPos();
+      if (pos) persistPos(pos);
+    } else {
+      // A tap, not a drag — open the widget.
+      this.chatUi.openTeaser();
+    }
+  }
+}
+
+function defaultPos(): Point {
+  return {
+    x: window.innerWidth - BUTTON_SIZE - 20,
+    y: window.innerHeight - BUTTON_SIZE - 20,
+  };
+}
+
+function clamp(pos: Point): Point {
+  const maxX = Math.max(EDGE_MARGIN, window.innerWidth - BUTTON_SIZE - EDGE_MARGIN);
+  const maxY = Math.max(EDGE_MARGIN, window.innerHeight - BUTTON_SIZE - EDGE_MARGIN);
+  return {
+    x: Math.min(Math.max(EDGE_MARGIN, pos.x), maxX),
+    y: Math.min(Math.max(EDGE_MARGIN, pos.y), maxY),
+  };
+}
+
+function restorePos(): Point | null {
+  try {
+    const raw = localStorage.getItem(POS_STORAGE_KEY);
+    if (!raw) return null;
+    return clamp(JSON.parse(raw) as Point);
+  } catch {
+    return null;
+  }
+}
+
+function persistPos(pos: Point): void {
+  try {
+    localStorage.setItem(POS_STORAGE_KEY, JSON.stringify(pos));
+  } catch {
+    // ignore — position just won't persist across reloads
+  }
 }

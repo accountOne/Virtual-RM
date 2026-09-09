@@ -1,6 +1,8 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, effect, inject, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { RmDataService } from './core/services/rm-data.service';
+import { AuthService } from './core/services/auth.service';
 import { HeaderComponent } from './shared/components/header/header.component';
 import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
 import { ToastContainerComponent } from './shared/components/toast-container/toast-container.component';
@@ -11,6 +13,7 @@ import { RmWidgetComponent } from './features/virtual-rm/components/rm-widget/rm
   selector: 'app-root',
   standalone: true,
   imports: [
+    CommonModule,
     RouterOutlet,
     HeaderComponent,
     SidebarComponent,
@@ -20,11 +23,17 @@ import { RmWidgetComponent } from './features/virtual-rm/components/rm-widget/rm
   ],
   templateUrl: './app.component.html',
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
+  readonly auth = inject(AuthService);
   private readonly rmData = inject(RmDataService);
   readonly mobileMenuOpen = signal(false);
 
-  ngOnInit(): void {
-    void this.rmData.loadAll();
+  constructor() {
+    // Mock data is only worth loading once someone is actually logged in.
+    effect(() => {
+      if (this.auth.isAuthenticated() && !this.rmData.loaded() && !this.rmData.loading()) {
+        void this.rmData.loadAll();
+      }
+    });
   }
 }

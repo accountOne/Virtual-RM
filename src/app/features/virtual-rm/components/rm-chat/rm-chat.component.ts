@@ -42,7 +42,7 @@ let idCounter = 0;
           </div>
         </div>
         <div *ngIf="thinking()" class="flex">
-          <div class="bg-ink-50 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm text-ink-400">Mai đang trả lời...</div>
+          <div class="bg-ink-50 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm text-ink-400">Virtual RM đang trả lời...</div>
         </div>
       </div>
 
@@ -82,7 +82,7 @@ export class RmChatComponent {
 
   constructor() {
     const customer = this.rmData.customer();
-    const greetingText = this.rmData.briefing()?.greeting ?? `Chào anh/chị${customer ? ', ' + customer.companyName : ''} 👋 Tôi là Mai, Virtual RM của doanh nghiệp. Anh/chị cần tôi hỗ trợ gì?`;
+    const greetingText = this.rmData.briefing()?.greeting ?? `Chào anh/chị${customer ? ', ' + customer.companyName : ''} 👋 Tôi là Virtual RM của doanh nghiệp. Anh/chị cần tôi hỗ trợ gì?`;
     this.messages.set([{ id: 'greet', from: 'RM', text: greetingText, timestamp: Date.now() }]);
   }
 

@@ -1,4 +1,4 @@
-<div class="min-h-screen flex flex-col bg-ink-50">
+<div class="min-h-screen flex flex-col bg-ink-50" *ngIf="auth.isAuthenticated(); else guestOutlet">
   <app-header (menuToggle)="mobileMenuOpen.set(true)" />
 
   <div class="flex flex-1 min-h-0">
@@ -14,3 +14,8 @@
   <app-toast-container />
   <app-confirm-dialog />
 </div>
+
+<ng-template #guestOutlet>
+  <router-outlet />
+  <app-toast-container />
+</ng-template>

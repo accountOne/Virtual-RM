@@ -19,7 +19,7 @@ interface DemoStep {
       <div>
         <h1 class="text-xl font-semibold text-ink-800">🎬 Demo Mode</h1>
         <p class="text-sm text-ink-500 mt-1">
-          Kịch bản demo: {{ rmData.customer()?.companyName }} — CFO trải nghiệm Virtual RM "Mai".
+          Kịch bản demo: {{ rmData.customer()?.companyName }} — CFO trải nghiệm Virtual RM.
           Thực hiện lần lượt từng bước dưới đây để trình diễn đầy đủ hành trình khách hàng.
         </p>
       </div>
@@ -62,13 +62,13 @@ export class DemoPageComponent {
 
   readonly steps: DemoStep[] = [
     {
-      title: '1. Đăng nhập (mô phỏng)',
-      detail: `Khách hàng ${this.rmData.customer()?.companyName ?? ''} đăng nhập Digital Business Banking với vai trò CFO.`,
+      title: '1. Đăng nhập',
+      detail: `Khách hàng ${this.rmData.customer()?.companyName ?? ''} đăng nhập Digital Business Banking (tài khoản Checker để có đủ quyền thao tác trong kịch bản này).`,
       action: { label: 'Vào Dashboard', run: () => this.router.navigateByUrl('/dashboard') },
     },
     {
       title: '2. Virtual RM chào khách hàng',
-      detail: 'Mai — Virtual RM chào khách hàng và mở Business Briefing hôm nay.',
+      detail: 'Virtual RM chào khách hàng và mở Business Briefing hôm nay.',
       action: { label: 'Mở Virtual RM', run: () => this.router.navigateByUrl('/virtual-rm') },
     },
     {
