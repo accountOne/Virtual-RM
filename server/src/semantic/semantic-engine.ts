@@ -78,6 +78,19 @@ export function _resetPackCacheForTests(): void {
   pack = null;
 }
 
+/** Phase 5 (AI Reasoning): exposes the two pack pieces the Reasoning Engine and the
+ * multi-turn follow-up path need but don't otherwise have access to (the pack cache is
+ * private to this module) — navigation actions for building a NAVIGATE action, and an
+ * intent definition by id for replaying a previous turn's intent (see
+ * ai/conversation-context.ts) through buildQuery()/generateAnswer() directly. */
+export function getNavigationActions(): NavigationActionDef[] {
+  return getPack().navigationActions;
+}
+
+export function getIntentDef(id: string): IntentDef | undefined {
+  return getPack().intents.find((i) => i.id === id);
+}
+
 function collectKnownNames(): KnownNames {
   const beneficiaries = new Set<string>();
   const customers = new Set<string>();

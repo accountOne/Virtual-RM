@@ -42,3 +42,7 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Local environment / secrets — see .env.example for the documented variables.
+.env
+.env.local

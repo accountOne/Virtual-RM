@@ -48,11 +48,15 @@ interface SemanticAnswer {
   records: unknown[];
   action?: { label: string; type: 'NAVIGATE'; target: string };
   suggestedQuestions?: string[];
+  /** Phase 5 (AI Reasoning) — populated only when the Reasoning Engine produced this
+   * answer (see server/src/ai/reasoning-engine.ts). */
+  insights?: string[];
+  recommendation?: { title: string; description: string };
 }
 
 interface SemanticQueryApiResult {
   success: true;
-  semantic: { intent: string; confidence: number };
+  semantic: { intent: string; confidence: number; reasoningRequired?: boolean };
   answer: SemanticAnswer;
 }
 
@@ -166,6 +170,15 @@ export class RmDataService {
     const lines = [answer.summary];
     for (const metric of answer.metrics.slice(0, 5)) {
       lines.push(`${metric.label}: ${metric.value}`);
+    }
+    // Phase 5 (AI Reasoning): Insight/Recommendation sections (spec §20's RMResponse shape),
+    // rendered as extra lines in the same plain chat bubble — the spec explicitly says not to
+    // redesign the UI into card-based sections, so this stays a text flow like everything else.
+    for (const insight of answer.insights ?? []) {
+      lines.push(insight);
+    }
+    if (answer.recommendation) {
+      lines.push(`💡 ${answer.recommendation.title}: ${answer.recommendation.description}`);
     }
     if (answer.suggestedQuestions?.length) {
       lines.push(`Gợi ý: ${answer.suggestedQuestions.slice(0, 3).join(' · ')}`);

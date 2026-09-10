@@ -10,6 +10,12 @@ import './statuses.test';
 import './query-execution.test';
 import './navigation.test';
 import './cross-domain.test';
+import './model-router.test';
+import './tools.test';
+import './calculation-engine.test';
+import './reasoning-engine.test';
+import './conversation-context.test';
+import './security-isolation.test';
 
 import { runAll } from './test-runner';
 

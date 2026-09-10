@@ -59,6 +59,11 @@ export interface SemanticAnswer {
   metrics: MetricItem[];
   records: unknown[];
   action?: AnswerAction;
+  /** Phase 5 (AI Reasoning) additions — populated only when a Reasoning Engine use case
+   * produced this answer; absent for the plain deterministic path. See
+   * server/src/ai/reasoning-engine.ts and docs/phase-5-architecture.md. */
+  insights?: string[];
+  recommendation?: { title: string; description: string };
 }
 
 export interface SemanticQueryResult {
@@ -69,6 +74,12 @@ export interface SemanticQueryResult {
     matchedTerms?: string[];
     entities?: SemanticQuery['entities'];
     filters?: SemanticQuery['filters'];
+    /** Phase 5: true when this answer went through the Reasoning Engine rather than the
+     * plain deterministic intent handler. */
+    reasoningRequired?: boolean;
+    /** Debug-only (SEMANTIC_DEBUG=true) — structured reasoning metadata per spec §23.
+     * Never the model's chain-of-thought, only which tools/calculations ran. */
+    reasoning?: { useCase: string; plan: string[]; toolsUsed: string[]; calculationsUsed: string[] };
   };
   answer: SemanticAnswer;
 }

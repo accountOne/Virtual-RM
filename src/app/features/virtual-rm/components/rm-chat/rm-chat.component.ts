@@ -6,15 +6,18 @@ import { ChatMessage } from '../../../../core/models';
 import { ChatUiService } from '../../../../core/services/chat-ui.service';
 import { RmDataService } from '../../../../core/services/rm-data.service';
 
+// Phase 5 (AI Reasoning) quick actions (spec §25) up front, each a full natural-language
+// question so it routes correctly through the Model Router — the emoji is just a visual
+// prefix on the chip, not a separate control.
 const SUGGESTED_QUESTIONS = [
+  '📊 Dòng tiền tháng này thế nào?',
+  '💰 Có đủ tiền trả các khoản sắp tới không?',
+  '✍️ Tôi cần xử lý việc gì quan trọng nhất hôm nay?',
+  '💡 Sản phẩm nào phù hợp với dòng tiền hiện tại?',
   'Số dư hiện tại?',
   'Tôi muốn chuyển tiền',
   'Phê duyệt giao dịch',
-  'Hôm qua chi bao nhiêu?',
   'Giao dịch lớn nhất?',
-  'Tôi còn việc gì?',
-  'Sản phẩm nào phù hợp?',
-  'Thông tin công ty?',
   'Khoản vay sắp đến hạn?',
   'Tỷ giá USD hôm nay?',
 ];
@@ -49,7 +52,7 @@ let idCounter = 0;
           </div>
         </div>
         <div *ngIf="thinking()" class="flex">
-          <div class="bg-ink-50 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm text-ink-400">Virtual RM đang trả lời...</div>
+          <div class="bg-ink-50 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm text-ink-400">● Đang phân tích...</div>
         </div>
       </div>
 

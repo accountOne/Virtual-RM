@@ -4,7 +4,7 @@
 interface TestCase {
   suite: string;
   name: string;
-  fn: () => void;
+  fn: () => void | Promise<void>;
 }
 
 const tests: TestCase[] = [];
@@ -17,7 +17,10 @@ export function describe(suite: string, fn: () => void): void {
   currentSuite = previous;
 }
 
-export function test(name: string, fn: () => void): void {
+/** `fn` may be async — Phase 5's reasoning-engine tests call through AIProvider.reason(),
+ * which is async even for the built-in synchronous mock provider (the interface must support
+ * a real, network-backed provider later). runAll() awaits every test either way. */
+export function test(name: string, fn: () => void | Promise<void>): void {
   tests.push({ suite: currentSuite, name, fn });
 }
 
@@ -35,7 +38,7 @@ export function assertGreaterOrEqual(actual: number, min: number, message?: stri
   if (!(actual >= min)) throw new Error(message ?? `expected ${actual} >= ${min}`);
 }
 
-export function runAll(): void {
+export async function runAll(): Promise<void> {
   let passed = 0;
   let failed = 0;
   const failures: { suite: string; name: string; error: string }[] = [];
@@ -44,7 +47,7 @@ export function runAll(): void {
   for (const t of tests) {
     const stats = bySuite.get(t.suite) ?? { passed: 0, failed: 0 };
     try {
-      t.fn();
+      await t.fn();
       passed++;
       stats.passed++;
     } catch (e) {

@@ -23,6 +23,7 @@ import { Account, Transaction } from '../models';
 import { formatShortVnd, formatVnd } from '../utils/currency.util';
 import { isWithinRange } from './date-resolver';
 import * as agg from './aggregation-engine';
+import { calculateLiquidityGap } from '../calculation/financial-calculations';
 import { AmountFilter, AnswerAction, DateRange, MetricItem, NavigationActionDef, SemanticAnswer, SemanticQuery } from './types';
 
 export interface GenerateContext {
@@ -141,19 +142,30 @@ const HANDLERS: Record<string, Handler> = {
       records: [acc],
     };
   },
-  ACCOUNT_HIGHEST_BALANCE: () => {
-    const accounts = accountsRepository.readAll();
+  // Phase 5 multi-turn example (spec §17): "Tài khoản nào nhiều tiền nhất?" then "Còn tài
+  // khoản USD?" — conversation-context.ts replays the ACCOUNT_HIGHEST_BALANCE intent with a
+  // currency filter carried over from context, so this needs to actually respect
+  // filters.currency now (it's additive — no currency filter behaves exactly as before).
+  ACCOUNT_HIGHEST_BALANCE: (ctx) => {
+    const currency = ctx.query.filters.currency;
+    const accounts = accountsRepository.readAll().filter((a) => !currency || a.currency === currency);
     const top = agg.max(accounts, (a) => a.balance);
-    if (!top) return emptyAnswer('Tài khoản số dư lớn nhất', 'Doanh nghiệp chưa có tài khoản nào.');
+    if (!top) {
+      return emptyAnswer(
+        'Tài khoản số dư lớn nhất',
+        currency ? `Doanh nghiệp chưa có tài khoản ${currency} nào.` : 'Doanh nghiệp chưa có tài khoản nào.',
+      );
+    }
     return {
       title: 'Tài khoản số dư lớn nhất',
-      summary: `Tài khoản ${top.accountName} đang có số dư lớn nhất — ${fmt(top.balance, top.currency)}.`,
+      summary: `Tài khoản ${top.accountName} đang có số dư lớn nhất${currency ? ` (${currency})` : ''} — ${fmt(top.balance, top.currency)}.`,
       metrics: [{ label: top.accountName, value: fmt(top.balance, top.currency) }],
       records: [top],
     };
   },
-  ACCOUNT_LOWEST_BALANCE: () => {
-    const accounts = accountsRepository.readAll();
+  ACCOUNT_LOWEST_BALANCE: (ctx) => {
+    const currency = ctx.query.filters.currency;
+    const accounts = accountsRepository.readAll().filter((a) => !currency || a.currency === currency);
     const bottom = agg.min(accounts, (a) => a.balance);
     if (!bottom) return emptyAnswer('Tài khoản số dư thấp nhất', 'Doanh nghiệp chưa có tài khoản nào.');
     return {
@@ -684,11 +696,29 @@ function generateBriefing(ctx: GenerateContext): Omit<SemanticAnswer, 'action'> 
     { label: '📄 Trade Finance', value: `${lcSoon.length} LC sắp hết hạn` },
   ];
 
+  // Phase 5 (AI Reasoning) RM Insight (spec §16): a one-line liquidity-pressure signal for
+  // the next 7 days, computed via the Calculation Engine — never a generated/invented number.
+  const week: DateRange = { from: today, to: addDaysLocal(today, 7) };
+  const loans7d = loansRepository.readAll().filter((l) => l.status === 'ACTIVE' && isWithinRange(l.maturityDate, week));
+  // Exclude a payable that's really the same obligation as a loan maturing in-window (this
+  // demo's data records a loan installment both as a payable and via the loan's own
+  // maturityDate/outstanding — see ai/reasoning-engine.ts's LIQUIDITY_ANALYSIS case for the
+  // same fix) so it isn't counted twice in one 7-day obligation total.
+  const loanNumbers7d = new Set(loans7d.map((l) => l.loanNumber));
+  const payables7d = payablesRepository.readAll().filter((p) => isWithinRange(p.dueDate, week) && !loanNumbers7d.has(p.relatedInvoice));
+  const gap7d = calculateLiquidityGap(balance, payables7d, loans7d);
+  const insights = [
+    gap7d.sufficient
+      ? `Tuần tới nghĩa vụ thanh toán khoảng ${formatShortVnd(gap7d.obligations)}, thanh khoản hiện tại đủ đáp ứng.`
+      : `Tuần tới có áp lực thanh khoản khoảng ${formatShortVnd(Math.abs(gap7d.gap))}. Nên xem xét các khoản thu dự kiến trước khi thực hiện các khoản chi lớn.`,
+  ];
+
   return {
     title: 'Business Briefing',
     summary: `Chào anh/chị, ${customer.companyName} 👋 Đây là Business Briefing hôm nay.`,
     metrics,
     records: [],
+    insights,
   };
 }
 

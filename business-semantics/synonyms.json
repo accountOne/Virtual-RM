@@ -466,7 +466,11 @@
     "việc quá hạn",
     "việc sắp hết hạn xử lý",
     "task sắp đến hạn",
-    "đến hạn xử lý việc"
+    "đến hạn xử lý việc",
+    "nên xử lý việc gì trước",
+    "xử lý việc gì trước",
+    "việc gì trước",
+    "việc gì quan trọng nhất"
   ],
   "lcExpiry": [
     "lc nào sắp hết hạn",
@@ -501,7 +505,9 @@
     "vị thế tiền mặt",
     "vị thế thanh khoản",
     "tổng quan tài chính",
-    "thanh khoản hiện tại của công ty"
+    "thanh khoản hiện tại của công ty",
+    "tình hình tài chính",
+    "tình hình tài chính công ty"
   ],
   "compare": [
     "so với",
