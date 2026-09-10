@@ -5,10 +5,13 @@ const sec = buildSecurityContext('msb_ck', 'CHECKER');
 
 // Each query below was verified against the running engine (business-semantics pack as
 // checked in) to actually resolve to the stated intent — this is a real regression suite,
-// not aspirational. 18 of the 50 intents (mostly 'list' baselines that lose a scoring tie
-// to a higher-priority, more specific sibling — e.g. ACCOUNT_LIST vs ACCOUNT_STATEMENT,
-// TASK_LIST vs TASK_DUE, PAYMENT_CREATE vs PAYMENT_STATUS) aren't covered here; see
-// docs/semantic-engine.md #Known limitations.
+// not aspirational. 4 of the 50 intents (PAYMENT_PENDING, TRANSACTION_DETAIL,
+// TRANSACTION_BY_DATE, TRANSACTION_SUMMARY's sibling TRANSACTION_LIST-adjacent overlaps, and
+// a couple of intrinsically ambiguous phrasings with no domain anchor) remain genuinely hard
+// to separate from a sibling with pure deterministic keyword matching, or need an entity id
+// shape the demo data doesn't produce (TRANSACTION_DETAIL/TRANSACTION_BY_DATE need a
+// documentId the entity-extractor's regex recognizes, and transaction ids in this demo don't
+// match it) — see docs/semantic-engine.md #Known limitations.
 describe('intent detection (50+ required)', () => {
   test('ACCOUNT_BALANCE <- "Số dư tài khoản hiện tại là bao nhiêu?"', () => {
     const r: any = answerQuery('Số dư tài khoản hiện tại là bao nhiêu?', sec, {});
@@ -42,8 +45,16 @@ describe('intent detection (50+ required)', () => {
     const r: any = answerQuery('Sao kê tài khoản tháng này', sec, {});
     assertEqual(r.semantic.intent, 'ACCOUNT_STATEMENT');
   });
-  test('ACCOUNT_STATEMENT <- "tài khoản doanh nghiệp giao dịch trên tài khoản"', () => {
+  // This phrase concatenates an "account" concept term with a "transaction" concept term
+  // purely to force a tie win by priority — it never actually said "sao kê" (statement).
+  // ACCOUNT_STATEMENT now has its own "statement" concept (see docs/semantic-engine.md #Known
+  // limitations), so a genuinely generic account question correctly falls to ACCOUNT_LIST.
+  test('ACCOUNT_LIST <- "tài khoản doanh nghiệp giao dịch trên tài khoản"', () => {
     const r: any = answerQuery('tài khoản doanh nghiệp giao dịch trên tài khoản', sec, {});
+    assertEqual(r.semantic.intent, 'ACCOUNT_LIST');
+  });
+  test('ACCOUNT_STATEMENT <- "Cho tôi sao kê giao dịch tài khoản công ty tháng này"', () => {
+    const r: any = answerQuery('Cho tôi sao kê giao dịch tài khoản công ty tháng này', sec, {});
     assertEqual(r.semantic.intent, 'ACCOUNT_STATEMENT');
   });
   test('ACCOUNT_DETAIL <- "Xem chi tiết tài khoản 0071001234567 giúp tôi"', () => {
@@ -126,8 +137,12 @@ describe('intent detection (50+ required)', () => {
     const r: any = answerQuery('Tháng này dòng tiền tăng hay giảm so với tháng trước?', sec, {});
     assertEqual(r.semantic.intent, 'CASH_FLOW_COMPARE');
   });
-  test('CASH_FLOW_COMPARE <- "dòng tiền doanh nghiệp"', () => {
-    const r: any = answerQuery('dòng tiền doanh nghiệp', sec, {});
+  // Bare "dòng tiền doanh nghiệp" has zero comparison wording — it only resolved to
+  // CASH_FLOW_COMPARE before via the shared "cashFlow" concept's priority tie-break.
+  // CASH_FLOW_COMPARE now has its own "compare" concept (so với, tăng hay giảm, ...), so this
+  // falls to the generic CASH_FLOW_SUMMARY, and a real comparison phrase gets its own test.
+  test('CASH_FLOW_COMPARE <- "So với tháng trước, chi phí thanh toán tuần này tăng hay giảm?"', () => {
+    const r: any = answerQuery('So với tháng trước, chi phí thanh toán tuần này tăng hay giảm?', sec, {});
     assertEqual(r.semantic.intent, 'CASH_FLOW_COMPARE');
   });
   test('PAYROLL_SUMMARY <- "Kỳ lương gần nhất là khi nào?"', () => {
@@ -162,8 +177,13 @@ describe('intent detection (50+ required)', () => {
     const r: any = answerQuery('LC nào sắp hết hạn?', sec, {});
     assertEqual(r.semantic.intent, 'LC_EXPIRY');
   });
-  test('LC_EXPIRY <- "sắp hết hiệu lực"', () => {
-    const r: any = answerQuery('sắp hết hiệu lực', sec, {});
+  // Bare "sắp hết hiệu lực" with no domain word is genuinely ambiguous (task/LC/guarantee all
+  // plausible) — it only resolved to LC_EXPIRY before because "expirySoon" was one shared
+  // concept across all three domains and LC_EXPIRY happened to sort first on a tie. Fixed by
+  // splitting expirySoon into per-domain concepts (taskDue/lcExpiry/guaranteeExpiry) that each
+  // require their own domain word — see docs/semantic-engine.md #Known limitations.
+  test('LC_EXPIRY <- "LC sắp hết hiệu lực"', () => {
+    const r: any = answerQuery('LC sắp hết hiệu lực', sec, {});
     assertEqual(r.semantic.intent, 'LC_EXPIRY');
   });
   test('LC_STATUS <- "Trạng thái LC số LC-2026-001 thế nào?"', () => {
@@ -178,9 +198,13 @@ describe('intent detection (50+ required)', () => {
     const r: any = answerQuery('Chi tiết thư tín dụng LC-2026-002', sec, {});
     assertEqual(r.semantic.intent, 'LC_DETAIL');
   });
-  test('LC_DETAIL <- "thư tín dụng xuất khẩu"', () => {
+  // A generic "export LC" mention with no LC number is a list/filter query, not a detail
+  // lookup — it only resolved to LC_DETAIL before via the shared "letterOfCredit" concept's
+  // priority tie-break. LC_DETAIL now requires an actual documentId (see
+  // docs/semantic-engine.md #Known limitations), so this correctly falls to LC_LIST.
+  test('LC_LIST <- "thư tín dụng xuất khẩu"', () => {
     const r: any = answerQuery('thư tín dụng xuất khẩu', sec, {});
-    assertEqual(r.semantic.intent, 'LC_DETAIL');
+    assertEqual(r.semantic.intent, 'LC_LIST');
   });
   test('GUARANTEE_LIST <- "Công ty có bao nhiêu bảo lãnh ngân hàng?"', () => {
     const r: any = answerQuery('Công ty có bao nhiêu bảo lãnh ngân hàng?', sec, {});
@@ -286,24 +310,97 @@ describe('intent detection (50+ required)', () => {
     const r: any = answerQuery('bạn làm được những gì', sec, {});
     assertEqual(r.semantic.intent, 'HELP');
   });
-  test('TRANSACTION_FAILED <- "giao dịch trên tài khoản đang ở trạng thái nào"', () => {
+  // A generic "what's the status" question with no failure wording ("lỗi"/"từ chối"/"thất
+  // bại") isn't evidence of a FAILED transaction — it only resolved to TRANSACTION_FAILED
+  // before via the shared "transaction"+"status" concepts' priority tie-break. FAILED now has
+  // its own "failed" concept (see docs/semantic-engine.md #Known limitations), so this
+  // correctly falls to the generic list, and a real failure phrase gets its own test below.
+  test('TRANSACTION_LIST <- "giao dịch trên tài khoản đang ở trạng thái nào"', () => {
     const r: any = answerQuery('giao dịch trên tài khoản đang ở trạng thái nào', sec, {});
+    assertEqual(r.semantic.intent, 'TRANSACTION_LIST');
+  });
+  test('TRANSACTION_FAILED <- "Giao dịch nào bị từ chối gần đây?"', () => {
+    const r: any = answerQuery('Giao dịch nào bị từ chối gần đây?', sec, {});
     assertEqual(r.semantic.intent, 'TRANSACTION_FAILED');
   });
-  test('PAYMENT_FAILED <- "lệnh chuyển tiền đang ở trạng thái nào"', () => {
+  // Same fix as above, on the PAYMENT side: "đang ở trạng thái nào" is exactly what
+  // PAYMENT_STATUS exists for (its own description: "Tra cứu trạng thái xử lý của một lệnh
+  // thanh toán") — it only lost to PAYMENT_FAILED before via the same shared-concept tie-break.
+  test('PAYMENT_STATUS <- "lệnh chuyển tiền đang ở trạng thái nào"', () => {
     const r: any = answerQuery('lệnh chuyển tiền đang ở trạng thái nào', sec, {});
+    assertEqual(r.semantic.intent, 'PAYMENT_STATUS');
+  });
+  test('PAYMENT_FAILED <- "Lệnh thanh toán của tôi bị lỗi rồi"', () => {
+    const r: any = answerQuery('Lệnh thanh toán của tôi bị lỗi rồi', sec, {});
     assertEqual(r.semantic.intent, 'PAYMENT_FAILED');
   });
   test('TASK_DUE <- "việc tôi cần làm sắp hết hiệu lực"', () => {
     const r: any = answerQuery('việc tôi cần làm sắp hết hiệu lực', sec, {});
     assertEqual(r.semantic.intent, 'TASK_DUE');
   });
-  test('CASH_POSITION <- "dòng tiền doanh nghiệp tiền còn trong tài khoản"', () => {
+  // This phrase concatenates a "cashFlow" concept term with a "balance" concept term purely to
+  // force a tie win by priority — neither is CASH_POSITION-specific vocabulary. CASH_POSITION
+  // now has its own "cashPosition" concept (thanh khoản, vị thế tiền mặt, ...), split out from
+  // the generic "cashFlow"/"balance" it used to share with CASH_FLOW_SUMMARY/ACCOUNT_BALANCE
+  // (see docs/semantic-engine.md #Known limitations), so this falls to the generic summary.
+  test('CASH_FLOW_SUMMARY <- "dòng tiền doanh nghiệp tiền còn trong tài khoản"', () => {
     const r: any = answerQuery('dòng tiền doanh nghiệp tiền còn trong tài khoản', sec, {});
+    assertEqual(r.semantic.intent, 'CASH_FLOW_SUMMARY');
+  });
+  test('CASH_POSITION <- "Thanh khoản hiện tại của công ty là bao nhiêu?"', () => {
+    const r: any = answerQuery('Thanh khoản hiện tại của công ty là bao nhiêu?', sec, {});
     assertEqual(r.semantic.intent, 'CASH_POSITION');
   });
-  test('FX_EXPOSURE <- "giao dịch mua bán ngoại tệ"', () => {
+  // A generic "FX trades" mention with no comparison wording is FX_DEALS territory — it only
+  // resolved to FX_EXPOSURE before via the shared "fxDeal" concept's priority tie-break.
+  // FX_EXPOSURE now has its own "fxExposure" concept (mua/bán ... nhiều hơn, ...), matching the
+  // spec's own canonical example verbatim (docs/semantic-query-examples.md #6).
+  test('FX_DEALS <- "giao dịch mua bán ngoại tệ"', () => {
     const r: any = answerQuery('giao dịch mua bán ngoại tệ', sec, {});
+    assertEqual(r.semantic.intent, 'FX_DEALS');
+  });
+  test('FX_EXPOSURE <- "Công ty mua bán ngoại tệ nhiều hơn bên nào?"', () => {
+    const r: any = answerQuery('Công ty mua bán ngoại tệ nhiều hơn bên nào?', sec, {});
     assertEqual(r.semantic.intent, 'FX_EXPOSURE');
+  });
+
+  // Newly-covered intents: each of these previously lost its scoring tie to a sibling (see
+  // the fixes above and docs/semantic-engine.md #requiredSignals) and had no passing test at
+  // all before this pass.
+  test('PAYMENT_CREATE <- "Tôi muốn chuyển tiền đơn"', () => {
+    const r: any = answerQuery('Tôi muốn chuyển tiền đơn', sec, {});
+    assertEqual(r.semantic.intent, 'PAYMENT_CREATE');
+  });
+  test('APPROVAL_APPROVE <- "Tôi muốn phê duyệt giao dịch này"', () => {
+    const r: any = answerQuery('Tôi muốn phê duyệt giao dịch này', sec, {});
+    assertEqual(r.semantic.intent, 'APPROVAL_APPROVE');
+  });
+  test('APPROVAL_REJECT <- "Từ chối giúp tôi giao dịch với FPT Software"', () => {
+    const r: any = answerQuery('Từ chối giúp tôi giao dịch với FPT Software', sec, {});
+    assertEqual(r.semantic.intent, 'APPROVAL_REJECT');
+  });
+  test('APPROVAL_DETAIL <- "Chi tiết lệnh chờ duyệt của Delta Logistics"', () => {
+    const r: any = answerQuery('Chi tiết lệnh chờ duyệt của Delta Logistics', sec, {});
+    assertEqual(r.semantic.intent, 'APPROVAL_DETAIL');
+  });
+  test('TASK_LIST <- "Tôi còn việc gì cần xử lý?"', () => {
+    const r: any = answerQuery('Tôi còn việc gì cần xử lý?', sec, {});
+    assertEqual(r.semantic.intent, 'TASK_LIST');
+  });
+  test('ALERT_LIST <- "Có cảnh báo nào không?"', () => {
+    const r: any = answerQuery('Có cảnh báo nào không?', sec, {});
+    assertEqual(r.semantic.intent, 'ALERT_LIST');
+  });
+  test('GUARANTEE_EXPIRY <- "Bảo lãnh nào sắp đáo hạn?"', () => {
+    const r: any = answerQuery('Bảo lãnh nào sắp đáo hạn?', sec, {});
+    assertEqual(r.semantic.intent, 'GUARANTEE_EXPIRY');
+  });
+  test('PAYMENT_TODAY <- "Hôm nay có bao nhiêu lệnh thanh toán đã lập?"', () => {
+    const r: any = answerQuery('Hôm nay có bao nhiêu lệnh thanh toán đã lập?', sec, {});
+    assertEqual(r.semantic.intent, 'PAYMENT_TODAY');
+  });
+  test('TRANSACTION_SUMMARY <- "Tổng hợp giao dịch quý này giúp tôi"', () => {
+    const r: any = answerQuery('Tổng hợp giao dịch quý này giúp tôi', sec, {});
+    assertEqual(r.semantic.intent, 'TRANSACTION_SUMMARY');
   });
 });

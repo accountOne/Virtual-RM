@@ -12,7 +12,7 @@ service — every file here is static JSON, loaded once at server startup by
 | `domains.json` | 13 business domains grouping intents | 13 |
 | `entities.json` | 30 business entities (nouns the engine reasons about) | 30 |
 | `intents.json` | 50 intents — the core of the pack | 50 |
-| `synonyms.json` | 30 concepts → 300 Vietnamese synonym terms | 300 |
+| `synonyms.json` | 50 concepts → 432 Vietnamese synonym terms | ≥300 |
 | `business-terms.json` | Glossary of business-banking terminology (availableBalance, outstanding, maturityDate...) | — |
 | `status-definitions.json` | Canonical status codes + Vietnamese phrase → status map | — |
 | `transaction-types.json` | Transaction categories (PAYROLL, TAX, FX, ...) | — |

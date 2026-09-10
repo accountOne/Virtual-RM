@@ -109,6 +109,14 @@ export interface IntentDef {
   priority: number;
   synonymConcepts: string[];
   supportedEntities: string[];
+  /** Optional gate (OR semantics): if set, this intent scores 0 unless at least one listed
+   * signal is actually present — either a synonymConcepts id that produced a real match, or one
+   * of 'datePeriod'/'status'/'amount'/'accountNo'/'accountId'/'documentId'/'beneficiary'/
+   * 'supplier'/'customer'. Without this, a narrower intent that merely shares a concept with a
+   * broader sibling (e.g. TRANSACTION_DETAIL sharing "transaction" with TRANSACTION_LIST) wins
+   * ties on priority alone even when its own distinguishing signal never appeared — see
+   * docs/semantic-engine.md #Known limitations ("Structural lesson"). */
+  requiredSignals?: string[];
   defaultSort?: { field: string; direction: 'asc' | 'desc' };
   responseTemplate: string;
   navigationAction: string;

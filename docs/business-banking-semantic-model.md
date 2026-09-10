@@ -52,14 +52,20 @@ and `HELP` were added to close both gaps.
 `BUSINESS_BRIEFING` is deliberately **not** one of the 50 — per the spec it's an
 extension capability layered on top (see §5 below).
 
-## 4. Synonyms (300 terms / 34 concepts)
+## 4. Synonyms (432 terms / 50 concepts)
 
-`synonyms.json` maps a concept id (`account`, `approval`, `fxDeal`, `expirySoon`, ...) to
-an array of Vietnamese (and a few English) terms a customer might actually type. 34
-concepts rather than "approximately 30" because a few narrow, single-purpose concepts
-(`highest`, `lowest`, `expirySoon`, `outstandingDebt`) were split out during tuning to
-stop them tying with a sibling intent's shared base vocabulary — see
-[`semantic-engine.md`](./semantic-engine.md) for why.
+`synonyms.json` maps a concept id (`account`, `approval`, `fxDeal`, `taskDue`, ...) to
+an array of Vietnamese (and a few English) terms a customer might actually type. The
+spec's "~300 terms" was a floor, not a cap (`validate-semantic-pack.ts` enforces
+`>= 300`, not `=== 300`): 50 concepts rather than "approximately 30" because narrow,
+single-purpose concepts (`highest`, `lowest`, `outstandingDebt`, and later a larger batch
+— `statement`, `detail`, `pending`, `paymentCreate`, `approveAction`, `rejectAction`,
+`taskDue`/`lcExpiry`/`guaranteeExpiry`, `highPriority`, `cashPosition`, `compare`,
+`summary`, `fxExposure`, `transactionFailed`/`paymentFailed`) were split out during
+tuning to stop them tying with a sibling intent's shared base vocabulary — see
+[`semantic-engine.md`](./semantic-engine.md#known-limitations) for why, including the
+two cases that needed a *second* split after the first (a still-too-generic concept
+colliding across unrelated domains, not just within one).
 
 Concept design principle learned the hard way: **a concept shared by two intents makes
 them indistinguishable whenever only that shared concept matches.** Narrower intents

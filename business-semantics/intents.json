@@ -21,9 +21,14 @@
     "description": "Xem chi tiết một tài khoản cụ thể theo số tài khoản",
     "priority": 70,
     "synonymConcepts": [
-      "account"
+      "account",
+      "detail"
     ],
     "supportedEntities": [
+      "accountNo",
+      "accountId"
+    ],
+    "requiredSignals": [
       "accountNo",
       "accountId"
     ],
@@ -103,8 +108,7 @@
     "description": "Xem sao kê giao dịch của một tài khoản trong một khoảng thời gian",
     "priority": 75,
     "synonymConcepts": [
-      "account",
-      "transaction"
+      "statement"
     ],
     "supportedEntities": [
       "accountNo",
@@ -145,9 +149,13 @@
     "description": "Xem chi tiết một giao dịch cụ thể",
     "priority": 70,
     "synonymConcepts": [
-      "transaction"
+      "transaction",
+      "detail"
     ],
     "supportedEntities": [
+      "documentId"
+    ],
+    "requiredSignals": [
       "documentId"
     ],
     "responseTemplate": "TRANSACTION_DETAIL",
@@ -160,10 +168,14 @@
     "description": "Tổng hợp số lượng và giá trị giao dịch trong một khoảng thời gian",
     "priority": 65,
     "synonymConcepts": [
-      "transaction"
+      "transaction",
+      "summary"
     ],
     "supportedEntities": [
       "datePeriod"
+    ],
+    "requiredSignals": [
+      "summary"
     ],
     "responseTemplate": "TRANSACTION_SUMMARY",
     "navigationAction": "OPEN_TRANSACTION"
@@ -212,11 +224,14 @@
     "domain": "TRANSACTION",
     "entity": "Transaction",
     "description": "Lọc giao dịch theo khoảng thời gian cụ thể",
-    "priority": 75,
+    "priority": 45,
     "synonymConcepts": [
       "transaction"
     ],
     "supportedEntities": [
+      "datePeriod"
+    ],
+    "requiredSignals": [
       "datePeriod"
     ],
     "defaultSort": {
@@ -251,11 +266,11 @@
     "description": "Liệt kê giao dịch bị từ chối hoặc thất bại",
     "priority": 80,
     "synonymConcepts": [
-      "transaction",
-      "status"
+      "transactionFailed"
     ],
     "supportedEntities": [
-      "datePeriod"
+      "datePeriod",
+      "status"
     ],
     "responseTemplate": "TRANSACTION_FAILED",
     "navigationAction": "OPEN_TRANSACTION"
@@ -274,6 +289,9 @@
       "documentId",
       "status"
     ],
+    "requiredSignals": [
+      "status"
+    ],
     "responseTemplate": "PAYMENT_STATUS",
     "navigationAction": "OPEN_PAYMENT"
   },
@@ -289,6 +307,9 @@
     "supportedEntities": [
       "datePeriod"
     ],
+    "requiredSignals": [
+      "datePeriod"
+    ],
     "responseTemplate": "PAYMENT_TODAY",
     "navigationAction": "OPEN_PAYMENT"
   },
@@ -299,8 +320,7 @@
     "description": "Liệt kê lệnh thanh toán đang chờ xử lý (chưa tới bước duyệt)",
     "priority": 70,
     "synonymConcepts": [
-      "payment",
-      "status"
+      "pending"
     ],
     "supportedEntities": [
       "status"
@@ -315,11 +335,11 @@
     "description": "Liệt kê lệnh thanh toán bị lỗi hoặc thất bại",
     "priority": 80,
     "synonymConcepts": [
-      "payment",
-      "status"
+      "paymentFailed"
     ],
     "supportedEntities": [
-      "datePeriod"
+      "datePeriod",
+      "status"
     ],
     "responseTemplate": "PAYMENT_FAILED",
     "navigationAction": "OPEN_PAYMENT"
@@ -331,7 +351,7 @@
     "description": "Khách hàng muốn lập một lệnh chuyển tiền mới",
     "priority": 95,
     "synonymConcepts": [
-      "payment"
+      "paymentCreate"
     ],
     "supportedEntities": [
       "beneficiary",
@@ -369,10 +389,19 @@
     "description": "Xem chi tiết một lệnh cụ thể đang chờ phê duyệt",
     "priority": 82,
     "synonymConcepts": [
-      "approval"
+      "approval",
+      "detail"
     ],
     "supportedEntities": [
-      "documentId"
+      "documentId",
+      "beneficiary",
+      "supplier"
+    ],
+    "requiredSignals": [
+      "approval",
+      "documentId",
+      "beneficiary",
+      "supplier"
     ],
     "responseTemplate": "APPROVAL_DETAIL",
     "navigationAction": "OPEN_APPROVAL"
@@ -384,11 +413,13 @@
     "description": "Khách hàng muốn phê duyệt một hoặc nhiều giao dịch",
     "priority": 97,
     "synonymConcepts": [
-      "approval"
+      "approveAction"
     ],
     "supportedEntities": [
       "documentId",
-      "amount"
+      "amount",
+      "beneficiary",
+      "supplier"
     ],
     "responseTemplate": "APPROVAL_APPROVE",
     "navigationAction": "OPEN_APPROVAL"
@@ -400,10 +431,12 @@
     "description": "Khách hàng muốn từ chối một hoặc nhiều giao dịch",
     "priority": 97,
     "synonymConcepts": [
-      "approval"
+      "rejectAction"
     ],
     "supportedEntities": [
-      "documentId"
+      "documentId",
+      "beneficiary",
+      "supplier"
     ],
     "responseTemplate": "APPROVAL_REJECT",
     "navigationAction": "OPEN_APPROVAL"
@@ -430,11 +463,11 @@
     "description": "Tìm việc cần xử lý sắp tới hạn hoặc đã quá hạn",
     "priority": 83,
     "synonymConcepts": [
-      "task",
-      "expirySoon"
+      "taskDue"
     ],
     "supportedEntities": [
-      "datePeriod"
+      "datePeriod",
+      "status"
     ],
     "defaultSort": {
       "field": "dueDate",
@@ -465,7 +498,7 @@
     "description": "Tìm cảnh báo mức độ nghiêm trọng cao cần xử lý ngay",
     "priority": 86,
     "synonymConcepts": [
-      "alert"
+      "highPriority"
     ],
     "supportedEntities": [],
     "responseTemplate": "ALERT_HIGH_PRIORITY",
@@ -508,8 +541,7 @@
     "description": "Tổng hợp vị thế thanh khoản hiện tại của doanh nghiệp trên toàn bộ tài khoản",
     "priority": 82,
     "synonymConcepts": [
-      "cashFlow",
-      "balance"
+      "cashPosition"
     ],
     "supportedEntities": [],
     "responseTemplate": "CASH_POSITION",
@@ -537,7 +569,7 @@
     "description": "So sánh dòng tiền giữa hai kỳ liên tiếp (ví dụ tháng này với tháng trước)",
     "priority": 87,
     "synonymConcepts": [
-      "cashFlow"
+      "compare"
     ],
     "supportedEntities": [
       "datePeriod"
@@ -598,7 +630,7 @@
     "description": "Đánh giá mức độ doanh nghiệp mua hay bán ngoại tệ nhiều hơn trong kỳ",
     "priority": 83,
     "synonymConcepts": [
-      "fxDeal"
+      "fxExposure"
     ],
     "supportedEntities": [
       "datePeriod",
@@ -635,6 +667,9 @@
     "supportedEntities": [
       "documentId"
     ],
+    "requiredSignals": [
+      "status"
+    ],
     "responseTemplate": "LC_STATUS",
     "navigationAction": "OPEN_LC"
   },
@@ -645,7 +680,7 @@
     "description": "Tìm thư tín dụng sắp hết hạn hiệu lực",
     "priority": 90,
     "synonymConcepts": [
-      "expirySoon"
+      "lcExpiry"
     ],
     "supportedEntities": [
       "datePeriod"
@@ -664,9 +699,13 @@
     "description": "Xem chi tiết một thư tín dụng theo số L/C",
     "priority": 82,
     "synonymConcepts": [
-      "letterOfCredit"
+      "letterOfCredit",
+      "detail"
     ],
     "supportedEntities": [
+      "documentId"
+    ],
+    "requiredSignals": [
       "documentId"
     ],
     "responseTemplate": "LC_DETAIL",
@@ -694,7 +733,7 @@
     "description": "Tìm bảo lãnh ngân hàng sắp đến hạn đáo hạn",
     "priority": 90,
     "synonymConcepts": [
-      "expirySoon"
+      "guaranteeExpiry"
     ],
     "supportedEntities": [
       "datePeriod"

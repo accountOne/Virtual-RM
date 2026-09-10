@@ -47,7 +47,11 @@ $border-default: $ink-100;
 
 // ---- Typography -------------------------------------------------------------
 
-$font-family-base: "Satoshi", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Helvetica Neue", "Arial", "sans-serif";
+// "Satoshi" (Fontshare) was dropped — it has no Vietnamese glyph coverage, so
+// diacritics (đ, ư, ơ, and precomposed tone-mark vowels) silently fell back to a
+// different font mid-word. "Be Vietnam Pro" is a Google Font built specifically for
+// full Vietnamese coverage, with a similar geometric-grotesque weight to Satoshi.
+$font-family-base: "Be Vietnam Pro", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Helvetica Neue", "Arial", "sans-serif";
 
 // Heading hierarchy used across feature pages (see dashboard.page.ts, virtual-rm-dashboard.page.ts)
 $font-size-h1: 1.25rem; // text-xl — page titles ("Xin chào, {company}")

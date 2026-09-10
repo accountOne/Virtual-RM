@@ -42,9 +42,7 @@
     "lịch sử giao dịch",
     "các giao dịch",
     "giao dịch phát sinh",
-    "sao kê giao dịch",
-    "giao dịch trên tài khoản",
-    "chi tiết giao dịch"
+    "giao dịch trên tài khoản"
   ],
   "payment": [
     "thanh toán",
@@ -73,6 +71,8 @@
     "phê duyệt",
     "chờ duyệt",
     "cần duyệt",
+    "cần tôi duyệt",
+    "tôi duyệt",
     "approval",
     "approve",
     "xét duyệt",
@@ -130,8 +130,6 @@
     "cash flow",
     "lưu chuyển tiền tệ",
     "tình hình dòng tiền",
-    "thanh khoản",
-    "vị thế tiền mặt",
     "cân đối thu chi",
     "dòng tiền doanh nghiệp",
     "tổng quan dòng tiền"
@@ -271,7 +269,10 @@
     "sản phẩm được đề xuất",
     "gợi ý phù hợp",
     "RM gợi ý",
-    "đề xuất giải pháp"
+    "đề xuất giải pháp",
+    "tối ưu",
+    "tối ưu tiền nhàn rỗi",
+    "có nên tối ưu"
   ],
   "company": [
     "công ty",
@@ -351,7 +352,10 @@
     "dư nợ hiện tại",
     "tổng dư nợ",
     "outstanding",
-    "dư nợ vay ngân hàng"
+    "dư nợ vay ngân hàng",
+    "tổng nợ vay ngân hàng",
+    "nợ vay ngân hàng hiện tại",
+    "tổng nợ vay"
   ],
   "highest": [
     "nhiều tiền nhất",
@@ -366,5 +370,165 @@
     "số dư nhỏ nhất",
     "thấp nhất",
     "nhỏ nhất"
+  ],
+  "statement": [
+    "sao kê",
+    "sao kê tài khoản",
+    "sao kê giao dịch",
+    "bảng sao kê",
+    "in sao kê",
+    "xem sao kê",
+    "lịch sử sao kê",
+    "sao kê ngân hàng"
+  ],
+  "detail": [
+    "chi tiết",
+    "xem chi tiết",
+    "thông tin chi tiết",
+    "chi tiết giao dịch",
+    "chi tiết lệnh",
+    "chi tiết tài khoản",
+    "chi tiết hồ sơ"
+  ],
+  "transactionFailed": [
+    "giao dịch bị lỗi",
+    "giao dịch thất bại",
+    "giao dịch bị từ chối",
+    "giao dịch lỗi",
+    "bị lỗi",
+    "lỗi",
+    "thất bại",
+    "bị từ chối",
+    "không thành công",
+    "bị hủy",
+    "không thực hiện được"
+  ],
+  "paymentFailed": [
+    "lệnh thanh toán bị lỗi",
+    "thanh toán bị lỗi",
+    "chuyển tiền bị lỗi",
+    "lệnh bị lỗi",
+    "bị lỗi rồi",
+    "lỗi rồi"
+  ],
+  "paymentCreate": [
+    "tôi muốn chuyển tiền",
+    "muốn lập lệnh",
+    "tôi muốn chuyển khoản",
+    "lập lệnh chuyển tiền mới",
+    "tôi cần chuyển tiền",
+    "muốn thực hiện chuyển tiền",
+    "chuyển tiền đơn",
+    "muốn chuyển tiền đơn",
+    "tôi muốn lập lệnh chuyển tiền"
+  ],
+  "pending": [
+    "đang chờ xử lý",
+    "chờ xử lý",
+    "chưa xử lý",
+    "đang xử lý",
+    "chờ thực hiện",
+    "chưa được xử lý",
+    "đang chờ duyệt",
+    "lệnh đang chờ"
+  ],
+  "approveAction": [
+    "tôi muốn phê duyệt",
+    "phê duyệt giúp tôi",
+    "duyệt ngay",
+    "duyệt ngay giúp tôi",
+    "ngay giúp tôi",
+    "đồng ý duyệt",
+    "xin duyệt",
+    "cho duyệt luôn",
+    "duyệt giúp tôi",
+    "xác nhận phê duyệt",
+    "muốn phê duyệt",
+    "phê duyệt giao dịch này",
+    "phê duyệt ngay"
+  ],
+  "rejectAction": [
+    "từ chối giúp tôi",
+    "tôi muốn từ chối",
+    "không đồng ý duyệt",
+    "từ chối duyệt",
+    "huỷ duyệt",
+    "từ chối giao dịch này",
+    "không phê duyệt",
+    "từ chối ngay",
+    "từ chối giúp"
+  ],
+  "taskDue": [
+    "việc nào sắp đến hạn",
+    "việc sắp đến hạn",
+    "việc cần làm sắp hết hạn",
+    "việc tôi cần làm sắp hết hiệu lực",
+    "việc quá hạn",
+    "việc sắp hết hạn xử lý",
+    "task sắp đến hạn",
+    "đến hạn xử lý việc"
+  ],
+  "lcExpiry": [
+    "lc nào sắp hết hạn",
+    "l/c sắp hết hạn",
+    "lc sắp đến hạn",
+    "lc sắp hết hiệu lực",
+    "thư tín dụng sắp hết hạn",
+    "thư tín dụng sắp hết hiệu lực",
+    "hồ sơ lc sắp hết hạn"
+  ],
+  "guaranteeExpiry": [
+    "bảo lãnh nào sắp đáo hạn",
+    "bg nào sắp hết hạn",
+    "bảo lãnh sắp đến hạn",
+    "bảo lãnh sắp hết hạn",
+    "bảo lãnh sắp hết hiệu lực",
+    "thư bảo lãnh sắp hết hạn"
+  ],
+  "highPriority": [
+    "quan trọng nhất",
+    "quan trọng",
+    "mức độ nghiêm trọng cao",
+    "cảnh báo nghiêm trọng",
+    "ưu tiên cao",
+    "khẩn cấp",
+    "cần xử lý ngay",
+    "nghiêm trọng"
+  ],
+  "cashPosition": [
+    "thanh khoản",
+    "thanh khoản hiện tại",
+    "vị thế tiền mặt",
+    "vị thế thanh khoản",
+    "tổng quan tài chính",
+    "thanh khoản hiện tại của công ty"
+  ],
+  "compare": [
+    "so với",
+    "so sánh",
+    "tăng hay giảm",
+    "tăng hay giảm so với",
+    "biến động so với",
+    "cao hơn hay thấp hơn",
+    "so với kỳ trước",
+    "so với tháng trước"
+  ],
+  "summary": [
+    "tổng hợp giao dịch",
+    "tổng hợp",
+    "mấy giao dịch",
+    "bao nhiêu giao dịch",
+    "tổng số giao dịch",
+    "thống kê giao dịch",
+    "tổng kết giao dịch"
+  ],
+  "fxExposure": [
+    "mua bán ngoại tệ nhiều hơn",
+    "mua bán ngoại tệ nhiều hơn bên nào",
+    "mua hay bán nhiều hơn",
+    "bên nào nhiều hơn",
+    "xu hướng mua bán ngoại tệ",
+    "trạng thái ngoại tệ",
+    "cân đối mua bán ngoại tệ"
   ]
 }

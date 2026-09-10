@@ -38,12 +38,14 @@ export function scoreIntents(
   const results: IntentScore[] = intents.map((intent) => {
     let score = 0;
     const matchedTerms: string[] = [];
+    const matchedConcepts = new Set<string>();
 
     for (const concept of intent.synonymConcepts) {
       const terms = synonyms[concept] ?? [];
       for (const term of terms) {
         const normalizedTerm = stripDiacritics(term.toLowerCase());
         if (normalizedText.includes(normalizedTerm)) {
+          matchedConcepts.add(concept);
           // A multi-word synonym phrase ("cần duyệt", "số dư khả dụng") appearing verbatim is
           // treated as an exact-phrase match — strong, specific evidence of intent. A bare
           // single word ("duyệt", "tiền") is much more ambiguous on its own, so it only earns
@@ -83,10 +85,44 @@ export function scoreIntents(
       }
     }
 
+    if (intent.requiredSignals && !intent.requiredSignals.some((signal) => hasSignal(signal, matchedConcepts, ctx))) {
+      // This intent only shares a base concept with a broader sibling (e.g. TRANSACTION_DETAIL
+      // and TRANSACTION_LIST both match on "transaction") and its own distinguishing evidence
+      // — a specific concept, a resolved date/status/amount, or a named entity — never showed
+      // up. Zero it out rather than let it win a priority tie-break on borrowed evidence.
+      return { intent, score: 0, matchedTerms: [] };
+    }
+
     return { intent, score: Math.min(score, rules.maxScorePerConcept * 3), matchedTerms };
   });
 
   return results.sort((a, b) => b.score - a.score || b.intent.priority - a.intent.priority);
+}
+
+function hasSignal(signal: string, matchedConcepts: Set<string>, ctx: DetectionContext): boolean {
+  // 'status'/'datePeriod'/'amount' name BOTH a resolver flag AND a real synonymConcepts id
+  // (synonyms.json has concepts literally called "status" etc.) — a concept match must count
+  // even when the dedicated resolver didn't fire (e.g. "trạng thái ... thế nào" matches the
+  // "status" concept's own vocabulary but isn't a canonical status VALUE for resolveStatus to
+  // resolve), so check concept membership first rather than letting the switch shadow it.
+  if (matchedConcepts.has(signal)) return true;
+  switch (signal) {
+    case 'datePeriod':
+      return ctx.hasDatePeriod;
+    case 'status':
+      return ctx.hasStatus;
+    case 'amount':
+      return ctx.hasAmount;
+    case 'accountNo':
+    case 'accountId':
+    case 'documentId':
+    case 'beneficiary':
+    case 'supplier':
+    case 'customer':
+      return isEntityFieldPresent(signal, ctx.entities);
+    default:
+      return matchedConcepts.has(signal);
+  }
 }
 
 function isEntityFieldPresent(field: string, entities: SemanticQuery['entities']): boolean {

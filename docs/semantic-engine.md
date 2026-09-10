@@ -84,35 +84,77 @@ questions, `outstandingDebt` split out of `loan`, `availableBalance` fully separ
 from `balance`) so it scores **zero**, not a false tie, when its real trigger phrase is
 absent.
 
+## `requiredSignals`: closing the "list/base loses to narrower sibling" gap
+
+The pattern above (splitting a shared concept into narrower ones) fixes cases where the
+narrower intent has its *own* natural-language vocabulary to key off. It doesn't fix the
+other half of the same bug: an intent like `TRANSACTION_DETAIL` or `ACCOUNT_STATEMENT`
+whose real distinguishing signal isn't a phrase at all — it's the presence of a resolved
+`documentId`, `datePeriod`, `status`, or named entity. Scoring only ever *added* a bonus
+for those (`if (matchedTerms.length > 0) { ... score += dateCondition ... }`), so the
+narrower intent could still win a priority tie-break on the shared base concept alone,
+with zero actual evidence for its own specialization.
+
+`IntentDef.requiredSignals` (`server/src/semantic/types.ts`,
+`intent-detector.ts#hasSignal`) closes this: an optional OR-gated list of signals — a
+`synonymConcepts` id that must have produced a real match, or one of
+`datePeriod`/`status`/`amount`/`accountNo`/`accountId`/`documentId`/`beneficiary`/
+`supplier`/`customer` — that must be present or the intent scores **0**, not a
+borrowed-priority win. Applied to `TRANSACTION_DETAIL`/`ACCOUNT_DETAIL`/`LC_DETAIL`
+(`documentId`/`accountNo`), `TRANSACTION_BY_DATE`/`PAYMENT_TODAY` (`datePeriod`),
+`PAYMENT_STATUS`/`LC_STATUS` (`status`), `TRANSACTION_SUMMARY` (its own `summary`
+concept), and `APPROVAL_DETAIL` (an identifying entity or the base `approval` concept).
+
+One subtlety this surfaced: `'status'`/`'datePeriod'`/`'amount'` name **both** a resolver
+flag (`ctx.hasStatus`, from `status-resolver.ts` recognizing a canonical status *value*)
+**and** a real `synonymConcepts` id (`synonyms.json` has a concept literally called
+`"status"`, generic phrases like "trạng thái"/"đang ở trạng thái nào"). A question like
+"... đang ở trạng thái nào?" matches the *concept* (it's clearly asking about status)
+without the resolver ever firing (it's a question, not a value) — `hasSignal` checks
+concept membership first, falling back to the resolver flag, so either kind of evidence
+satisfies the gate.
+
 ## Known limitations (measured, not guessed)
 
 Running all 100 `sample-queries.json` questions through the engine as it's checked in:
-**49/100 exact intent match**, 14 clarifications, 37 land on a related sibling intent.
-On the spec's own 11 example questions: **10/11 correct** (only "Tôi muốn chuyển tiền
-đơn" mis-routes to `PAYMENT_STATUS` instead of `PAYMENT_CREATE`).
+**78/100 exact intent match**, 11 clarifications, 11 land on a related sibling intent —
+up from an earlier 49/14/37 split before `requiredSignals` and the concept-splitting
+below existed. On the spec's own 11 example questions: **11/11 correct** (including
+"Tôi muốn chuyển tiền đơn" → `PAYMENT_CREATE`, fixed by giving it its own `paymentCreate`
+concept instead of sharing generic "payment" vocabulary with `PAYMENT_STATUS`).
 
-The remaining wrong answers cluster into one pattern: **a "list/base" intent losing a
-scoring tie to a "narrower" sibling in the same domain** — e.g. `ACCOUNT_LIST` vs.
-`ACCOUNT_STATEMENT`, `TASK_LIST` vs. `TASK_DUE`, `ALERT_LIST` vs.
-`ALERT_HIGH_PRIORITY`, `LC_LIST` vs. `LC_DETAIL`, `PAYMENT_CREATE` vs.
-`PAYMENT_STATUS`, `APPROVAL_APPROVE`/`APPROVAL_REJECT` vs. `APPROVAL_PENDING`. These
-pairs are inherently hard to separate with pure additive keyword scoring because a
-generic phrasing of the base intent ("xem danh sách việc cần làm") contains exactly the
-same vocabulary as the narrower one, just without its distinguishing modifier — and the
-narrower intent's higher `priority` (assigned because it's *more specific when it does
-match*) wins the tie even when that modifier is absent.
+Two mechanisms did the work, applied per-pair as each collision was found by measurement
+(`sample-queries.json`), never guessed from inspection:
+1. **`requiredSignals`** (above) for pairs where the narrower intent's real signal is a
+   resolved entity/date/status rather than vocabulary.
+2. **Splitting a shared concept into narrower, non-colliding ones** for pairs where it's
+   pure vocabulary — e.g. `highest`/`lowest` (pre-existing), plus newly:
+   `statement`/`detail`/`pending`/`paymentCreate`/`approveAction`/`rejectAction`/
+   `taskDue`/`lcExpiry`/`guaranteeExpiry`/`highPriority`/`cashPosition`/`compare`/
+   `summary`/`fxExposure`/`transactionFailed`/`paymentFailed`. Two of these
+   (`transactionFailed` vs `paymentFailed`, and `taskDue`/`lcExpiry`/`guaranteeExpiry`
+   vs. a single shared `expirySoon`) needed a **second** split after the first: the
+   *narrower* concept collided across domains, e.g. `expirySoon` alone couldn't tell
+   "LC nào sắp hết hạn?" from "Việc nào sắp đến hạn nhất?" — both matched the same
+   generic expiry phrase, so the fix needed each domain's own expiry phrase, not the
+   shared underlying trigger.
 
-Two honest ways to close this gap further, not done here for lack of remaining budget:
-1. Replace the flat priority tie-break with genuine AND-conditioned scoring (an intent
-   whose only match came from a concept it shares with a sibling shouldn't outscore
-   that sibling at all, regardless of priority).
-2. Keep hand-splitting shared concepts into narrower ones, as was done for the ~10
-   pairs above — proven to work, just time-consuming per pair.
+11 questions remain genuinely hard for pure deterministic keyword matching, not fixed:
+- Diacritic collisions: `stripDiacritics` maps both "nhàn" (idle) and "nhận" (receive) to
+  the same ASCII "nhan", so "tiền nhàn rỗi" (idle cash) accidentally substring-matches
+  "tiền nhận" (received money) → `INCOMING_PAYMENT`. Fixing this needs word-boundary-aware
+  matching, a bigger change than this pass's budget covers.
+- A few questions carry zero real signal for their labeled intent under this
+  architecture at all — e.g. "Công ty có giao dịch nào bất thường không?" (anomaly
+  detection) is labeled `TRANSACTION_BY_AMOUNT` but contains no operator/number for
+  `amount-parser.ts` to resolve.
+- Ambiguous phrasing lacking any domain anchor, e.g. "Lệnh nào bị lỗi hôm nay?" could
+  reasonably be `TRANSACTION_FAILED` or `PAYMENT_FAILED` — "lệnh" alone doesn't say which.
 
 This is disclosed rather than papered over: the confidence/clarification mechanism
 means a wrong route is very rarely a *hallucination* (it still returns real data, just
 under a different-but-related intent label, or asks the user to clarify) — see
-`test/intents.test.ts` for the 74 canonical phrasings verified to route correctly, and
+`test/intents.test.ts` for the 79 canonical phrasings verified to route correctly, and
 `test/query-execution.test.ts` for end-to-end answer-content correctness.
 
 ## Security context
