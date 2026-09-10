@@ -1,0 +1,6 @@
+[
+  { "id": "rec-001", "customer": "Công ty XYZ Trading", "amount": 500000000, "currency": "VND", "expectedDate": "2026-09-12", "status": "EXPECTED", "relatedInvoice": "INV-2026-0912" },
+  { "id": "rec-002", "customer": "Công ty DEF Retail", "amount": 350000000, "currency": "VND", "expectedDate": "2026-09-16", "status": "EXPECTED", "relatedInvoice": "INV-2026-0930" },
+  { "id": "rec-003", "customer": "Công ty GHI Corp", "amount": 420000000, "currency": "VND", "expectedDate": "2026-08-28", "status": "OVERDUE", "relatedInvoice": "INV-2026-0828" },
+  { "id": "rec-004", "customer": "Osaka Trading Corp.", "amount": 1100000000, "currency": "VND", "expectedDate": "2026-09-18", "status": "EXPECTED", "relatedInvoice": "COL-2026-021" }
+]

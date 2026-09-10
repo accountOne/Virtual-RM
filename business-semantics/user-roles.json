@@ -1,0 +1,5 @@
+[
+  { "id": "MAKER", "nameVi": "Người lập lệnh", "description": "Có thể lập lệnh thanh toán và xem toàn bộ thông tin doanh nghiệp; không thể phê duyệt.", "canApprove": false },
+  { "id": "CHECKER", "nameVi": "Người phê duyệt", "description": "Có mọi quyền của Maker, cộng thêm quyền phê duyệt/từ chối lệnh thanh toán.", "canApprove": true },
+  { "id": "ADMIN", "nameVi": "Quản trị viên", "description": "Có mọi quyền của Checker, cộng thêm quyền quản trị dữ liệu demo.", "canApprove": true }
+]

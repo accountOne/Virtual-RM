@@ -1,0 +1,4 @@
+[
+  { "id": "pr-001", "period": "2026-08", "employeeCount": 248, "totalAmount": 4180000000, "currency": "VND", "status": "COMPLETED", "payDate": "2026-08-05" },
+  { "id": "pr-002", "period": "2026-09", "employeeCount": 250, "totalAmount": 4225000000, "currency": "VND", "status": "PROCESSING", "payDate": "2026-09-05" }
+]

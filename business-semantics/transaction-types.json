@@ -1,0 +1,12 @@
+[
+  { "id": "CREDIT", "nameVi": "Ghi có", "description": "Tiền vào tài khoản", "aliases": ["tiền vào", "ghi có", "credit"] },
+  { "id": "DEBIT", "nameVi": "Ghi nợ", "description": "Tiền ra khỏi tài khoản", "aliases": ["tiền ra", "ghi nợ", "debit"] },
+  { "id": "PAYROLL", "nameVi": "Chi lương", "description": "Giao dịch chi lương nhân viên", "aliases": ["chi lương", "trả lương", "payroll"] },
+  { "id": "SUPPLIER_PAYMENT", "nameVi": "Thanh toán nhà cung cấp", "description": "Thanh toán tiền hàng/dịch vụ cho nhà cung cấp", "aliases": ["thanh toán nhà cung cấp", "trả tiền hàng"] },
+  { "id": "TAX", "nameVi": "Nộp thuế", "description": "Nộp các khoản thuế cho kho bạc nhà nước", "aliases": ["nộp thuế", "thuế"] },
+  { "id": "LOAN_REPAYMENT", "nameVi": "Trả nợ vay", "description": "Trả gốc/lãi khoản vay", "aliases": ["trả nợ vay", "trả lãi vay", "trả gốc vay"] },
+  { "id": "FX", "nameVi": "Giao dịch ngoại tệ", "description": "Mua hoặc bán ngoại tệ", "aliases": ["giao dịch ngoại tệ", "mua bán ngoại tệ"] },
+  { "id": "TRADE_FINANCE", "nameVi": "Tài trợ thương mại", "description": "Giao dịch liên quan tới LC, bảo lãnh, nhờ thu", "aliases": ["tài trợ thương mại", "trade finance"] },
+  { "id": "CUSTOMER_COLLECTION", "nameVi": "Thu tiền khách hàng", "description": "Nhận thanh toán từ khách hàng", "aliases": ["thu tiền khách hàng", "khách hàng thanh toán"] },
+  { "id": "INTERNAL_TRANSFER", "nameVi": "Chuyển khoản nội bộ", "description": "Chuyển tiền giữa các tài khoản/chi nhánh trong cùng doanh nghiệp", "aliases": ["chuyển khoản nội bộ", "chuyển nội bộ"] }
+]

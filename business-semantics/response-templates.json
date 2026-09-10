@@ -1,0 +1,69 @@
+[
+  { "id": "ACCOUNT_LIST", "title": "Tài khoản doanh nghiệp", "summary": "Anh/chị hiện có {{count}} tài khoản đang hoạt động." },
+  { "id": "ACCOUNT_DETAIL", "title": "Chi tiết tài khoản", "summary": "Tài khoản {{accountName}} — số dư {{balance}}." },
+  { "id": "ACCOUNT_BALANCE", "title": "Số dư tài khoản", "summary": "Số dư tài khoản {{accountName}} hiện tại là {{balance}}." },
+  { "id": "ACCOUNT_AVAILABLE_BALANCE", "title": "Số dư khả dụng", "summary": "Số dư khả dụng tài khoản {{accountName}} là {{availableBalance}}." },
+  { "id": "ACCOUNT_HIGHEST_BALANCE", "title": "Tài khoản số dư lớn nhất", "summary": "Tài khoản {{accountName}} đang có số dư lớn nhất — {{balance}}." },
+  { "id": "ACCOUNT_LOWEST_BALANCE", "title": "Tài khoản số dư thấp nhất", "summary": "Tài khoản {{accountName}} đang có số dư thấp nhất — {{balance}}." },
+  { "id": "ACCOUNT_STATEMENT", "title": "Sao kê giao dịch", "summary": "{{count}} giao dịch trên tài khoản {{accountName}} trong {{period}}." },
+
+  { "id": "TRANSACTION_LIST", "title": "Giao dịch gần đây", "summary": "{{count}} giao dịch gần nhất, tổng giá trị {{totalAmount}}." },
+  { "id": "TRANSACTION_DETAIL", "title": "Chi tiết giao dịch", "summary": "{{description}} — {{amount}} với {{counterparty}}." },
+  { "id": "TRANSACTION_SUMMARY", "title": "Tổng hợp giao dịch", "summary": "{{count}} giao dịch trong {{period}}, tổng giá trị {{totalAmount}}." },
+  { "id": "TRANSACTION_LARGEST", "title": "Giao dịch lớn nhất", "summary": "Giao dịch lớn nhất {{period}}: {{amount}} — {{counterparty}}." },
+  { "id": "TRANSACTION_BY_AMOUNT", "title": "Giao dịch theo số tiền", "summary": "{{count}} giao dịch thỏa điều kiện, tổng giá trị {{totalAmount}}." },
+  { "id": "TRANSACTION_BY_DATE", "title": "Giao dịch theo thời gian", "summary": "{{count}} giao dịch trong {{period}}." },
+  { "id": "TRANSACTION_BY_BENEFICIARY", "title": "Giao dịch theo đối tác", "summary": "{{count}} giao dịch với {{beneficiary}}, tổng giá trị {{totalAmount}}." },
+  { "id": "TRANSACTION_FAILED", "title": "Giao dịch thất bại/từ chối", "summary": "{{count}} giao dịch bị từ chối hoặc thất bại trong {{period}}." },
+
+  { "id": "PAYMENT_STATUS", "title": "Trạng thái lệnh thanh toán", "summary": "Lệnh {{description}} đang ở trạng thái {{status}}." },
+  { "id": "PAYMENT_TODAY", "title": "Lệnh thanh toán hôm nay", "summary": "{{count}} lệnh thanh toán được lập hôm nay, tổng giá trị {{totalAmount}}." },
+  { "id": "PAYMENT_PENDING", "title": "Lệnh thanh toán đang chờ", "summary": "{{count}} lệnh thanh toán đang chờ xử lý." },
+  { "id": "PAYMENT_FAILED", "title": "Lệnh thanh toán lỗi", "summary": "{{count}} lệnh thanh toán bị lỗi trong {{period}}." },
+  { "id": "PAYMENT_CREATE", "title": "Lập lệnh chuyển tiền", "summary": "Anh/chị có thể lập lệnh chuyển tiền ngay tại đây." },
+
+  { "id": "APPROVAL_PENDING", "title": "Giao dịch chờ duyệt", "summary": "Anh/chị đang có {{count}} giao dịch cần duyệt, tổng giá trị {{totalAmount}}." },
+  { "id": "APPROVAL_DETAIL", "title": "Chi tiết lệnh chờ duyệt", "summary": "{{description}} — {{amount}}, người thụ hưởng {{beneficiary}}." },
+  { "id": "APPROVAL_APPROVE", "title": "Phê duyệt giao dịch", "summary": "Mở màn hình phê duyệt để anh/chị xác nhận giao dịch." },
+  { "id": "APPROVAL_REJECT", "title": "Từ chối giao dịch", "summary": "Mở màn hình phê duyệt để anh/chị từ chối giao dịch." },
+
+  { "id": "TASK_LIST", "title": "Việc cần xử lý", "summary": "Anh/chị còn {{count}} việc cần xử lý." },
+  { "id": "TASK_DUE", "title": "Việc sắp đến hạn", "summary": "{{count}} việc sắp đến hạn hoặc đã quá hạn." },
+
+  { "id": "ALERT_LIST", "title": "Cảnh báo hiện có", "summary": "Anh/chị có {{count}} cảnh báo cần chú ý." },
+  { "id": "ALERT_HIGH_PRIORITY", "title": "Cảnh báo ưu tiên cao", "summary": "{{count}} cảnh báo mức độ nghiêm trọng cao cần xử lý ngay." },
+
+  { "id": "INCOMING_PAYMENT", "title": "Tiền vào", "summary": "Tiền vào {{period}}: {{totalAmount}} từ {{count}} giao dịch." },
+  { "id": "OUTGOING_PAYMENT", "title": "Tiền ra", "summary": "Tiền ra {{period}}: {{totalAmount}} từ {{count}} giao dịch." },
+  { "id": "CASH_POSITION", "title": "Vị thế thanh khoản", "summary": "Tổng thanh khoản hiện tại: {{totalAmount}} trên {{count}} tài khoản." },
+  { "id": "CASH_FLOW_SUMMARY", "title": "Dòng tiền", "summary": "{{period}}: tiền vào {{incoming}}, tiền ra {{outgoing}}." },
+  { "id": "CASH_FLOW_COMPARE", "title": "So sánh dòng tiền", "summary": "{{period}} {{trend}} {{pctChange}}% so với kỳ trước." },
+
+  { "id": "PAYROLL_SUMMARY", "title": "Kỳ trả lương", "summary": "Kỳ lương {{period}}: {{count}} nhân viên, tổng chi {{totalAmount}}." },
+
+  { "id": "FX_RATE", "title": "Tỷ giá tham khảo", "summary": "Tỷ giá {{currency}} hôm nay: mua {{buy}} / bán {{sell}}." },
+  { "id": "FX_DEALS", "title": "Giao dịch ngoại tệ", "summary": "{{count}} giao dịch ngoại tệ trong {{period}}, tổng giá trị {{totalAmount}}." },
+  { "id": "FX_EXPOSURE", "title": "Trạng thái ngoại tệ", "summary": "{{period}}: doanh nghiệp {{dominantSide}} nhiều hơn, tổng giá trị {{totalAmount}}." },
+
+  { "id": "LC_LIST", "title": "Thư tín dụng", "summary": "Doanh nghiệp hiện có {{count}} thư tín dụng." },
+  { "id": "LC_STATUS", "title": "Trạng thái LC", "summary": "LC {{documentId}} đang ở trạng thái {{status}}." },
+  { "id": "LC_EXPIRY", "title": "LC sắp hết hạn", "summary": "{{count}} thư tín dụng sắp hết hạn trong {{period}}." },
+  { "id": "LC_DETAIL", "title": "Chi tiết LC", "summary": "LC {{documentId}} — giá trị {{amount}}, hết hạn {{expiryDate}}." },
+
+  { "id": "GUARANTEE_LIST", "title": "Bảo lãnh ngân hàng", "summary": "Doanh nghiệp hiện có {{count}} bảo lãnh ngân hàng." },
+  { "id": "GUARANTEE_EXPIRY", "title": "Bảo lãnh sắp đáo hạn", "summary": "{{count}} bảo lãnh sắp đáo hạn trong {{period}}." },
+
+  { "id": "COLLECTION_LIST", "title": "Nhờ thu", "summary": "Doanh nghiệp hiện có {{count}} bộ chứng từ nhờ thu." },
+
+  { "id": "LOAN_LIST", "title": "Khoản vay", "summary": "Doanh nghiệp hiện có {{count}} khoản vay." },
+  { "id": "LOAN_OUTSTANDING", "title": "Dư nợ hiện tại", "summary": "Tổng dư nợ vay hiện tại: {{totalAmount}}." },
+  { "id": "CREDIT_LIMIT", "title": "Hạn mức tín dụng", "summary": "Hạn mức đã cấp {{limitAmount}}, còn lại {{availableAmount}}." },
+
+  { "id": "PRODUCT_RECOMMEND", "title": "Gợi ý dành cho doanh nghiệp", "summary": "{{count}} gợi ý sản phẩm phù hợp với hoạt động hiện tại." },
+
+  { "id": "GREETING", "title": "Virtual RM", "summary": "Chào anh/chị{{companySuffix}} 👋 Tôi có thể giúp gì cho anh/chị hôm nay?" },
+  { "id": "HELP", "title": "Virtual RM có thể giúp gì", "summary": "Tôi có thể tra cứu số dư, giao dịch, phê duyệt, dòng tiền, LC/bảo lãnh, khoản vay, tỷ giá và gợi ý sản phẩm — anh/chị cứ hỏi tự nhiên." },
+
+  { "id": "BUSINESS_BRIEFING", "title": "Business Briefing", "summary": "Tổng quan tình hình doanh nghiệp hôm nay." },
+  { "id": "UNKNOWN", "title": "Virtual RM chưa rõ câu hỏi", "summary": "Anh/chị có thể hỏi rõ hơn hoặc chọn một gợi ý bên dưới." }
+]

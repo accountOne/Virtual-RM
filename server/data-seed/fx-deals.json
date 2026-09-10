@@ -1,0 +1,10 @@
+[
+  { "id": "fx-001", "date": "2026-09-08", "currency": "USD", "side": "BUY", "amount": 8000, "vndEquivalent": 200000000, "counterparty": "Ngân hàng - Mua ngoại tệ" },
+  { "id": "fx-002", "date": "2026-09-04", "currency": "USD", "side": "BUY", "amount": 8800, "vndEquivalent": 220000000, "counterparty": "Ngân hàng - Mua ngoại tệ" },
+  { "id": "fx-003", "date": "2026-08-29", "currency": "USD", "side": "BUY", "amount": 6400, "vndEquivalent": 160000000, "counterparty": "Ngân hàng - Mua ngoại tệ" },
+  { "id": "fx-004", "date": "2026-08-27", "currency": "USD", "side": "BUY", "amount": 8400, "vndEquivalent": 210000000, "counterparty": "Ngân hàng - Mua ngoại tệ" },
+  { "id": "fx-005", "date": "2026-08-25", "currency": "USD", "side": "BUY", "amount": 7000, "vndEquivalent": 175000000, "counterparty": "Ngân hàng - Mua ngoại tệ" },
+  { "id": "fx-006", "date": "2026-09-02", "currency": "USD", "side": "SELL", "amount": 6000, "vndEquivalent": 150000000, "counterparty": "Ngân hàng - Bán ngoại tệ dư thừa" },
+  { "id": "fx-007", "date": "2026-08-23", "currency": "USD", "side": "SELL", "amount": 5200, "vndEquivalent": 130000000, "counterparty": "Ngân hàng - Bán ngoại tệ dư thừa" },
+  { "id": "fx-008", "date": "2026-08-19", "currency": "USD", "side": "BUY", "amount": 7400, "vndEquivalent": 185000000, "counterparty": "Ngân hàng - Mua ngoại tệ" }
+]

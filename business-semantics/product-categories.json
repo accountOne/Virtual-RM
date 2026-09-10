@@ -1,0 +1,8 @@
+[
+  { "id": "FX", "nameVi": "Ngoại hối doanh nghiệp", "productId": "prod-fx" },
+  { "id": "Payroll", "nameVi": "Trả lương tự động", "productId": "prod-payroll" },
+  { "id": "Term Deposit", "nameVi": "Tiền gửi có kỳ hạn", "productId": "prod-term-deposit" },
+  { "id": "Business Loan", "nameVi": "Vay vốn doanh nghiệp", "productId": "prod-business-loan" },
+  { "id": "Trade Finance", "nameVi": "Tài trợ thương mại", "productId": "prod-trade-finance" },
+  { "id": "Cash Management", "nameVi": "Quản lý dòng tiền", "productId": "prod-cash-management" }
+]

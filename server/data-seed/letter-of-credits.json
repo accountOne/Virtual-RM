@@ -1,0 +1,6 @@
+[
+  { "id": "lc-001", "lcNumber": "LC-2026-001", "type": "IMPORT", "beneficiary": "Shenzhen Precision Components Co.", "amount": 1800000000, "currency": "VND", "issueDate": "2026-06-15", "expiryDate": "2026-09-20", "status": "ACTIVE" },
+  { "id": "lc-002", "lcNumber": "LC-2026-002", "type": "EXPORT", "beneficiary": "Osaka Trading Corp.", "amount": 2400000000, "currency": "VND", "issueDate": "2026-07-01", "expiryDate": "2026-12-01", "status": "ACTIVE" },
+  { "id": "lc-003", "lcNumber": "LC-2026-003", "type": "IMPORT", "beneficiary": "Guangzhou Machinery Ltd.", "amount": 950000000, "currency": "VND", "issueDate": "2026-03-10", "expiryDate": "2026-06-10", "status": "EXPIRED" },
+  { "id": "lc-004", "lcNumber": "LC-2025-044", "type": "IMPORT", "beneficiary": "Bangkok Raw Materials Co.", "amount": 1200000000, "currency": "VND", "issueDate": "2026-01-05", "expiryDate": "2026-04-05", "status": "COMPLETED" }
+]

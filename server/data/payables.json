@@ -1,0 +1,6 @@
+[
+  { "id": "pay-001", "supplier": "ABC Construction Materials", "amount": 250000000, "currency": "VND", "dueDate": "2026-09-13", "status": "SCHEDULED", "relatedInvoice": "PO-2026-0908" },
+  { "id": "pay-002", "supplier": "Thép Việt JSC", "amount": 145000000, "currency": "VND", "dueDate": "2026-09-15", "status": "SCHEDULED", "relatedInvoice": "PO-2026-0907" },
+  { "id": "pay-003", "supplier": "Delta Logistics", "amount": 350000000, "currency": "VND", "dueDate": "2026-09-09", "status": "SCHEDULED", "relatedInvoice": "PO-2026-0909" },
+  { "id": "pay-004", "supplier": "MSB - Phòng Tín dụng", "amount": 2000000000, "currency": "VND", "dueDate": "2026-09-14", "status": "SCHEDULED", "relatedInvoice": "LN-2025-007" }
+]

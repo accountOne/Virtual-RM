@@ -8,6 +8,7 @@ import { productsController } from '../controllers/products.controller';
 import { recommendationsController } from '../controllers/recommendations.controller';
 import { rmController } from '../controllers/rm.controller';
 import { adminController } from '../controllers/admin.controller';
+import { semanticController } from '../controllers/semantic.controller';
 
 export const apiRouter = Router();
 
@@ -23,6 +24,11 @@ apiRouter.get('/products', productsController.list);
 apiRouter.get('/recommendations', recommendationsController.list);
 apiRouter.get('/rm/briefing', rmController.briefing);
 apiRouter.post('/rm/query', rmController.query);
+
+// Business Banking Semantic Pack — see /business-semantics and docs/semantic-engine.md.
+// Deterministic, local NLU for the Virtual RM chat; does not replace /rm/query above.
+apiRouter.post('/virtual-rm/query', semanticController.query);
+apiRouter.get('/virtual-rm/briefing', semanticController.briefing);
 
 apiRouter.put('/admin/customer', adminController.updateCustomer);
 apiRouter.put('/admin/accounts', adminController.replaceAccounts);

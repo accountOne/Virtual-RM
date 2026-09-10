@@ -1,0 +1,5 @@
+[
+  { "currency": "USD", "buy": 25180, "sell": 25480, "asOf": "2026-09-09" },
+  { "currency": "EUR", "buy": 27050, "sell": 27480, "asOf": "2026-09-09" },
+  { "currency": "JPY", "buy": 168, "sell": 172, "asOf": "2026-09-09" }
+]

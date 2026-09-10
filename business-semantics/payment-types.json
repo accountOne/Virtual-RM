@@ -1,0 +1,7 @@
+[
+  { "id": "SINGLE_TRANSFER", "nameVi": "Chuyển tiền đơn", "description": "Lệnh chuyển tiền tới một người thụ hưởng", "aliases": ["chuyển tiền đơn", "chuyển tiền lẻ", "single transfer"] },
+  { "id": "BATCH_TRANSFER", "nameVi": "Chuyển tiền hàng loạt", "description": "Lệnh chuyển tiền tới nhiều người thụ hưởng cùng lúc (ví dụ chi lương)", "aliases": ["chuyển tiền hàng loạt", "chi lương hàng loạt", "batch transfer"] },
+  { "id": "INTERNAL", "nameVi": "Chuyển khoản nội bộ", "description": "Chuyển tiền giữa các tài khoản trong cùng doanh nghiệp", "aliases": ["chuyển khoản nội bộ", "internal transfer"] },
+  { "id": "INTERBANK", "nameVi": "Chuyển khoản liên ngân hàng", "description": "Chuyển tiền tới tài khoản tại ngân hàng khác", "aliases": ["chuyển khoản liên ngân hàng", "interbank transfer"] },
+  { "id": "FX_PAYMENT", "nameVi": "Thanh toán ngoại tệ", "description": "Thanh toán bằng ngoại tệ, thường liên quan hoạt động xuất nhập khẩu", "aliases": ["thanh toán ngoại tệ", "chuyển tiền ngoại tệ", "FX payment"] }
+]

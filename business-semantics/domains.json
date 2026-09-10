@@ -1,0 +1,15 @@
+[
+  { "id": "ACCOUNT", "name": "Tài khoản", "description": "Các nghiệp vụ liên quan tới tài khoản, số dư và sao kê của doanh nghiệp" },
+  { "id": "TRANSACTION", "name": "Giao dịch", "description": "Lịch sử giao dịch phát sinh trên tài khoản doanh nghiệp" },
+  { "id": "PAYMENT", "name": "Thanh toán", "description": "Các nghiệp vụ chuyển tiền và thanh toán của doanh nghiệp" },
+  { "id": "APPROVAL", "name": "Phê duyệt", "description": "Quy trình phê duyệt lệnh thanh toán theo mô hình Maker/Checker" },
+  { "id": "CASH_MANAGEMENT", "name": "Quản lý dòng tiền", "description": "Theo dõi thanh khoản, dòng tiền vào/ra và vị thế tiền mặt của doanh nghiệp" },
+  { "id": "PAYROLL", "name": "Trả lương", "description": "Nghiệp vụ chi lương hàng loạt cho nhân viên" },
+  { "id": "FX", "name": "Ngoại hối", "description": "Tỷ giá và giao dịch mua/bán ngoại tệ của doanh nghiệp" },
+  { "id": "TRADE_FINANCE", "name": "Tài trợ thương mại", "description": "Thư tín dụng, bảo lãnh ngân hàng và nhờ thu phục vụ hoạt động xuất nhập khẩu" },
+  { "id": "LENDING", "name": "Tín dụng", "description": "Khoản vay, dư nợ và hạn mức tín dụng của doanh nghiệp" },
+  { "id": "PRODUCT", "name": "Sản phẩm", "description": "Sản phẩm và giải pháp ngân hàng được gợi ý cho doanh nghiệp" },
+  { "id": "ALERT", "name": "Cảnh báo", "description": "Cảnh báo chủ động về rủi ro hoặc sự kiện cần chú ý" },
+  { "id": "TASK", "name": "Việc cần xử lý", "description": "Danh sách việc cần doanh nghiệp xử lý, có hạn hoàn thành" },
+  { "id": "CUSTOMER_SERVICE", "name": "Chăm sóc khách hàng", "description": "Tương tác chung với Virtual RM: chào hỏi, hướng dẫn sử dụng" }
+]

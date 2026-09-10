@@ -1,0 +1,5 @@
+[
+  { "id": "cl-001", "limitType": "OVERALL", "totalLimit": 10000000000, "usedAmount": 5400000000, "availableAmount": 4600000000, "currency": "VND", "reviewDate": "2027-01-15" },
+  { "id": "cl-002", "limitType": "WORKING_CAPITAL", "totalLimit": 5000000000, "usedAmount": 2000000000, "availableAmount": 3000000000, "currency": "VND", "reviewDate": "2027-01-15" },
+  { "id": "cl-003", "limitType": "TRADE_FINANCE", "totalLimit": 5000000000, "usedAmount": 3400000000, "availableAmount": 1600000000, "currency": "VND", "reviewDate": "2027-01-15" }
+]

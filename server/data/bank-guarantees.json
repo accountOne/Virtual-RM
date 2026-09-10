@@ -1,0 +1,5 @@
+[
+  { "id": "bg-001", "bgNumber": "BG-2026-011", "type": "PERFORMANCE_BOND", "beneficiary": "Ban QLDA Khu công nghiệp Long An", "amount": 900000000, "currency": "VND", "issueDate": "2026-05-01", "expiryDate": "2026-09-25", "status": "ACTIVE" },
+  { "id": "bg-002", "bgNumber": "BG-2026-012", "type": "BID_BOND", "beneficiary": "Tổng công ty Xây dựng Miền Nam", "amount": 300000000, "currency": "VND", "issueDate": "2026-08-01", "expiryDate": "2026-11-01", "status": "ACTIVE" },
+  { "id": "bg-003", "bgNumber": "BG-2025-098", "type": "ADVANCE_PAYMENT", "beneficiary": "Công ty CP Vật liệu Xây dựng An Phát", "amount": 500000000, "currency": "VND", "issueDate": "2025-12-01", "expiryDate": "2026-06-01", "status": "EXPIRED" }
+]

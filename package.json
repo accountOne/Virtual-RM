@@ -12,6 +12,8 @@
     "build:server": "npm run build --prefix server",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:semantic": "npm run test --prefix server",
+    "validate:semantic": "ts-node --project tsconfig.scripts.json scripts/validate-semantic-pack.ts",
     "postinstall": "npm install --prefix server"
   },
   "private": true,
@@ -42,6 +44,7 @@
     "karma-jasmine-html-reporter": "~2.1.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",
+    "ts-node": "^10.9.2",
     "typescript": "~5.7.2"
   }
 }

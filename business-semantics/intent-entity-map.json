@@ -1,0 +1,84 @@
+{
+  "description": "Reverse index: extractable entity/filter field -> intents that use it. Generated from intents.json supportedEntities.",
+  "map": {
+    "status": [
+      "ACCOUNT_LIST",
+      "TRANSACTION_LIST",
+      "PAYMENT_STATUS",
+      "PAYMENT_PENDING",
+      "APPROVAL_PENDING",
+      "TASK_LIST",
+      "ALERT_LIST",
+      "LC_LIST",
+      "GUARANTEE_LIST",
+      "COLLECTION_LIST",
+      "LOAN_LIST"
+    ],
+    "accountNo": [
+      "ACCOUNT_DETAIL",
+      "ACCOUNT_BALANCE",
+      "ACCOUNT_AVAILABLE_BALANCE",
+      "ACCOUNT_STATEMENT",
+      "TRANSACTION_LIST"
+    ],
+    "accountId": [
+      "ACCOUNT_DETAIL"
+    ],
+    "currency": [
+      "ACCOUNT_BALANCE",
+      "ACCOUNT_AVAILABLE_BALANCE",
+      "FX_RATE",
+      "FX_DEALS",
+      "FX_EXPOSURE"
+    ],
+    "datePeriod": [
+      "ACCOUNT_STATEMENT",
+      "TRANSACTION_LIST",
+      "TRANSACTION_SUMMARY",
+      "TRANSACTION_LARGEST",
+      "TRANSACTION_BY_AMOUNT",
+      "TRANSACTION_BY_DATE",
+      "TRANSACTION_BY_BENEFICIARY",
+      "TRANSACTION_FAILED",
+      "PAYMENT_TODAY",
+      "PAYMENT_FAILED",
+      "APPROVAL_PENDING",
+      "TASK_DUE",
+      "INCOMING_PAYMENT",
+      "OUTGOING_PAYMENT",
+      "CASH_FLOW_SUMMARY",
+      "CASH_FLOW_COMPARE",
+      "PAYROLL_SUMMARY",
+      "FX_DEALS",
+      "FX_EXPOSURE",
+      "LC_EXPIRY",
+      "GUARANTEE_EXPIRY"
+    ],
+    "documentId": [
+      "TRANSACTION_DETAIL",
+      "PAYMENT_STATUS",
+      "APPROVAL_DETAIL",
+      "APPROVAL_APPROVE",
+      "APPROVAL_REJECT",
+      "LC_STATUS",
+      "LC_DETAIL"
+    ],
+    "amount": [
+      "TRANSACTION_BY_AMOUNT",
+      "TRANSACTION_BY_BENEFICIARY",
+      "PAYMENT_CREATE",
+      "APPROVAL_PENDING",
+      "APPROVAL_APPROVE"
+    ],
+    "beneficiary": [
+      "TRANSACTION_BY_BENEFICIARY",
+      "PAYMENT_CREATE"
+    ],
+    "supplier": [
+      "TRANSACTION_BY_BENEFICIARY"
+    ],
+    "paymentType": [
+      "APPROVAL_PENDING"
+    ]
+  }
+}

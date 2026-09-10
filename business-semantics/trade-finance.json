@@ -1,0 +1,31 @@
+{
+  "instruments": [
+    {
+      "id": "LC",
+      "nameVi": "Thư tín dụng",
+      "description": "Cam kết thanh toán có điều kiện của ngân hàng thay mặt doanh nghiệp cho bên xuất khẩu, dựa trên bộ chứng từ hợp lệ.",
+      "aliases": ["LC", "L/C", "thư tín dụng", "tín dụng chứng từ", "letter of credit"],
+      "lifecycleStatuses": ["ACTIVE", "EXPIRED", "COMPLETED", "CANCELLED"]
+    },
+    {
+      "id": "BANK_GUARANTEE",
+      "nameVi": "Bảo lãnh ngân hàng",
+      "description": "Cam kết của ngân hàng sẽ thanh toán thay doanh nghiệp nếu doanh nghiệp không thực hiện đúng nghĩa vụ hợp đồng.",
+      "aliases": ["bảo lãnh", "BG", "bank guarantee", "bảo lãnh ngân hàng"],
+      "lifecycleStatuses": ["ACTIVE", "EXPIRED", "CANCELLED"]
+    },
+    {
+      "id": "COLLECTION",
+      "nameVi": "Nhờ thu",
+      "description": "Ngân hàng thay mặt doanh nghiệp gửi bộ chứng từ xuất khẩu tới ngân hàng bên mua để thu tiền hàng.",
+      "aliases": ["nhờ thu", "collection", "documentary collection"],
+      "lifecycleStatuses": ["PROCESSING", "COMPLETED", "OVERDUE"]
+    }
+  ],
+  "guaranteeTypes": [
+    { "id": "BID_BOND", "nameVi": "Bảo lãnh dự thầu" },
+    { "id": "PERFORMANCE_BOND", "nameVi": "Bảo lãnh thực hiện hợp đồng" },
+    { "id": "PAYMENT_GUARANTEE", "nameVi": "Bảo lãnh thanh toán" },
+    { "id": "ADVANCE_PAYMENT", "nameVi": "Bảo lãnh hoàn tiền ứng trước" }
+  ]
+}

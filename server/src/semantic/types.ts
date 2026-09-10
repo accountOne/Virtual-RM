@@ -1,0 +1,171 @@
+// Core types for the Business Banking Semantic Engine. Deterministic, local, no LLM —
+// see /business-semantics/README.md and docs/semantic-engine.md for the full picture.
+
+export type AmountOperatorId = 'GT' | 'GTE' | 'LT' | 'LTE' | 'EQ' | 'BETWEEN';
+
+export interface AmountFilter {
+  operator: AmountOperatorId;
+  value?: number;
+  min?: number;
+  max?: number;
+  currency: string;
+}
+
+/** The structured result of understanding one natural-language question. */
+export interface SemanticQuery {
+  intent: string;
+  confidence: number;
+  entities: {
+    accountId?: string;
+    accountNo?: string;
+    beneficiary?: string;
+    customer?: string;
+    supplier?: string;
+    documentId?: string;
+  };
+  filters: {
+    /** Always injected server-side — see security-context.ts. Never taken from chat input. */
+    companyId?: string;
+    userId?: string;
+    approverUserId?: string;
+    datePeriod?: string;
+    status?: string;
+    transactionType?: string;
+    paymentType?: string;
+    currency?: string;
+    amount?: AmountFilter;
+  };
+  sort?: { field: string; direction: 'asc' | 'desc' };
+  limit?: number;
+  action?: string;
+  /** Debug-only — populated when SEMANTIC_DEBUG=true, stripped otherwise. */
+  matchedTerms?: string[];
+}
+
+export interface MetricItem {
+  label: string;
+  value: string;
+}
+
+export interface AnswerAction {
+  label: string;
+  type: 'NAVIGATE';
+  target: string;
+}
+
+export interface SemanticAnswer {
+  title: string;
+  summary: string;
+  metrics: MetricItem[];
+  records: unknown[];
+  action?: AnswerAction;
+}
+
+export interface SemanticQueryResult {
+  success: true;
+  semantic: {
+    intent: string;
+    confidence: number;
+    matchedTerms?: string[];
+    entities?: SemanticQuery['entities'];
+    filters?: SemanticQuery['filters'];
+  };
+  answer: SemanticAnswer;
+}
+
+export interface ClarificationResult {
+  success: true;
+  semantic: { intent: 'CLARIFICATION_NEEDED'; confidence: number };
+  answer: {
+    title: string;
+    summary: string;
+    metrics: [];
+    records: [];
+    suggestedQuestions: string[];
+  };
+}
+
+// ---- Business Banking Semantic Pack shapes (loaded from /business-semantics/*.json) ----
+
+export interface DomainDef {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface EntityDef {
+  id: string;
+  domain: string;
+  nameVi: string;
+  description: string;
+  aliases: string[];
+}
+
+export interface IntentDef {
+  id: string;
+  domain: string;
+  entity: string;
+  description: string;
+  priority: number;
+  synonymConcepts: string[];
+  supportedEntities: string[];
+  defaultSort?: { field: string; direction: 'asc' | 'desc' };
+  responseTemplate: string;
+  navigationAction: string;
+}
+
+export type SynonymDict = Record<string, string[]>;
+
+export interface ResponseTemplateDef {
+  id: string;
+  title: string;
+  summary: string;
+}
+
+export interface NavigationActionDef {
+  id: string;
+  route: string;
+  labelVi: string;
+  note?: string;
+}
+
+export interface DatePeriodDef {
+  id: string;
+  nameVi: string;
+  phrases: string[];
+  rule: 'DAY_OFFSET' | 'WEEK_OFFSET' | 'MONTH_OFFSET' | 'QUARTER_OFFSET' | 'YTD' | 'DAY_WINDOW' | 'MONTH_WINDOW';
+  offset?: number;
+  days?: number;
+  months?: number;
+  direction?: 'PAST' | 'FUTURE';
+}
+
+export interface AmountOperatorsPack {
+  operators: { id: AmountOperatorId; nameVi: string; phrases: string[] }[];
+  units: { id: string; nameVi: string; phrases: string[]; multiplier: number }[];
+  currencies: { id: string; phrases: string[]; default?: boolean }[];
+}
+
+export interface StatusDefinitionsPack {
+  statuses: { id: string; nameVi: string; description: string }[];
+  vietnameseMap: Record<string, string>;
+}
+
+export interface SemanticRulesPack {
+  confidenceThreshold: number;
+  scoring: Record<string, number>;
+  normalization: { steps: string[]; abbreviations: Record<string, string> };
+  maxScorePerConcept: number;
+  clarificationPolicy: { belowThreshold: string; noMatch: string; neverHallucinate: boolean };
+}
+
+export interface DateRange {
+  from: string;
+  to: string;
+}
+
+export interface SecurityContext {
+  companyId: string;
+  userId: string;
+  role?: 'MAKER' | 'CHECKER' | 'ADMIN';
+}

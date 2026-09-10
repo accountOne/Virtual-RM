@@ -7,7 +7,7 @@
     "dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
-    "test": "echo \"(no automated tests yet)\" && exit 0"
+    "test": "ts-node -T test/run-all.ts"
   },
   "private": true,
   "dependencies": {

@@ -1,0 +1,107 @@
+[
+  {
+    "id": "availableBalance",
+    "nameVi": "Số dư khả dụng",
+    "aliases": ["tiền khả dụng", "số tiền có thể sử dụng", "available balance"],
+    "definition": "Phần số dư tài khoản có thể sử dụng ngay, sau khi trừ đi các khoản đang bị giữ (hold) cho giao dịch chờ duyệt.",
+    "relatedEntities": ["Account", "Balance"]
+  },
+  {
+    "id": "pendingApproval",
+    "nameVi": "Chờ phê duyệt",
+    "aliases": ["đang chờ duyệt", "chưa được duyệt", "pending approval"],
+    "definition": "Trạng thái của một lệnh thanh toán đã được lập nhưng chưa được người có thẩm quyền (Checker) phê duyệt.",
+    "relatedEntities": ["PaymentOrder", "Approval", "Transaction"]
+  },
+  {
+    "id": "paymentOrder",
+    "nameVi": "Lệnh thanh toán",
+    "aliases": ["lệnh chuyển tiền", "payment order"],
+    "definition": "Yêu cầu chuyển tiền do người dùng (Maker) lập, có thể cần một hoặc nhiều bước phê duyệt trước khi được thực hiện.",
+    "relatedEntities": ["PaymentOrder", "Beneficiary", "Approval"]
+  },
+  {
+    "id": "beneficiary",
+    "nameVi": "Người thụ hưởng",
+    "aliases": ["người nhận tiền", "beneficiary"],
+    "definition": "Cá nhân hoặc tổ chức nhận tiền trong một lệnh thanh toán.",
+    "relatedEntities": ["Beneficiary", "PaymentOrder"]
+  },
+  {
+    "id": "cashFlow",
+    "nameVi": "Dòng tiền",
+    "aliases": ["cash flow", "lưu chuyển tiền tệ"],
+    "definition": "Tổng hợp tiền vào và tiền ra của doanh nghiệp trong một khoảng thời gian, phản ánh sức khỏe thanh khoản.",
+    "relatedEntities": ["CashFlow", "Account", "Transaction"]
+  },
+  {
+    "id": "receivable",
+    "nameVi": "Khoản phải thu",
+    "aliases": ["công nợ phải thu", "receivable"],
+    "definition": "Khoản tiền doanh nghiệp có quyền thu về từ khách hàng trong tương lai gần, theo hợp đồng hoặc hóa đơn đã phát hành.",
+    "relatedEntities": ["Receivable", "CashFlow"]
+  },
+  {
+    "id": "payable",
+    "nameVi": "Khoản phải trả",
+    "aliases": ["công nợ phải trả", "payable"],
+    "definition": "Khoản tiền doanh nghiệp có nghĩa vụ thanh toán cho nhà cung cấp hoặc đối tác trong tương lai gần.",
+    "relatedEntities": ["Payable", "CashFlow"]
+  },
+  {
+    "id": "creditLimit",
+    "nameVi": "Hạn mức tín dụng",
+    "aliases": ["room tín dụng", "credit limit"],
+    "definition": "Tổng mức tín dụng ngân hàng cấp cho doanh nghiệp; phần chưa sử dụng gọi là hạn mức còn lại (room).",
+    "relatedEntities": ["CreditLimit", "Loan"]
+  },
+  {
+    "id": "outstanding",
+    "nameVi": "Dư nợ",
+    "aliases": ["dư nợ hiện tại", "outstanding balance"],
+    "definition": "Tổng số tiền doanh nghiệp còn nợ ngân hàng tại một thời điểm, đối với một hoặc nhiều khoản vay.",
+    "relatedEntities": ["Loan"]
+  },
+  {
+    "id": "maturityDate",
+    "nameVi": "Ngày đáo hạn",
+    "aliases": ["ngày đến hạn", "maturity date"],
+    "definition": "Ngày một khoản vay, tiền gửi hoặc bảo lãnh đến hạn tất toán/hết hiệu lực.",
+    "relatedEntities": ["Loan", "BankGuarantee"]
+  },
+  {
+    "id": "expiryDate",
+    "nameVi": "Ngày hết hạn",
+    "aliases": ["ngày hết hiệu lực", "expiry date"],
+    "definition": "Ngày một thư tín dụng hoặc bảo lãnh ngân hàng hết hiệu lực sử dụng.",
+    "relatedEntities": ["LetterOfCredit", "BankGuarantee"]
+  },
+  {
+    "id": "settlement",
+    "nameVi": "Tất toán",
+    "aliases": ["thanh toán tất toán", "settlement"],
+    "definition": "Việc hoàn tất nghĩa vụ tài chính của một giao dịch, khoản vay hoặc thư tín dụng.",
+    "relatedEntities": ["Loan", "LetterOfCredit", "Transaction"]
+  },
+  {
+    "id": "bookingDate",
+    "nameVi": "Ngày ghi sổ",
+    "aliases": ["ngày hạch toán", "booking date"],
+    "definition": "Ngày một giao dịch được ghi nhận vào sổ sách kế toán của ngân hàng.",
+    "relatedEntities": ["Transaction"]
+  },
+  {
+    "id": "valueDate",
+    "nameVi": "Ngày hiệu lực",
+    "aliases": ["ngày giá trị", "value date"],
+    "definition": "Ngày một giao dịch có hiệu lực về mặt giá trị (tiền thực sự chuyển đi/đến).",
+    "relatedEntities": ["Transaction", "FXDeal"]
+  },
+  {
+    "id": "exposure",
+    "nameVi": "Mức độ rủi ro tỷ giá",
+    "aliases": ["FX exposure", "trạng thái ngoại tệ"],
+    "definition": "Mức độ doanh nghiệp chịu ảnh hưởng bởi biến động tỷ giá, dựa trên tổng giá trị mua/bán ngoại tệ trong kỳ.",
+    "relatedEntities": ["FXDeal", "FXRate"]
+  }
+]

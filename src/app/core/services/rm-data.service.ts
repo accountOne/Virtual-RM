@@ -12,6 +12,49 @@ import {
   Task,
   Transaction,
 } from '../models';
+import { AuthService } from './auth.service';
+
+/** Mirrors business-semantics/navigation-actions.json's route field — the semantic engine
+ * returns a navigation action id (e.g. "OPEN_APPROVAL"), the frontend owns turning that into
+ * an actual Angular route, per the Business Banking Semantic Pack spec. */
+const NAV_ACTION_ROUTES: Record<string, string> = {
+  OPEN_DASHBOARD: '/dashboard',
+  OPEN_ACCOUNT: '/accounts',
+  OPEN_TRANSACTION: '/accounts',
+  OPEN_PAYMENT: '/payments',
+  OPEN_SINGLE_TRANSFER: '/payments/single-transfer',
+  OPEN_BATCH_TRANSFER: '/payments/batch-transfer',
+  OPEN_APPROVAL: '/payments/approval',
+  OPEN_PAYROLL: '/payments',
+  OPEN_FX: '/fx',
+  OPEN_LC: '/products',
+  OPEN_GUARANTEE: '/products',
+  OPEN_COLLECTION: '/products',
+  OPEN_LOAN: '/loans',
+  OPEN_PRODUCT: '/products',
+  OPEN_TASK: '/virtual-rm',
+  OPEN_ALERT: '/virtual-rm',
+};
+
+interface SemanticMetric {
+  label: string;
+  value: string;
+}
+
+interface SemanticAnswer {
+  title: string;
+  summary: string;
+  metrics: SemanticMetric[];
+  records: unknown[];
+  action?: { label: string; type: 'NAVIGATE'; target: string };
+  suggestedQuestions?: string[];
+}
+
+interface SemanticQueryApiResult {
+  success: true;
+  semantic: { intent: string; confidence: number };
+  answer: SemanticAnswer;
+}
 
 /**
  * Single shared data hub for everything the Virtual RM experience needs.
@@ -21,6 +64,7 @@ import {
 @Injectable({ providedIn: 'root' })
 export class RmDataService {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
 
   readonly customer = signal<Customer | null>(null);
   readonly accounts = signal<Account[]>([]);
@@ -98,8 +142,45 @@ export class RmDataService {
     await this.refreshDynamic();
   }
 
+  /** Routes "Ask Your Bank" through the Business Banking Semantic Pack (deterministic,
+   * local — see /business-semantics and docs/semantic-engine.md), not an LLM. The richer
+   * {title, summary, metrics, records, action} answer is flattened into the chat's plain
+   * {message, cta} shape so rm-chat.component.ts doesn't need to change, while still
+   * surfacing real numbers (RM style: short, numeric, action — not chatbot prose). */
   async askRm(question: string): Promise<RmAnswer> {
-    return firstValueFrom(this.http.post<RmAnswer>('/api/rm/query', { question }));
+    const user = this.auth.currentUser();
+    const res = await firstValueFrom(
+      this.http.post<SemanticQueryApiResult>('/api/virtual-rm/query', {
+        message: question,
+        userId: user?.username,
+        role: user?.role,
+      }),
+    );
+    return this.toRmAnswer(res);
+  }
+
+  private toRmAnswer(res: SemanticQueryApiResult): RmAnswer {
+    const { intent } = res.semantic;
+    const { answer } = res;
+
+    const lines = [answer.summary];
+    for (const metric of answer.metrics.slice(0, 5)) {
+      lines.push(`${metric.label}: ${metric.value}`);
+    }
+    if (answer.suggestedQuestions?.length) {
+      lines.push(`Gợi ý: ${answer.suggestedQuestions.slice(0, 3).join(' · ')}`);
+    }
+
+    const cta = answer.action
+      ? { label: answer.action.label, link: NAV_ACTION_ROUTES[answer.action.target] ?? '/dashboard' }
+      : undefined;
+
+    return {
+      intent: intent as RmAnswer['intent'],
+      message: lines.join('\n'),
+      cta,
+      data: answer.records,
+    };
   }
 
   accountById(id: string): Account | undefined {

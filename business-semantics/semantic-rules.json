@@ -1,0 +1,32 @@
+{
+  "confidenceThreshold": 0.65,
+  "scoring": {
+    "exactPhraseMatch": 100,
+    "intentKeyword": 50,
+    "entityMatch": 30,
+    "synonymMatch": 20,
+    "domainMatch": 15,
+    "dateCondition": 10,
+    "statusCondition": 10
+  },
+  "normalization": {
+    "steps": ["lowercase", "trim", "removePunctuation", "normalizeWhitespace", "normalizeAbbreviations", "stripDiacritics"],
+    "abbreviations": {
+      "tk": "tài khoản",
+      "dn": "doanh nghiệp",
+      "gd": "giao dịch",
+      "kh": "khách hàng",
+      "vnd": "đồng",
+      "ycd": "yêu cầu duyệt",
+      "hd": "hợp đồng",
+      "ck": "chuyển khoản",
+      "ntd": "nhà thầu"
+    }
+  },
+  "maxScorePerConcept": 100,
+  "clarificationPolicy": {
+    "belowThreshold": "ASK_ONE_CLARIFYING_QUESTION",
+    "noMatch": "SHOW_SUGGESTED_QUESTIONS",
+    "neverHallucinate": true
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "statuses": [
+    { "id": "PENDING", "nameVi": "Đang chờ", "description": "Đã tạo nhưng chưa bắt đầu xử lý" },
+    { "id": "PENDING_APPROVAL", "nameVi": "Chờ phê duyệt", "description": "Đã lập, đang chờ người có thẩm quyền phê duyệt" },
+    { "id": "PROCESSING", "nameVi": "Đang xử lý", "description": "Đã được duyệt và đang được ngân hàng xử lý" },
+    { "id": "COMPLETED", "nameVi": "Hoàn tất", "description": "Đã xử lý thành công" },
+    { "id": "FAILED", "nameVi": "Thất bại", "description": "Xử lý không thành công do lỗi kỹ thuật hoặc nghiệp vụ" },
+    { "id": "REJECTED", "nameVi": "Bị từ chối", "description": "Bị người phê duyệt từ chối" },
+    { "id": "CANCELLED", "nameVi": "Đã hủy", "description": "Bị hủy bởi người lập trước khi xử lý" },
+    { "id": "EXPIRED", "nameVi": "Hết hạn", "description": "Đã quá thời hạn hiệu lực (áp dụng cho LC, bảo lãnh...)" },
+    { "id": "ACTIVE", "nameVi": "Đang hiệu lực", "description": "Đang còn hiệu lực sử dụng" },
+    { "id": "INACTIVE", "nameVi": "Không hoạt động", "description": "Không còn hoạt động hoặc tạm ngưng" },
+    { "id": "OVERDUE", "nameVi": "Quá hạn", "description": "Đã qua ngày đến hạn nhưng chưa được xử lý/tất toán" }
+  ],
+  "vietnameseMap": {
+    "chờ duyệt": "PENDING_APPROVAL",
+    "cần duyệt": "PENDING_APPROVAL",
+    "đang chờ": "PENDING",
+    "đang xử lý": "PROCESSING",
+    "hoàn tất": "COMPLETED",
+    "thành công": "COMPLETED",
+    "đã hoàn thành": "COMPLETED",
+    "thất bại": "FAILED",
+    "lỗi": "FAILED",
+    "bị từ chối": "REJECTED",
+    "từ chối": "REJECTED",
+    "hủy": "CANCELLED",
+    "đã hủy": "CANCELLED",
+    "hết hạn": "EXPIRED",
+    "hết hiệu lực": "EXPIRED",
+    "đang hiệu lực": "ACTIVE",
+    "còn hiệu lực": "ACTIVE",
+    "không hoạt động": "INACTIVE",
+    "quá hạn": "OVERDUE"
+  }
+}

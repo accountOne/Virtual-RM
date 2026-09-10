@@ -1,0 +1,18 @@
+[
+  { "id": "OPEN_DASHBOARD", "route": "/dashboard", "labelVi": "Về Dashboard" },
+  { "id": "OPEN_ACCOUNT", "route": "/accounts", "labelVi": "Xem tài khoản" },
+  { "id": "OPEN_TRANSACTION", "route": "/accounts", "labelVi": "Xem giao dịch" },
+  { "id": "OPEN_PAYMENT", "route": "/payments", "labelVi": "Xem thanh toán" },
+  { "id": "OPEN_SINGLE_TRANSFER", "route": "/payments/single-transfer", "labelVi": "Chuyển tiền ngay" },
+  { "id": "OPEN_BATCH_TRANSFER", "route": "/payments/batch-transfer", "labelVi": "Chuyển tiền hàng loạt" },
+  { "id": "OPEN_APPROVAL", "route": "/payments/approval", "labelVi": "Xem danh sách chờ duyệt" },
+  { "id": "OPEN_PAYROLL", "route": "/payments", "labelVi": "Xem chi lương", "note": "Chưa có màn hình Payroll riêng trong demo — tạm điều hướng về Thanh toán." },
+  { "id": "OPEN_FX", "route": "/fx", "labelVi": "Xem giải pháp FX" },
+  { "id": "OPEN_LC", "route": "/products", "labelVi": "Xem Trade Finance", "note": "Chưa có màn hình LC riêng trong demo — tạm điều hướng về trang Sản phẩm (mục Trade Finance)." },
+  { "id": "OPEN_GUARANTEE", "route": "/products", "labelVi": "Xem Trade Finance", "note": "Chưa có màn hình Bảo lãnh riêng trong demo — tạm điều hướng về trang Sản phẩm (mục Trade Finance)." },
+  { "id": "OPEN_COLLECTION", "route": "/products", "labelVi": "Xem Trade Finance", "note": "Chưa có màn hình Nhờ thu riêng trong demo — tạm điều hướng về trang Sản phẩm (mục Trade Finance)." },
+  { "id": "OPEN_LOAN", "route": "/loans", "labelVi": "Xem khoản vay" },
+  { "id": "OPEN_PRODUCT", "route": "/products", "labelVi": "Xem sản phẩm" },
+  { "id": "OPEN_TASK", "route": "/virtual-rm", "labelVi": "Xem việc cần làm" },
+  { "id": "OPEN_ALERT", "route": "/virtual-rm", "labelVi": "Xem cảnh báo" }
+]

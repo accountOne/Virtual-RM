@@ -1,0 +1,16 @@
+[
+  { "id": "TODAY", "nameVi": "Hôm nay", "phrases": ["hôm nay", "trong hôm nay", "ngày hôm nay"], "rule": "DAY_OFFSET", "offset": 0 },
+  { "id": "YESTERDAY", "nameVi": "Hôm qua", "phrases": ["hôm qua", "ngày hôm qua"], "rule": "DAY_OFFSET", "offset": -1 },
+  { "id": "THIS_WEEK", "nameVi": "Tuần này", "phrases": ["tuần này", "trong tuần này"], "rule": "WEEK_OFFSET", "offset": 0 },
+  { "id": "LAST_WEEK", "nameVi": "Tuần trước", "phrases": ["tuần trước", "tuần vừa rồi"], "rule": "WEEK_OFFSET", "offset": -1 },
+  { "id": "NEXT_WEEK", "nameVi": "Tuần sau", "phrases": ["tuần sau", "tuần tới"], "rule": "WEEK_OFFSET", "offset": 1 },
+  { "id": "THIS_MONTH", "nameVi": "Tháng này", "phrases": ["tháng này", "trong tháng này", "trong tháng"], "rule": "MONTH_OFFSET", "offset": 0 },
+  { "id": "LAST_MONTH", "nameVi": "Tháng trước", "phrases": ["tháng trước", "tháng vừa rồi"], "rule": "MONTH_OFFSET", "offset": -1 },
+  { "id": "THIS_QUARTER", "nameVi": "Quý này", "phrases": ["quý này", "trong quý này"], "rule": "QUARTER_OFFSET", "offset": 0 },
+  { "id": "LAST_QUARTER", "nameVi": "Quý trước", "phrases": ["quý trước", "quý vừa rồi"], "rule": "QUARTER_OFFSET", "offset": -1 },
+  { "id": "YEAR_TO_DATE", "nameVi": "Từ đầu năm", "phrases": ["từ đầu năm", "ytd", "từ đầu năm đến nay"], "rule": "YTD", "offset": 0 },
+  { "id": "LAST_7_DAYS", "nameVi": "7 ngày qua", "phrases": ["7 ngày qua", "7 ngày gần đây", "trong 7 ngày qua"], "rule": "DAY_WINDOW", "days": 7, "direction": "PAST" },
+  { "id": "LAST_30_DAYS", "nameVi": "30 ngày qua", "phrases": ["30 ngày qua", "30 ngày gần đây", "trong 30 ngày qua"], "rule": "DAY_WINDOW", "days": 30, "direction": "PAST" },
+  { "id": "LAST_3_MONTHS", "nameVi": "3 tháng gần đây", "phrases": ["3 tháng gần đây", "3 tháng qua", "trong 3 tháng gần đây"], "rule": "MONTH_WINDOW", "months": 3, "direction": "PAST" },
+  { "id": "NEXT_7_DAYS", "nameVi": "7 ngày tới", "phrases": ["7 ngày tới", "7 ngày sắp tới", "trong 7 ngày tới"], "rule": "DAY_WINDOW", "days": 7, "direction": "FUTURE" }
+]

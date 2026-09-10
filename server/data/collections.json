@@ -1,0 +1,5 @@
+[
+  { "id": "col-001", "collectionNumber": "COL-2026-021", "type": "EXPORT", "counterparty": "Osaka Trading Corp.", "amount": 1100000000, "currency": "VND", "dueDate": "2026-09-18", "status": "PROCESSING" },
+  { "id": "col-002", "collectionNumber": "COL-2026-020", "type": "IMPORT", "counterparty": "Bangkok Raw Materials Co.", "amount": 640000000, "currency": "VND", "dueDate": "2026-08-30", "status": "OVERDUE" },
+  { "id": "col-003", "collectionNumber": "COL-2026-018", "type": "EXPORT", "counterparty": "Seoul Industrial Partners", "amount": 780000000, "currency": "VND", "dueDate": "2026-08-15", "status": "COMPLETED" }
+]

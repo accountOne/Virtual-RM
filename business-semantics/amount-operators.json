@@ -1,0 +1,21 @@
+{
+  "operators": [
+    { "id": "GT", "nameVi": "Lớn hơn", "phrases": ["trên", "lớn hơn", "hơn"] },
+    { "id": "GTE", "nameVi": "Từ", "phrases": ["ít nhất", "từ", "tối thiểu", "không dưới"] },
+    { "id": "LT", "nameVi": "Nhỏ hơn", "phrases": ["dưới", "nhỏ hơn", "ít hơn"] },
+    { "id": "LTE", "nameVi": "Không quá", "phrases": ["tối đa", "không quá", "không vượt quá"] },
+    { "id": "EQ", "nameVi": "Bằng", "phrases": ["bằng", "đúng"] },
+    { "id": "BETWEEN", "nameVi": "Trong khoảng", "phrases": ["trong khoảng", "từ ... đến", "khoảng"] }
+  ],
+  "units": [
+    { "id": "THOUSAND", "nameVi": "Nghìn", "phrases": ["nghìn", "nghìn đồng"], "multiplier": 1000 },
+    { "id": "MILLION", "nameVi": "Triệu", "phrases": ["triệu", "triệu đồng"], "multiplier": 1000000 },
+    { "id": "BILLION", "nameVi": "Tỷ", "phrases": ["tỷ", "tỷ đồng"], "multiplier": 1000000000 }
+  ],
+  "currencies": [
+    { "id": "VND", "phrases": ["vnd", "vnđ", "đồng", "d"], "default": true },
+    { "id": "USD", "phrases": ["usd", "đô la", "đô", "$"] },
+    { "id": "EUR", "phrases": ["eur", "euro"] },
+    { "id": "JPY", "phrases": ["jpy", "yên", "yen"] }
+  ]
+}

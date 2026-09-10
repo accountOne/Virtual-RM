@@ -1,0 +1,5 @@
+[
+  { "id": "loan-001", "loanNumber": "LN-2025-007", "purpose": "Vay vốn lưu động", "principal": 2000000000, "outstanding": 2000000000, "currency": "VND", "interestRate": 8.5, "disbursedDate": "2026-01-15", "maturityDate": "2026-09-14", "status": "ACTIVE" },
+  { "id": "loan-002", "loanNumber": "LN-2024-019", "purpose": "Đầu tư dây chuyền sản xuất", "principal": 5000000000, "outstanding": 3400000000, "currency": "VND", "interestRate": 9.2, "disbursedDate": "2024-11-01", "maturityDate": "2027-11-01", "status": "ACTIVE" },
+  { "id": "loan-003", "loanNumber": "LN-2023-004", "purpose": "Bổ sung vốn lưu động", "principal": 1200000000, "outstanding": 0, "currency": "VND", "interestRate": 8.0, "disbursedDate": "2023-06-01", "maturityDate": "2025-06-01", "status": "COMPLETED" }
+]

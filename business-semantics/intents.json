@@ -1,0 +1,805 @@
+[
+  {
+    "id": "ACCOUNT_LIST",
+    "domain": "ACCOUNT",
+    "entity": "Account",
+    "description": "Liệt kê toàn bộ tài khoản của doanh nghiệp",
+    "priority": 60,
+    "synonymConcepts": [
+      "account"
+    ],
+    "supportedEntities": [
+      "status"
+    ],
+    "responseTemplate": "ACCOUNT_LIST",
+    "navigationAction": "OPEN_ACCOUNT"
+  },
+  {
+    "id": "ACCOUNT_DETAIL",
+    "domain": "ACCOUNT",
+    "entity": "Account",
+    "description": "Xem chi tiết một tài khoản cụ thể theo số tài khoản",
+    "priority": 70,
+    "synonymConcepts": [
+      "account"
+    ],
+    "supportedEntities": [
+      "accountNo",
+      "accountId"
+    ],
+    "responseTemplate": "ACCOUNT_DETAIL",
+    "navigationAction": "OPEN_ACCOUNT"
+  },
+  {
+    "id": "ACCOUNT_BALANCE",
+    "domain": "ACCOUNT",
+    "entity": "Balance",
+    "description": "Tra cứu số dư ghi sổ hiện tại của tài khoản",
+    "priority": 80,
+    "synonymConcepts": [
+      "balance"
+    ],
+    "supportedEntities": [
+      "accountNo",
+      "currency"
+    ],
+    "responseTemplate": "ACCOUNT_BALANCE",
+    "navigationAction": "OPEN_ACCOUNT"
+  },
+  {
+    "id": "ACCOUNT_AVAILABLE_BALANCE",
+    "domain": "ACCOUNT",
+    "entity": "Balance",
+    "description": "Tra cứu số dư khả dụng có thể sử dụng ngay của tài khoản",
+    "priority": 85,
+    "synonymConcepts": [
+      "availableBalance"
+    ],
+    "supportedEntities": [
+      "accountNo",
+      "currency"
+    ],
+    "responseTemplate": "ACCOUNT_AVAILABLE_BALANCE",
+    "navigationAction": "OPEN_ACCOUNT"
+  },
+  {
+    "id": "ACCOUNT_HIGHEST_BALANCE",
+    "domain": "ACCOUNT",
+    "entity": "Account",
+    "description": "Tìm tài khoản có số dư lớn nhất trong số các tài khoản của doanh nghiệp",
+    "priority": 90,
+    "synonymConcepts": [
+      "highest"
+    ],
+    "supportedEntities": [],
+    "defaultSort": {
+      "field": "balance",
+      "direction": "desc"
+    },
+    "responseTemplate": "ACCOUNT_HIGHEST_BALANCE",
+    "navigationAction": "OPEN_ACCOUNT"
+  },
+  {
+    "id": "ACCOUNT_LOWEST_BALANCE",
+    "domain": "ACCOUNT",
+    "entity": "Account",
+    "description": "Tìm tài khoản có số dư thấp nhất trong số các tài khoản của doanh nghiệp",
+    "priority": 90,
+    "synonymConcepts": [
+      "lowest"
+    ],
+    "supportedEntities": [],
+    "defaultSort": {
+      "field": "balance",
+      "direction": "asc"
+    },
+    "responseTemplate": "ACCOUNT_LOWEST_BALANCE",
+    "navigationAction": "OPEN_ACCOUNT"
+  },
+  {
+    "id": "ACCOUNT_STATEMENT",
+    "domain": "ACCOUNT",
+    "entity": "Statement",
+    "description": "Xem sao kê giao dịch của một tài khoản trong một khoảng thời gian",
+    "priority": 75,
+    "synonymConcepts": [
+      "account",
+      "transaction"
+    ],
+    "supportedEntities": [
+      "accountNo",
+      "datePeriod"
+    ],
+    "defaultSort": {
+      "field": "date",
+      "direction": "desc"
+    },
+    "responseTemplate": "ACCOUNT_STATEMENT",
+    "navigationAction": "OPEN_ACCOUNT"
+  },
+  {
+    "id": "TRANSACTION_LIST",
+    "domain": "TRANSACTION",
+    "entity": "Transaction",
+    "description": "Liệt kê giao dịch gần đây trên tài khoản",
+    "priority": 50,
+    "synonymConcepts": [
+      "transaction"
+    ],
+    "supportedEntities": [
+      "accountNo",
+      "datePeriod",
+      "status"
+    ],
+    "defaultSort": {
+      "field": "date",
+      "direction": "desc"
+    },
+    "responseTemplate": "TRANSACTION_LIST",
+    "navigationAction": "OPEN_TRANSACTION"
+  },
+  {
+    "id": "TRANSACTION_DETAIL",
+    "domain": "TRANSACTION",
+    "entity": "Transaction",
+    "description": "Xem chi tiết một giao dịch cụ thể",
+    "priority": 70,
+    "synonymConcepts": [
+      "transaction"
+    ],
+    "supportedEntities": [
+      "documentId"
+    ],
+    "responseTemplate": "TRANSACTION_DETAIL",
+    "navigationAction": "OPEN_TRANSACTION"
+  },
+  {
+    "id": "TRANSACTION_SUMMARY",
+    "domain": "TRANSACTION",
+    "entity": "Transaction",
+    "description": "Tổng hợp số lượng và giá trị giao dịch trong một khoảng thời gian",
+    "priority": 65,
+    "synonymConcepts": [
+      "transaction"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "responseTemplate": "TRANSACTION_SUMMARY",
+    "navigationAction": "OPEN_TRANSACTION"
+  },
+  {
+    "id": "TRANSACTION_LARGEST",
+    "domain": "TRANSACTION",
+    "entity": "Transaction",
+    "description": "Tìm giao dịch có giá trị lớn nhất trong một khoảng thời gian",
+    "priority": 88,
+    "synonymConcepts": [
+      "highest"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "defaultSort": {
+      "field": "amount",
+      "direction": "desc"
+    },
+    "responseTemplate": "TRANSACTION_LARGEST",
+    "navigationAction": "OPEN_TRANSACTION"
+  },
+  {
+    "id": "TRANSACTION_BY_AMOUNT",
+    "domain": "TRANSACTION",
+    "entity": "Transaction",
+    "description": "Lọc giao dịch theo điều kiện số tiền",
+    "priority": 85,
+    "synonymConcepts": [
+      "amount"
+    ],
+    "supportedEntities": [
+      "amount",
+      "datePeriod"
+    ],
+    "defaultSort": {
+      "field": "amount",
+      "direction": "desc"
+    },
+    "responseTemplate": "TRANSACTION_BY_AMOUNT",
+    "navigationAction": "OPEN_TRANSACTION"
+  },
+  {
+    "id": "TRANSACTION_BY_DATE",
+    "domain": "TRANSACTION",
+    "entity": "Transaction",
+    "description": "Lọc giao dịch theo khoảng thời gian cụ thể",
+    "priority": 75,
+    "synonymConcepts": [
+      "transaction"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "defaultSort": {
+      "field": "date",
+      "direction": "desc"
+    },
+    "responseTemplate": "TRANSACTION_BY_DATE",
+    "navigationAction": "OPEN_TRANSACTION"
+  },
+  {
+    "id": "TRANSACTION_BY_BENEFICIARY",
+    "domain": "TRANSACTION",
+    "entity": "Transaction",
+    "description": "Lọc giao dịch theo tên đối tác/nhà cung cấp thụ hưởng",
+    "priority": 90,
+    "synonymConcepts": [
+      "beneficiary"
+    ],
+    "supportedEntities": [
+      "beneficiary",
+      "supplier",
+      "datePeriod",
+      "amount"
+    ],
+    "responseTemplate": "TRANSACTION_BY_BENEFICIARY",
+    "navigationAction": "OPEN_TRANSACTION"
+  },
+  {
+    "id": "TRANSACTION_FAILED",
+    "domain": "TRANSACTION",
+    "entity": "Transaction",
+    "description": "Liệt kê giao dịch bị từ chối hoặc thất bại",
+    "priority": 80,
+    "synonymConcepts": [
+      "transaction",
+      "status"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "responseTemplate": "TRANSACTION_FAILED",
+    "navigationAction": "OPEN_TRANSACTION"
+  },
+  {
+    "id": "PAYMENT_STATUS",
+    "domain": "PAYMENT",
+    "entity": "PaymentOrder",
+    "description": "Tra cứu trạng thái xử lý của một lệnh thanh toán",
+    "priority": 75,
+    "synonymConcepts": [
+      "payment",
+      "status"
+    ],
+    "supportedEntities": [
+      "documentId",
+      "status"
+    ],
+    "responseTemplate": "PAYMENT_STATUS",
+    "navigationAction": "OPEN_PAYMENT"
+  },
+  {
+    "id": "PAYMENT_TODAY",
+    "domain": "PAYMENT",
+    "entity": "PaymentOrder",
+    "description": "Tổng hợp các lệnh thanh toán được lập trong ngày hôm nay",
+    "priority": 78,
+    "synonymConcepts": [
+      "payment"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "responseTemplate": "PAYMENT_TODAY",
+    "navigationAction": "OPEN_PAYMENT"
+  },
+  {
+    "id": "PAYMENT_PENDING",
+    "domain": "PAYMENT",
+    "entity": "PaymentOrder",
+    "description": "Liệt kê lệnh thanh toán đang chờ xử lý (chưa tới bước duyệt)",
+    "priority": 70,
+    "synonymConcepts": [
+      "payment",
+      "status"
+    ],
+    "supportedEntities": [
+      "status"
+    ],
+    "responseTemplate": "PAYMENT_PENDING",
+    "navigationAction": "OPEN_PAYMENT"
+  },
+  {
+    "id": "PAYMENT_FAILED",
+    "domain": "PAYMENT",
+    "entity": "PaymentOrder",
+    "description": "Liệt kê lệnh thanh toán bị lỗi hoặc thất bại",
+    "priority": 80,
+    "synonymConcepts": [
+      "payment",
+      "status"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "responseTemplate": "PAYMENT_FAILED",
+    "navigationAction": "OPEN_PAYMENT"
+  },
+  {
+    "id": "PAYMENT_CREATE",
+    "domain": "PAYMENT",
+    "entity": "PaymentOrder",
+    "description": "Khách hàng muốn lập một lệnh chuyển tiền mới",
+    "priority": 95,
+    "synonymConcepts": [
+      "payment"
+    ],
+    "supportedEntities": [
+      "beneficiary",
+      "amount"
+    ],
+    "responseTemplate": "PAYMENT_CREATE",
+    "navigationAction": "OPEN_SINGLE_TRANSFER"
+  },
+  {
+    "id": "APPROVAL_PENDING",
+    "domain": "APPROVAL",
+    "entity": "Approval",
+    "description": "Tìm giao dịch đang chờ người dùng phê duyệt",
+    "priority": 100,
+    "synonymConcepts": [
+      "approval"
+    ],
+    "supportedEntities": [
+      "amount",
+      "datePeriod",
+      "status",
+      "paymentType"
+    ],
+    "defaultSort": {
+      "field": "amount",
+      "direction": "desc"
+    },
+    "responseTemplate": "APPROVAL_PENDING",
+    "navigationAction": "OPEN_APPROVAL"
+  },
+  {
+    "id": "APPROVAL_DETAIL",
+    "domain": "APPROVAL",
+    "entity": "Approval",
+    "description": "Xem chi tiết một lệnh cụ thể đang chờ phê duyệt",
+    "priority": 82,
+    "synonymConcepts": [
+      "approval"
+    ],
+    "supportedEntities": [
+      "documentId"
+    ],
+    "responseTemplate": "APPROVAL_DETAIL",
+    "navigationAction": "OPEN_APPROVAL"
+  },
+  {
+    "id": "APPROVAL_APPROVE",
+    "domain": "APPROVAL",
+    "entity": "Approval",
+    "description": "Khách hàng muốn phê duyệt một hoặc nhiều giao dịch",
+    "priority": 97,
+    "synonymConcepts": [
+      "approval"
+    ],
+    "supportedEntities": [
+      "documentId",
+      "amount"
+    ],
+    "responseTemplate": "APPROVAL_APPROVE",
+    "navigationAction": "OPEN_APPROVAL"
+  },
+  {
+    "id": "APPROVAL_REJECT",
+    "domain": "APPROVAL",
+    "entity": "Approval",
+    "description": "Khách hàng muốn từ chối một hoặc nhiều giao dịch",
+    "priority": 97,
+    "synonymConcepts": [
+      "approval"
+    ],
+    "supportedEntities": [
+      "documentId"
+    ],
+    "responseTemplate": "APPROVAL_REJECT",
+    "navigationAction": "OPEN_APPROVAL"
+  },
+  {
+    "id": "TASK_LIST",
+    "domain": "TASK",
+    "entity": "Task",
+    "description": "Liệt kê toàn bộ việc cần xử lý đang mở",
+    "priority": 72,
+    "synonymConcepts": [
+      "task"
+    ],
+    "supportedEntities": [
+      "status"
+    ],
+    "responseTemplate": "TASK_LIST",
+    "navigationAction": "OPEN_TASK"
+  },
+  {
+    "id": "TASK_DUE",
+    "domain": "TASK",
+    "entity": "Task",
+    "description": "Tìm việc cần xử lý sắp tới hạn hoặc đã quá hạn",
+    "priority": 83,
+    "synonymConcepts": [
+      "task",
+      "expirySoon"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "defaultSort": {
+      "field": "dueDate",
+      "direction": "asc"
+    },
+    "responseTemplate": "TASK_DUE",
+    "navigationAction": "OPEN_TASK"
+  },
+  {
+    "id": "ALERT_LIST",
+    "domain": "ALERT",
+    "entity": "Alert",
+    "description": "Liệt kê toàn bộ cảnh báo hiện có",
+    "priority": 72,
+    "synonymConcepts": [
+      "alert"
+    ],
+    "supportedEntities": [
+      "status"
+    ],
+    "responseTemplate": "ALERT_LIST",
+    "navigationAction": "OPEN_ALERT"
+  },
+  {
+    "id": "ALERT_HIGH_PRIORITY",
+    "domain": "ALERT",
+    "entity": "Alert",
+    "description": "Tìm cảnh báo mức độ nghiêm trọng cao cần xử lý ngay",
+    "priority": 86,
+    "synonymConcepts": [
+      "alert"
+    ],
+    "supportedEntities": [],
+    "responseTemplate": "ALERT_HIGH_PRIORITY",
+    "navigationAction": "OPEN_ALERT"
+  },
+  {
+    "id": "INCOMING_PAYMENT",
+    "domain": "CASH_MANAGEMENT",
+    "entity": "CashFlow",
+    "description": "Tổng hợp tiền vào tài khoản trong một khoảng thời gian",
+    "priority": 80,
+    "synonymConcepts": [
+      "incoming"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "responseTemplate": "INCOMING_PAYMENT",
+    "navigationAction": "OPEN_ACCOUNT"
+  },
+  {
+    "id": "OUTGOING_PAYMENT",
+    "domain": "CASH_MANAGEMENT",
+    "entity": "CashFlow",
+    "description": "Tổng hợp tiền ra khỏi tài khoản trong một khoảng thời gian",
+    "priority": 80,
+    "synonymConcepts": [
+      "outgoing"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "responseTemplate": "OUTGOING_PAYMENT",
+    "navigationAction": "OPEN_ACCOUNT"
+  },
+  {
+    "id": "CASH_POSITION",
+    "domain": "CASH_MANAGEMENT",
+    "entity": "CashFlow",
+    "description": "Tổng hợp vị thế thanh khoản hiện tại của doanh nghiệp trên toàn bộ tài khoản",
+    "priority": 82,
+    "synonymConcepts": [
+      "cashFlow",
+      "balance"
+    ],
+    "supportedEntities": [],
+    "responseTemplate": "CASH_POSITION",
+    "navigationAction": "OPEN_DASHBOARD"
+  },
+  {
+    "id": "CASH_FLOW_SUMMARY",
+    "domain": "CASH_MANAGEMENT",
+    "entity": "CashFlow",
+    "description": "Tổng hợp dòng tiền vào/ra trong một khoảng thời gian",
+    "priority": 78,
+    "synonymConcepts": [
+      "cashFlow"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "responseTemplate": "CASH_FLOW_SUMMARY",
+    "navigationAction": "OPEN_DASHBOARD"
+  },
+  {
+    "id": "CASH_FLOW_COMPARE",
+    "domain": "CASH_MANAGEMENT",
+    "entity": "CashFlow",
+    "description": "So sánh dòng tiền giữa hai kỳ liên tiếp (ví dụ tháng này với tháng trước)",
+    "priority": 87,
+    "synonymConcepts": [
+      "cashFlow"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "responseTemplate": "CASH_FLOW_COMPARE",
+    "navigationAction": "OPEN_DASHBOARD"
+  },
+  {
+    "id": "PAYROLL_SUMMARY",
+    "domain": "PAYROLL",
+    "entity": "Payroll",
+    "description": "Tổng hợp thông tin kỳ trả lương gần nhất hoặc sắp tới",
+    "priority": 80,
+    "synonymConcepts": [
+      "payroll"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "responseTemplate": "PAYROLL_SUMMARY",
+    "navigationAction": "OPEN_PAYROLL"
+  },
+  {
+    "id": "FX_RATE",
+    "domain": "FX",
+    "entity": "FXRate",
+    "description": "Tra cứu tỷ giá mua/bán ngoại tệ tham khảo hôm nay",
+    "priority": 85,
+    "synonymConcepts": [
+      "fxRate"
+    ],
+    "supportedEntities": [
+      "currency"
+    ],
+    "responseTemplate": "FX_RATE",
+    "navigationAction": "OPEN_FX"
+  },
+  {
+    "id": "FX_DEALS",
+    "domain": "FX",
+    "entity": "FXDeal",
+    "description": "Liệt kê các giao dịch mua/bán ngoại tệ đã thực hiện trong một khoảng thời gian",
+    "priority": 78,
+    "synonymConcepts": [
+      "fxDeal"
+    ],
+    "supportedEntities": [
+      "datePeriod",
+      "currency"
+    ],
+    "responseTemplate": "FX_DEALS",
+    "navigationAction": "OPEN_FX"
+  },
+  {
+    "id": "FX_EXPOSURE",
+    "domain": "FX",
+    "entity": "FXDeal",
+    "description": "Đánh giá mức độ doanh nghiệp mua hay bán ngoại tệ nhiều hơn trong kỳ",
+    "priority": 83,
+    "synonymConcepts": [
+      "fxDeal"
+    ],
+    "supportedEntities": [
+      "datePeriod",
+      "currency"
+    ],
+    "responseTemplate": "FX_EXPOSURE",
+    "navigationAction": "OPEN_FX"
+  },
+  {
+    "id": "LC_LIST",
+    "domain": "TRADE_FINANCE",
+    "entity": "LetterOfCredit",
+    "description": "Liệt kê thư tín dụng (L/C) hiện có của doanh nghiệp",
+    "priority": 75,
+    "synonymConcepts": [
+      "letterOfCredit"
+    ],
+    "supportedEntities": [
+      "status"
+    ],
+    "responseTemplate": "LC_LIST",
+    "navigationAction": "OPEN_LC"
+  },
+  {
+    "id": "LC_STATUS",
+    "domain": "TRADE_FINANCE",
+    "entity": "LetterOfCredit",
+    "description": "Tra cứu trạng thái của một thư tín dụng cụ thể",
+    "priority": 80,
+    "synonymConcepts": [
+      "letterOfCredit",
+      "status"
+    ],
+    "supportedEntities": [
+      "documentId"
+    ],
+    "responseTemplate": "LC_STATUS",
+    "navigationAction": "OPEN_LC"
+  },
+  {
+    "id": "LC_EXPIRY",
+    "domain": "TRADE_FINANCE",
+    "entity": "LetterOfCredit",
+    "description": "Tìm thư tín dụng sắp hết hạn hiệu lực",
+    "priority": 90,
+    "synonymConcepts": [
+      "expirySoon"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "defaultSort": {
+      "field": "expiryDate",
+      "direction": "asc"
+    },
+    "responseTemplate": "LC_EXPIRY",
+    "navigationAction": "OPEN_LC"
+  },
+  {
+    "id": "LC_DETAIL",
+    "domain": "TRADE_FINANCE",
+    "entity": "LetterOfCredit",
+    "description": "Xem chi tiết một thư tín dụng theo số L/C",
+    "priority": 82,
+    "synonymConcepts": [
+      "letterOfCredit"
+    ],
+    "supportedEntities": [
+      "documentId"
+    ],
+    "responseTemplate": "LC_DETAIL",
+    "navigationAction": "OPEN_LC"
+  },
+  {
+    "id": "GUARANTEE_LIST",
+    "domain": "TRADE_FINANCE",
+    "entity": "BankGuarantee",
+    "description": "Liệt kê bảo lãnh ngân hàng hiện có của doanh nghiệp",
+    "priority": 75,
+    "synonymConcepts": [
+      "bankGuarantee"
+    ],
+    "supportedEntities": [
+      "status"
+    ],
+    "responseTemplate": "GUARANTEE_LIST",
+    "navigationAction": "OPEN_GUARANTEE"
+  },
+  {
+    "id": "GUARANTEE_EXPIRY",
+    "domain": "TRADE_FINANCE",
+    "entity": "BankGuarantee",
+    "description": "Tìm bảo lãnh ngân hàng sắp đến hạn đáo hạn",
+    "priority": 90,
+    "synonymConcepts": [
+      "expirySoon"
+    ],
+    "supportedEntities": [
+      "datePeriod"
+    ],
+    "defaultSort": {
+      "field": "expiryDate",
+      "direction": "asc"
+    },
+    "responseTemplate": "GUARANTEE_EXPIRY",
+    "navigationAction": "OPEN_GUARANTEE"
+  },
+  {
+    "id": "COLLECTION_LIST",
+    "domain": "TRADE_FINANCE",
+    "entity": "Collection",
+    "description": "Liệt kê bộ chứng từ nhờ thu xuất nhập khẩu hiện có",
+    "priority": 75,
+    "synonymConcepts": [
+      "collection"
+    ],
+    "supportedEntities": [
+      "status"
+    ],
+    "responseTemplate": "COLLECTION_LIST",
+    "navigationAction": "OPEN_COLLECTION"
+  },
+  {
+    "id": "LOAN_LIST",
+    "domain": "LENDING",
+    "entity": "Loan",
+    "description": "Liệt kê khoản vay hiện có của doanh nghiệp",
+    "priority": 75,
+    "synonymConcepts": [
+      "loan"
+    ],
+    "supportedEntities": [
+      "status"
+    ],
+    "responseTemplate": "LOAN_LIST",
+    "navigationAction": "OPEN_LOAN"
+  },
+  {
+    "id": "LOAN_OUTSTANDING",
+    "domain": "LENDING",
+    "entity": "Loan",
+    "description": "Tra cứu tổng dư nợ vay hiện tại của doanh nghiệp",
+    "priority": 88,
+    "synonymConcepts": [
+      "outstandingDebt"
+    ],
+    "supportedEntities": [],
+    "responseTemplate": "LOAN_OUTSTANDING",
+    "navigationAction": "OPEN_LOAN"
+  },
+  {
+    "id": "CREDIT_LIMIT",
+    "domain": "LENDING",
+    "entity": "CreditLimit",
+    "description": "Tra cứu hạn mức tín dụng đã cấp và phần còn lại có thể sử dụng",
+    "priority": 88,
+    "synonymConcepts": [
+      "creditLimit"
+    ],
+    "supportedEntities": [],
+    "responseTemplate": "CREDIT_LIMIT",
+    "navigationAction": "OPEN_LOAN"
+  },
+  {
+    "id": "PRODUCT_RECOMMEND",
+    "domain": "PRODUCT",
+    "entity": "Recommendation",
+    "description": "Gợi ý sản phẩm ngân hàng phù hợp với hoạt động hiện tại của doanh nghiệp",
+    "priority": 70,
+    "synonymConcepts": [
+      "product",
+      "recommendation"
+    ],
+    "supportedEntities": [],
+    "responseTemplate": "PRODUCT_RECOMMEND",
+    "navigationAction": "OPEN_PRODUCT"
+  },
+  {
+    "id": "GREETING",
+    "domain": "CUSTOMER_SERVICE",
+    "entity": "RelationshipManager",
+    "description": "Khách hàng chào hỏi Virtual RM",
+    "priority": 40,
+    "synonymConcepts": [
+      "greeting"
+    ],
+    "supportedEntities": [],
+    "responseTemplate": "GREETING",
+    "navigationAction": "OPEN_DASHBOARD"
+  },
+  {
+    "id": "HELP",
+    "domain": "CUSTOMER_SERVICE",
+    "entity": "RelationshipManager",
+    "description": "Khách hàng hỏi Virtual RM có thể hỗ trợ những gì",
+    "priority": 45,
+    "synonymConcepts": [
+      "help"
+    ],
+    "supportedEntities": [],
+    "responseTemplate": "HELP",
+    "navigationAction": "OPEN_DASHBOARD"
+  }
+]
