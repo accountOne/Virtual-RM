@@ -2,7 +2,13 @@ import { Routes } from '@angular/router';
 import { authGuard, guestOnlyGuard, roleGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+  {
+    path: '',
+    loadComponent: () => import('./features/pre-login/pre-login.page').then((m) => m.PreLoginPageComponent),
+    canActivate: [guestOnlyGuard],
+    pathMatch: 'full',
+    title: 'MSB Business Banking — Virtual RM',
+  },
   {
     path: 'login',
     loadComponent: () => import('./features/auth/login.page').then((m) => m.LoginPageComponent),

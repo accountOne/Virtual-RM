@@ -31,6 +31,7 @@ virtual-rm/
 │   │   │                         confirm-dialog, header, sidebar, field
 │   │   └── pipes/                vnd / vndShort currency pipes
 │   └── features/
+│       ├── pre-login/             Marketing landing page (unauthenticated root route)
 │       ├── dashboard/            Main banking landing page
 │       ├── virtual-rm/           Briefing, Alerts, Tasks, Recommendations, Chat, Widget
 │       ├── payments/             Approval, single/batch transfer, payments home
@@ -346,3 +347,13 @@ published site resets the Render-hosted `server/data/*.json`, exactly like local
 - All amounts are illustrative VND figures for demo purposes only.
 - UI is in Vietnamese, styled with Tailwind CSS and the Satoshi typeface, following a
   minimalist, modern banking design language.
+- **Design system.** Colors, typography, spacing, radius, shadows, breakpoints, and
+  component patterns are documented in [`docs/msb-design-system.md`](docs/msb-design-system.md)
+  and mirrored as SCSS variables in `src/styles/design-tokens.scss`. See
+  [`docs/architecture.md`](docs/architecture.md) for the full layer-by-layer structure
+  and [`docs/demo-script.md`](docs/demo-script.md) for a presenter-ready walkthrough
+  (pre-login → login → home → Virtual RM briefing → approval → chat → recommendations
+  → admin data edit → RM reflects the change).
+- **Pre-login landing page** (`/`, unauthenticated only) introduces MSB Business
+  Banking and the 5 Virtual RM capabilities before the login CTA — an authenticated
+  visitor to `/` is redirected straight to `/dashboard`.

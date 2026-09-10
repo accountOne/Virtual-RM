@@ -1,3 +1,8 @@
+// Design tokens (colors, typography, spacing, radius, shadows, breakpoints) — see
+// docs/msb-design-system.md. Tailwind classes remain the primary styling mechanism;
+// this is available to any component SCSS that needs a raw token value.
+@use 'styles/design-tokens' as tokens;
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

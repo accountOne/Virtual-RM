@@ -12,12 +12,15 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', link: '/dashboard', icon: '🏠' },
-  { label: 'Virtual RM', link: '/virtual-rm', icon: '👩‍💼' },
+  { label: 'Tổng quan', link: '/dashboard', icon: '🏠' },
   { label: 'Tài khoản', link: '/accounts', icon: '💳' },
   { label: 'Thanh toán', link: '/payments', icon: '💸' },
   { label: 'Phê duyệt', link: '/payments/approval', icon: '✅', rolesAllowed: ['CHECKER', 'ADMIN'] },
+  { label: 'Khoản vay', link: '/loans', icon: '🏦' },
+  { label: 'FX', link: '/fx', icon: '💱' },
+  { label: 'Sản phẩm', link: '/products', icon: '💡' },
   { label: 'Báo cáo', link: '/reports', icon: '📊' },
+  { label: 'Virtual RM', link: '/virtual-rm', icon: '👩‍💼' },
 ];
 
 @Component({
