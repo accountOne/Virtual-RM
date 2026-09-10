@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { Product } from '../../core/models';
 import { RmDataService } from '../../core/services/rm-data.service';
+import { ToastService } from '../../core/services/toast.service';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 
 @Component({
@@ -25,7 +27,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
               <p class="text-base font-semibold text-ink-800 mt-1">{{ p.name }}</p>
               <p class="text-sm text-ink-600 mt-1.5 leading-relaxed">{{ p.description }}</p>
               <p class="text-xs text-ink-500 mt-2">Đối tượng: {{ p.eligibility }}</p>
-              <button class="btn-primary mt-4" (click)="router.navigateByUrl(p.ctaLink)">{{ p.cta }}</button>
+              <button class="btn-primary mt-4" (click)="onCta(p)">{{ p.cta }}</button>
             </div>
           </div>
         </div>
@@ -36,7 +38,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
             <p class="text-base font-semibold text-ink-800 mt-3">{{ p.name }}</p>
             <p class="text-sm text-ink-500 mt-1.5 leading-relaxed flex-1">{{ p.description }}</p>
             <p class="text-xs text-ink-400 mt-3">Đối tượng: {{ p.eligibility }}</p>
-            <button class="btn-primary mt-3" (click)="router.navigateByUrl(p.ctaLink)">{{ p.cta }}</button>
+            <button class="btn-primary mt-3" (click)="onCta(p)">{{ p.cta }}</button>
           </div>
         </div>
       </ng-container>
@@ -46,7 +48,23 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 export class ProductsPageComponent {
   readonly rmData = inject(RmDataService);
   readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
 
   readonly depositProduct = computed(() => this.rmData.products().find((p) => p.category === 'Term Deposit') ?? null);
   readonly otherProducts = computed(() => this.rmData.products().filter((p) => p.category !== 'Term Deposit'));
+
+  /**
+   * Navigates to the product's CTA destination — unless it points back at this same
+   * Products page (no dedicated screen exists yet for that product in the demo, e.g.
+   * Trade Finance/Term Deposit), in which case navigating would be a silent no-op.
+   * Falls back to a toast acknowledgement instead, matching this app's existing pattern
+   * for simulated actions (see FxPage/LoansPage "(mô phỏng)" toasts).
+   */
+  onCta(p: Product): void {
+    if (p.ctaLink && p.ctaLink !== this.router.url.split('?')[0] && p.ctaLink !== '/products') {
+      this.router.navigateByUrl(p.ctaLink);
+    } else {
+      this.toast.success(`Đã ghi nhận yêu cầu tìm hiểu "${p.name}" — chuyên viên MSB sẽ liên hệ sớm (mô phỏng).`);
+    }
+  }
 }

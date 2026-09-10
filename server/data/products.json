@@ -14,7 +14,7 @@
     "description": "Chi lương tự động hàng loạt cho toàn bộ nhân viên chỉ với một lệnh duyệt, tiết kiệm thời gian vận hành nhân sự.",
     "category": "Payroll",
     "cta": "Tìm hiểu thêm",
-    "ctaLink": "/products",
+    "ctaLink": "/payments",
     "eligibility": "Doanh nghiệp từ 20 nhân viên trở lên"
   },
   {
@@ -50,7 +50,7 @@
     "description": "Quản lý dòng tiền tập trung đa tài khoản, tự động hoá thu chi và báo cáo dòng tiền theo thời gian thực.",
     "category": "Cash Management",
     "cta": "Xem giải pháp",
-    "ctaLink": "/products",
+    "ctaLink": "/accounts",
     "eligibility": "Doanh nghiệp có nhiều tài khoản/chi nhánh"
   }
 ]
