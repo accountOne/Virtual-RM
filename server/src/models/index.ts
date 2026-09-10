@@ -152,41 +152,130 @@ export interface FxDeal {
   counterparty: string;
 }
 
-export type TradeFinanceStatus = 'ACTIVE' | 'EXPIRED' | 'COMPLETED' | 'CANCELLED' | 'PROCESSING' | 'OVERDUE';
+// Phase 6 (Trade Finance) additive statuses alongside the original 6 — see
+// docs/phase-6-semantic-model.md for the full status list and Vietnamese mapping.
+export type TradeFinanceStatus =
+  | 'ACTIVE'
+  | 'EXPIRED'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'PROCESSING'
+  | 'OVERDUE'
+  | 'PENDING_APPROVAL'
+  | 'DOCUMENT_PENDING'
+  | 'DISCREPANCY'
+  | 'CLAIMED'
+  | 'AWAITING_PAYMENT'
+  | 'AWAITING_ACCEPTANCE'
+  | 'ACCEPTED';
+
+export type TradeDocumentStatus = 'RECEIVED' | 'MISSING' | 'PENDING' | 'ACCEPTED' | 'DISCREPANT';
+
+/** Nested on an LC/Guarantee/Collection record rather than a separate top-level file —
+ * see docs/phase-6-trade-finance-architecture.md §3 for why. */
+export interface TradeDocument {
+  documentType: string;
+  required: boolean;
+  received: boolean;
+  status: TradeDocumentStatus;
+}
+
+export type DiscrepancyStatus = 'OPEN' | 'WAIVED' | 'REJECTED';
+
+export interface LcDiscrepancy {
+  id: string;
+  description: string;
+  status: DiscrepancyStatus;
+  raisedDate: string;
+}
+
+export type AmendmentStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+
+export interface TradeAmendment {
+  id: string;
+  description: string;
+  status: AmendmentStatus;
+  requestedDate: string;
+}
+
+export type ClaimStatus = 'SUBMITTED' | 'UNDER_REVIEW' | 'SETTLED' | 'REJECTED';
+
+export interface GuaranteeClaim {
+  id: string;
+  amount: number;
+  status: ClaimStatus;
+  claimDate: string;
+}
+
+export type LcSubType = 'SIGHT' | 'USANCE' | 'DEFERRED_PAYMENT' | 'TRANSFERABLE' | 'STANDBY';
 
 export interface LetterOfCredit {
   id: string;
   lcNumber: string;
   type: 'IMPORT' | 'EXPORT';
+  subType: LcSubType;
+  referenceNo: string;
   beneficiary: string;
+  applicant: string;
   amount: number;
   currency: string;
   issueDate: string;
   expiryDate: string;
   status: TradeFinanceStatus;
+  issuingBank: string;
+  advisingBank: string;
+  /** Latest date shipment must occur by (Incoterms-style deadline the beneficiary must
+   * meet), distinct from the LC's own expiryDate. */
+  latestShipmentDate: string;
+  /** Days after shipment within which documents must be presented (UCP 600 default is
+   * 21 unless the LC specifies otherwise). */
+  presentationPeriodDays: number;
+  paymentTerm: 'SIGHT' | 'USANCE';
+  availableWith: string;
+  outstandingAmount: number;
+  documents: TradeDocument[];
+  discrepancies: LcDiscrepancy[];
+  amendments: TradeAmendment[];
+  riskFlags: string[];
 }
+
+export type GuaranteeSubType = 'BID_BOND' | 'PERFORMANCE_BOND' | 'ADVANCE_PAYMENT' | 'PAYMENT_GUARANTEE' | 'WARRANTY' | 'CUSTOMS' | 'TAX' | 'OTHER';
 
 export interface BankGuarantee {
   id: string;
   bgNumber: string;
-  type: 'BID_BOND' | 'PERFORMANCE_BOND' | 'PAYMENT_GUARANTEE' | 'ADVANCE_PAYMENT';
+  type: GuaranteeSubType;
   beneficiary: string;
+  applicant: string;
   amount: number;
   currency: string;
   issueDate: string;
   expiryDate: string;
   status: TradeFinanceStatus;
+  outstandingAmount: number;
+  extensionRequested: boolean;
+  documents: TradeDocument[];
+  claims: GuaranteeClaim[];
+  riskFlags: string[];
 }
+
+export type CollectionSubType = 'DP' | 'DA';
+export type CollectionDirection = 'INWARD' | 'OUTWARD';
 
 export interface Collection {
   id: string;
   collectionNumber: string;
   type: 'IMPORT' | 'EXPORT';
+  subType: CollectionSubType;
+  direction: CollectionDirection;
   counterparty: string;
+  drawer: string;
+  drawee: string;
   amount: number;
   currency: string;
   dueDate: string;
   status: TradeFinanceStatus;
+  documents: TradeDocument[];
 }
 
 export type LoanStatus = 'ACTIVE' | 'OVERDUE' | 'COMPLETED';

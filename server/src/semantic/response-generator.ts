@@ -23,7 +23,7 @@ import { Account, Transaction } from '../models';
 import { formatShortVnd, formatVnd } from '../utils/currency.util';
 import { isWithinRange } from './date-resolver';
 import * as agg from './aggregation-engine';
-import { calculateLiquidityGap } from '../calculation/financial-calculations';
+import { calculateGuaranteeRisk, calculateLcRisk, calculateLiquidityGap } from '../calculation/financial-calculations';
 import { AmountFilter, AnswerAction, DateRange, MetricItem, NavigationActionDef, SemanticAnswer, SemanticQuery } from './types';
 
 export interface GenerateContext {
@@ -569,8 +569,19 @@ const HANDLERS: Record<string, Handler> = {
       records: [found],
     };
   },
-  GUARANTEE_LIST: () => {
+  GUARANTEE_LIST: (ctx) => {
     const items = bankGuaranteesRepository.readAll();
+    const docId = ctx.query.entities.documentId;
+    if (docId) {
+      const found = items.find((g) => g.bgNumber === docId);
+      if (!found) return emptyAnswer('Chi tiết bảo lãnh', 'Không tìm thấy bảo lãnh phù hợp.');
+      return {
+        title: 'Chi tiết bảo lãnh',
+        summary: `${found.bgNumber} — giá trị ${fmt(found.amount, found.currency)}, trạng thái ${found.status}, hết hạn ${found.expiryDate}.`,
+        metrics: [{ label: 'Giá trị', value: fmt(found.amount, found.currency) }],
+        records: [found],
+      };
+    }
     return {
       title: 'Bảo lãnh ngân hàng',
       summary: `Doanh nghiệp hiện có ${items.length} bảo lãnh ngân hàng.`,
@@ -595,6 +606,152 @@ const HANDLERS: Record<string, Handler> = {
       summary: `Doanh nghiệp hiện có ${items.length} bộ chứng từ nhờ thu.`,
       metrics: [{ label: 'Số bộ chứng từ', value: String(items.length) }],
       records: items,
+    };
+  },
+
+  // ---- TRADE FINANCE (Phase 6) --------------------------------------------------------
+  LC_DOCUMENT_STATUS: (ctx) => {
+    const items = letterOfCreditsRepository.readAll();
+    const found =
+      items.find((l) => l.lcNumber === ctx.query.entities.documentId) ??
+      items.find((l) => l.status === 'ACTIVE' && l.documents.some((d) => d.status !== 'ACCEPTED')) ??
+      items[0];
+    if (!found) return emptyAnswer('Checklist chứng từ LC', 'Không tìm thấy thư tín dụng phù hợp.');
+    const missing = found.documents.filter((d) => d.status === 'MISSING');
+    const pending = found.documents.filter((d) => d.status === 'PENDING' || d.status === 'DISCREPANT');
+    const receivedCount = found.documents.filter((d) => d.received).length;
+    const metrics: MetricItem[] = [{ label: 'Đã nhận', value: `${receivedCount}/${found.documents.length}` }];
+    if (missing.length) metrics.push({ label: 'Thiếu', value: missing.map((d) => d.documentType).join(', ') });
+    if (pending.length) metrics.push({ label: 'Đang chờ / sai biệt', value: pending.map((d) => d.documentType).join(', ') });
+    return {
+      title: 'Checklist chứng từ LC',
+      summary:
+        missing.length === 0 && pending.length === 0
+          ? `${found.lcNumber} đã đủ chứng từ (${found.documents.length}/${found.documents.length}).`
+          : `Hồ sơ ${found.lcNumber} chưa đầy đủ — thiếu ${missing.length}, đang chờ/sai biệt ${pending.length}.`,
+      metrics,
+      records: found.documents,
+    };
+  },
+  LC_DISCREPANCY: (ctx) => {
+    const items = letterOfCreditsRepository.readAll();
+    const found =
+      items.find((l) => l.lcNumber === ctx.query.entities.documentId) ??
+      items.find((l) => l.discrepancies.length > 0) ??
+      items[0];
+    if (!found) return emptyAnswer('Sai biệt LC', 'Không tìm thấy thư tín dụng phù hợp.');
+    const open = found.discrepancies.filter((d) => d.status === 'OPEN');
+    return {
+      title: 'Sai biệt LC',
+      summary:
+        found.discrepancies.length === 0
+          ? `${found.lcNumber} hiện không có sai biệt nào.`
+          : `${found.lcNumber} có ${found.discrepancies.length} sai biệt, ${open.length} đang mở.`,
+      metrics: [{ label: 'Số sai biệt', value: String(found.discrepancies.length) }],
+      records: found.discrepancies,
+    };
+  },
+  LC_AMENDMENT: (ctx) => {
+    const items = letterOfCreditsRepository.readAll();
+    const docId = ctx.query.entities.documentId;
+    if (docId) {
+      const found = items.find((l) => l.lcNumber === docId);
+      if (!found) return emptyAnswer('Tu chỉnh LC', 'Không tìm thấy thư tín dụng phù hợp.');
+      return {
+        title: 'Tu chỉnh LC',
+        summary: found.amendments.length === 0 ? `${found.lcNumber} hiện không có amendment nào.` : `${found.lcNumber} có ${found.amendments.length} amendment.`,
+        metrics: [{ label: 'Số amendment', value: String(found.amendments.length) }],
+        records: found.amendments,
+      };
+    }
+    const pending = items.flatMap((l) => l.amendments.filter((a) => a.status === 'PENDING').map((a) => ({ ...a, lcNumber: l.lcNumber })));
+    return {
+      title: 'Tu chỉnh LC đang chờ',
+      summary: pending.length === 0 ? 'Hiện không có amendment nào đang chờ xử lý.' : `${pending.length} amendment đang chờ xử lý.`,
+      metrics: [{ label: 'Đang chờ', value: String(pending.length) }],
+      records: pending,
+    };
+  },
+  // Human-in-the-loop (spec §38/§39): prepares a checklist and relies on navigationAction
+  // (OPEN_LC) to hand off — never creates, amends, or issues anything itself.
+  LC_REQUEST: () => ({
+    title: 'Yêu cầu mở / sửa đổi / gia hạn LC',
+    summary:
+      'Thông thường cần chuẩn bị: đề nghị phát hành/sửa đổi LC, hợp đồng ngoại thương, thông tin beneficiary, điều khoản LC, chứng từ liên quan, hồ sơ theo yêu cầu ngân hàng.',
+    metrics: [],
+    records: [],
+  }),
+  GUARANTEE_CLAIM: (ctx) => {
+    const items = bankGuaranteesRepository.readAll();
+    const docId = ctx.query.entities.documentId;
+    if (docId) {
+      const found = items.find((g) => g.bgNumber === docId);
+      if (!found) return emptyAnswer('Yêu cầu gọi bảo lãnh', 'Không tìm thấy bảo lãnh phù hợp.');
+      return {
+        title: 'Yêu cầu gọi bảo lãnh',
+        summary: found.claims.length === 0 ? `${found.bgNumber} hiện không có yêu cầu gọi bảo lãnh nào.` : `${found.bgNumber} có ${found.claims.length} yêu cầu gọi bảo lãnh.`,
+        metrics: [{ label: 'Số claim', value: String(found.claims.length) }],
+        records: found.claims,
+      };
+    }
+    const withClaims = items.filter((g) => g.claims.length > 0);
+    const allClaims = withClaims.flatMap((g) => g.claims.map((c) => ({ ...c, bgNumber: g.bgNumber })));
+    return {
+      title: 'Yêu cầu gọi bảo lãnh',
+      summary:
+        allClaims.length === 0
+          ? 'Hiện không có yêu cầu gọi bảo lãnh nào.'
+          : `${allClaims.length} yêu cầu gọi bảo lãnh đang xử lý trên ${withClaims.length} bảo lãnh.`,
+      metrics: [{ label: 'Số claim', value: String(allClaims.length) }],
+      records: allClaims,
+    };
+  },
+  GUARANTEE_EXTENSION: () => {
+    const items = bankGuaranteesRepository.readAll().filter((g) => g.status === 'ACTIVE' && g.extensionRequested);
+    return {
+      title: 'Bảo lãnh cần gia hạn',
+      summary: items.length === 0 ? 'Hiện không có bảo lãnh nào cần gia hạn.' : `${items.length} bảo lãnh cần gia hạn.`,
+      metrics: [{ label: 'Số bảo lãnh', value: String(items.length) }],
+      records: items,
+    };
+  },
+  GUARANTEE_REQUEST: () => ({
+    title: 'Yêu cầu phát hành bảo lãnh',
+    summary: 'Thông thường cần chuẩn bị: đề nghị phát hành bảo lãnh, hợp đồng/gói thầu liên quan, tài sản đảm bảo (nếu có), hồ sơ theo yêu cầu ngân hàng.',
+    metrics: [],
+    records: [],
+  }),
+  COLLECTION_OVERDUE: () => {
+    const items = collectionsRepository.readAll().filter((c) => c.status === 'OVERDUE');
+    return {
+      title: 'Nhờ thu quá hạn',
+      summary: items.length === 0 ? 'Hiện không có bộ nhờ thu nào quá hạn.' : `${items.length} bộ nhờ thu đã quá hạn.`,
+      metrics: [{ label: 'Số bộ quá hạn', value: String(items.length) }],
+      records: items,
+    };
+  },
+  COLLECTION_PAYMENT_STATUS: (ctx) => {
+    const items = collectionsRepository.readAll();
+    const docId = ctx.query.entities.documentId;
+    if (docId) {
+      const found = items.find((c) => c.collectionNumber === docId);
+      if (!found) return emptyAnswer('Trạng thái thanh toán nhờ thu', 'Không tìm thấy bộ nhờ thu phù hợp.');
+      return {
+        title: 'Trạng thái thanh toán nhờ thu',
+        summary: `${found.collectionNumber} (${found.subType}) đang ở trạng thái ${found.status}.`,
+        metrics: [{ label: 'Trạng thái', value: found.status }],
+        records: [found],
+      };
+    }
+    const waiting = items.filter((c) => c.status === 'AWAITING_PAYMENT' || c.status === 'AWAITING_ACCEPTANCE');
+    return {
+      title: 'Nhờ thu đang chờ xử lý',
+      summary:
+        waiting.length === 0
+          ? 'Hiện không có bộ nhờ thu nào đang chờ thanh toán/chấp nhận.'
+          : `${waiting.length} bộ nhờ thu đang chờ thanh toán/chấp nhận.`,
+      metrics: [{ label: 'Đang chờ', value: String(waiting.length) }],
+      records: waiting,
     };
   },
 
@@ -663,6 +820,8 @@ const HANDLERS: Record<string, Handler> = {
 
   // ---- BUSINESS_BRIEFING (extension, not one of the 50 core intents) -------------------
   BUSINESS_BRIEFING: (ctx) => generateBriefing(ctx),
+  // ---- TRADE_FINANCE_BRIEFING (Phase 6 extension, same pattern as BUSINESS_BRIEFING) ---
+  TRADE_FINANCE_BRIEFING: (ctx) => generateTradeFinanceBriefing(ctx),
 };
 
 function generateBriefing(ctx: GenerateContext): Omit<SemanticAnswer, 'action'> {
@@ -716,6 +875,52 @@ function generateBriefing(ctx: GenerateContext): Omit<SemanticAnswer, 'action'> 
   return {
     title: 'Business Briefing',
     summary: `Chào anh/chị, ${customer.companyName} 👋 Đây là Business Briefing hôm nay.`,
+    metrics,
+    records: [],
+    insights,
+  };
+}
+
+/** Phase 6's Trade Finance Briefing — same "fixed daily-summary card" shape as
+ * generateBriefing() above, not routed through the Reasoning Engine's tool-plan machinery
+ * (that's for chat questions; a briefing is a standing summary, same distinction the
+ * existing Business Briefing already makes). Risk flags reuse the Calculation Engine's
+ * calculateLcRisk/calculateGuaranteeRisk — never a re-derived number. */
+function generateTradeFinanceBriefing(ctx: GenerateContext): Omit<SemanticAnswer, 'action'> {
+  const customer = customerRepository.read();
+  const anchorToday = ctx.anchorToday;
+  const lcs = letterOfCreditsRepository.readAll();
+  const guarantees = bankGuaranteesRepository.readAll();
+  const collections = collectionsRepository.readAll();
+  const limit = creditLimitsRepository.readAll().find((c) => c.limitType === 'TRADE_FINANCE');
+
+  const activeLcs = lcs.filter((l) => l.status !== 'EXPIRED' && l.status !== 'CANCELLED' && l.status !== 'COMPLETED');
+  const activeGuarantees = guarantees.filter((g) => g.status !== 'EXPIRED' && g.status !== 'CANCELLED');
+  const openCollections = collections.filter((c) => c.status !== 'COMPLETED' && c.status !== 'CANCELLED');
+  const overdueCollections = collections.filter((c) => c.status === 'OVERDUE');
+
+  const lcRisk = activeLcs.map((l) => calculateLcRisk(l, anchorToday)).filter((s) => s.level === 'HIGH');
+  const bgRisk = activeGuarantees.map((g) => calculateGuaranteeRisk(g, anchorToday)).filter((s) => s.level === 'HIGH');
+  const attentionCount = lcRisk.length + bgRisk.length + overdueCollections.length;
+  const utilization = limit && limit.totalLimit > 0 ? Math.round((limit.usedAmount / limit.totalLimit) * 100) : undefined;
+
+  const metrics: MetricItem[] = [
+    { label: '📄 LC hiệu lực', value: String(activeLcs.length) },
+    { label: '🏦 Bảo lãnh hiệu lực', value: String(activeGuarantees.length) },
+    { label: '📬 Nhờ thu đang xử lý', value: String(openCollections.length) },
+    { label: '⚠️ Cần chú ý', value: `${attentionCount} việc` },
+    { label: '💳 Hạn mức Trade Finance', value: utilization === undefined ? 'Chưa thiết lập' : `${utilization}% đã sử dụng` },
+  ];
+
+  const insights = [
+    attentionCount === 0
+      ? 'Không có LC, bảo lãnh hay nhờ thu nào cần chú ý đặc biệt hôm nay.'
+      : `${attentionCount} việc Trade Finance cần chú ý hôm nay — LC rủi ro cao: ${lcRisk.length}, bảo lãnh rủi ro cao: ${bgRisk.length}, nhờ thu quá hạn: ${overdueCollections.length}.`,
+  ];
+
+  return {
+    title: 'Trade Finance Briefing',
+    summary: `Chào anh/chị, ${customer.companyName} 👋 Đây là Trade Finance Briefing hôm nay.`,
     metrics,
     records: [],
     insights,

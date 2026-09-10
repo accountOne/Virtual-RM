@@ -113,4 +113,89 @@ const TEMPLATES: Record<string, Template> = {
           : undefined,
     };
   },
+
+  // ---- Trade Finance (Phase 6) --------------------------------------------------------
+  LC_RISK_PRIORITIZATION: (f) => {
+    const count = f.count as number;
+    const highCount = f.highCount as number;
+    const topLcNumber = f.topLcNumber as string | undefined;
+    const topReasons = f.topReasons as string[];
+    return {
+      title: 'Ưu tiên xử lý LC',
+      summary:
+        count === 0
+          ? 'Hiện không có LC nào đang theo dõi.'
+          : `${count} LC đang theo dõi, ${highCount} ở mức rủi ro cao. LC cần xử lý trước: ${topLcNumber ?? '—'}.`,
+      insights: topReasons && topReasons.length > 0 ? [`${topLcNumber}: ${topReasons.join('; ')}.`] : [],
+    };
+  },
+
+  GUARANTEE_RISK_PRIORITIZATION: (f) => {
+    const count = f.count as number;
+    const highCount = f.highCount as number;
+    const topBgNumber = f.topBgNumber as string | undefined;
+    const topReasons = f.topReasons as string[];
+    return {
+      title: 'Ưu tiên xử lý bảo lãnh',
+      summary:
+        count === 0
+          ? 'Hiện không có bảo lãnh nào đang theo dõi.'
+          : `${count} bảo lãnh đang theo dõi, ${highCount} ở mức rủi ro cao. Bảo lãnh cần xử lý trước: ${topBgNumber ?? '—'}.`,
+      insights: topReasons && topReasons.length > 0 ? [`${topBgNumber}: ${topReasons.join('; ')}.`] : [],
+    };
+  },
+
+  TRADE_FINANCE_EXPOSURE: (f) => {
+    const totalExposure = f.totalExposure as string;
+    const lcExposure = f.lcExposure as string;
+    const guaranteeExposure = f.guaranteeExposure as string;
+    const collectionExposure = f.collectionExposure as string;
+    return {
+      title: 'Exposure Trade Finance',
+      summary: `Tổng exposure Trade Finance: ${totalExposure}.`,
+      insights: [`LC: ${lcExposure}. Bảo lãnh: ${guaranteeExposure}. Nhờ thu: ${collectionExposure}.`],
+    };
+  },
+
+  TRADE_FINANCE_LIMIT_ANALYSIS: (f) => {
+    const totalLimit = f.totalLimit as string;
+    const usedAmount = f.usedAmount as string;
+    const availableAmount = f.availableAmount as string;
+    const utilization = f.utilization as number;
+    return {
+      title: 'Hạn mức Trade Finance',
+      summary: `Hạn mức Trade Finance: ${totalLimit}, đã dùng ${usedAmount} (${utilization}%), còn khả dụng ${availableAmount}.`,
+      insights: [utilization >= 80 ? 'Tỷ lệ sử dụng hạn mức đang ở mức cao — nên theo dõi sát các giao dịch phát sinh mới.' : 'Hạn mức còn dư địa sử dụng.'],
+      recommendation:
+        utilization >= 80
+          ? { title: 'Theo dõi hạn mức Trade Finance', description: 'Cân nhắc rà soát các LC/bảo lãnh sắp phát hành hoặc đề nghị nâng hạn mức.' }
+          : undefined,
+    };
+  },
+
+  TRADE_FINANCE_OVERVIEW: (f) => {
+    const activeLcs = f.activeLcs as number;
+    const activeGuarantees = f.activeGuarantees as number;
+    const openCollections = f.openCollections as number;
+    const totalExposure = f.totalExposure as string;
+    const utilization = f.utilization as number | undefined;
+    return {
+      title: 'Tổng quan Trade Finance',
+      summary: `Đang có ${activeLcs} LC, ${activeGuarantees} bảo lãnh hiệu lực, ${openCollections} bộ nhờ thu đang xử lý. Tổng exposure: ${totalExposure}.`,
+      insights: utilization === undefined ? [] : [`Hạn mức Trade Finance đang sử dụng ${utilization}%.`],
+    };
+  },
+
+  TRADE_FINANCE_ATTENTION: (f) => {
+    const count = f.count as number;
+    const highCount = f.highCount as number;
+    return {
+      title: 'Trade Finance cần chú ý hôm nay',
+      summary:
+        count === 0
+          ? 'Hiện không có LC, bảo lãnh hay nhờ thu nào cần chú ý đặc biệt hôm nay.'
+          : `${count} việc Trade Finance cần chú ý hôm nay, trong đó ${highCount} ở mức ưu tiên cao.`,
+      insights: [],
+    };
+  },
 };

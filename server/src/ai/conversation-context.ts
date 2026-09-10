@@ -55,3 +55,59 @@ export function resolveCurrencyFollowUp(rawMessage: string, userId: string): Fol
 
   return { intent: previous.lastIntent, currency };
 }
+
+// ---- Trade Finance (Phase 6) — bare document-number follow-up (spec §45) --------------------
+
+// Includes the Reasoning Engine's own LC/Guarantee-listing use cases (LC_RISK_PRIORITIZATION,
+// TRADE_FINANCE_ATTENTION, ...) alongside the deterministic list-family intents — a risk-
+// ranked list of LC numbers invites exactly the same "tell me more about that one" follow-up
+// as a plain LC_LIST answer does (found by actually running the demo flow, see
+// docs/phase-6-demo-script.md).
+const LC_FOLLOWUP_INTENTS = new Set([
+  'LC_LIST', 'LC_STATUS', 'LC_EXPIRY', 'LC_DETAIL', 'LC_DOCUMENT_STATUS', 'LC_DISCREPANCY', 'LC_AMENDMENT',
+  'LC_RISK_PRIORITIZATION', 'TRADE_FINANCE_ATTENTION', 'TRADE_FINANCE_OVERVIEW',
+]);
+const GUARANTEE_FOLLOWUP_INTENTS = new Set([
+  'GUARANTEE_LIST', 'GUARANTEE_EXPIRY', 'GUARANTEE_CLAIM', 'GUARANTEE_EXTENSION',
+  'GUARANTEE_RISK_PRIORITIZATION', 'TRADE_FINANCE_ATTENTION', 'TRADE_FINANCE_OVERVIEW',
+]);
+
+const LC_NUMBER_RE = /\bLC-\d{4}-\d{3,}\b/i;
+const BG_NUMBER_RE = /\bBG-\d{4}-\d{3,}\b/i;
+
+export interface DocumentFollowUpResolution {
+  intent: string;
+  documentId: string;
+}
+
+/**
+ * Detects a bare LC/BG number mentioned right after an LC/Guarantee-list-family answer
+ * ("LC-2026-001", "còn BG-2026-013 thì sao?") and resolves it straight to that record's
+ * detail — spec §45's own multi-turn example, extended to Trade Finance. Narrow like the
+ * currency follow-up above: only fires when the previous turn was already about LCs (resp.
+ * guarantees) and the new message is short, so a long, fully-formed new question is left to
+ * the normal semantic engine.
+ */
+export function resolveDocumentFollowUp(rawMessage: string, userId: string): DocumentFollowUpResolution | undefined {
+  const previous = getConversationContext(userId);
+  if (!previous) return undefined;
+
+  const wordCount = rawMessage.trim().split(/\s+/).length;
+  if (wordCount > 6) return undefined;
+
+  const lcMatch = rawMessage.match(LC_NUMBER_RE);
+  if (lcMatch && LC_FOLLOWUP_INTENTS.has(previous.lastIntent)) {
+    return { intent: 'LC_DETAIL', documentId: lcMatch[0].toUpperCase() };
+  }
+
+  // No dedicated GUARANTEE_DETAIL intent exists (see docs/phase-6-trade-finance-architecture.md
+  // §4's scope) — GUARANTEE_LIST itself narrows to one record when a documentId is present
+  // (response-generator.ts), the same "narrow when docId given, else list" shape already used
+  // by LC_DISCREPANCY/LC_AMENDMENT/GUARANTEE_CLAIM.
+  const bgMatch = rawMessage.match(BG_NUMBER_RE);
+  if (bgMatch && GUARANTEE_FOLLOWUP_INTENTS.has(previous.lastIntent)) {
+    return { intent: 'GUARANTEE_LIST', documentId: bgMatch[0].toUpperCase() };
+  }
+
+  return undefined;
+}

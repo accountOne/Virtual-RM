@@ -5,7 +5,7 @@
 // the higher-level, business-meaning formulas, it doesn't re-implement sum/avg/etc.
 
 import * as agg from '../semantic/aggregation-engine';
-import { Loan, Payable, Receivable, Transaction } from '../models';
+import { BankGuarantee, LetterOfCredit, Loan, Payable, Receivable, Transaction } from '../models';
 
 export interface NetCashflowResult {
   incoming: number;
@@ -143,4 +143,111 @@ export function rankByUrgency(
   });
   const urgencyRank: Record<PriorityItem['urgency'], number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
   return ranked.sort((a, b) => urgencyRank[a.urgency] - urgencyRank[b.urgency] || (a.daysUntilDue ?? 999) - (b.daysUntilDue ?? 999) || b.amount - a.amount);
+}
+
+// ---- Trade Finance (Phase 6) ----------------------------------------------------------------
+
+export function daysUntil(dateOnly: string, anchorToday: string): number {
+  const target = new Date(dateOnly.slice(0, 10) + 'T00:00:00Z').getTime();
+  const today = new Date(anchorToday.slice(0, 10) + 'T00:00:00Z').getTime();
+  return Math.round((target - today) / 86_400_000);
+}
+
+export type RiskLevel = 'HIGH' | 'MEDIUM' | 'LOW';
+
+function deriveRiskLevel(score: number): RiskLevel {
+  return score >= 50 ? 'HIGH' : score >= 25 ? 'MEDIUM' : 'LOW';
+}
+
+export interface LcRiskScore {
+  lcNumber: string;
+  score: number;
+  level: RiskLevel;
+  reasons: string[];
+  daysUntilShipment: number;
+  daysUntilExpiry: number;
+  openDiscrepancies: number;
+  documentGaps: number;
+}
+
+/**
+ * Deterministic risk score for one LC (spec §14/§40) — every point traces to a real field
+ * on the record (shipment/expiry proximity, open discrepancies, incomplete documents,
+ * amount), never a model judgment. Not a legal/compliance conclusion (spec §13/§40's own
+ * "Không tự kết luận pháp lý") — purely an operational attention-priority signal.
+ */
+export function calculateLcRisk(lc: LetterOfCredit, anchorToday: string): LcRiskScore {
+  const daysUntilShipment = daysUntil(lc.latestShipmentDate, anchorToday);
+  const daysUntilExpiry = daysUntil(lc.expiryDate, anchorToday);
+  const openDiscrepancies = lc.discrepancies.filter((d) => d.status === 'OPEN').length;
+  const documentGaps = lc.documents.filter((d) => d.status === 'MISSING' || d.status === 'DISCREPANT' || d.status === 'PENDING').length;
+
+  let score = 0;
+  const reasons: string[] = [];
+  if (daysUntilShipment <= 3) {
+    score += 40;
+    reasons.push(daysUntilShipment < 0 ? 'Đã quá hạn giao hàng' : `Shipment deadline còn ${daysUntilShipment} ngày`);
+  }
+  if (daysUntilExpiry <= 7) {
+    score += 25;
+    reasons.push(daysUntilExpiry < 0 ? 'LC đã hết hạn' : `Hết hạn còn ${daysUntilExpiry} ngày`);
+  }
+  if (openDiscrepancies > 0) {
+    score += Math.min(openDiscrepancies, 2) * 20;
+    reasons.push(`${openDiscrepancies} sai biệt đang mở`);
+  }
+  if (documentGaps > 0) {
+    score += Math.min(documentGaps, 2) * 15;
+    reasons.push(`${documentGaps} chứng từ thiếu/chờ xử lý`);
+  }
+  if (lc.amount >= 1_500_000_000) score += 10;
+
+  return { lcNumber: lc.lcNumber, score, level: deriveRiskLevel(score), reasons, daysUntilShipment, daysUntilExpiry, openDiscrepancies, documentGaps };
+}
+
+export interface GuaranteeRiskScore {
+  bgNumber: string;
+  score: number;
+  level: RiskLevel;
+  reasons: string[];
+  daysUntilExpiry: number;
+  activeClaims: number;
+}
+
+export function calculateGuaranteeRisk(bg: BankGuarantee, anchorToday: string): GuaranteeRiskScore {
+  const daysUntilExpiry = daysUntil(bg.expiryDate, anchorToday);
+  const activeClaims = bg.claims.filter((c) => c.status === 'SUBMITTED' || c.status === 'UNDER_REVIEW').length;
+
+  let score = 0;
+  const reasons: string[] = [];
+  if (activeClaims > 0) {
+    score += 40;
+    reasons.push(`${activeClaims} yêu cầu gọi bảo lãnh đang xử lý`);
+  }
+  if (bg.extensionRequested) {
+    score += 30;
+    reasons.push('Cần gia hạn');
+  }
+  if (daysUntilExpiry <= 14) {
+    score += 25;
+    reasons.push(daysUntilExpiry < 0 ? 'Đã hết hạn' : `Hết hạn còn ${daysUntilExpiry} ngày`);
+  }
+  if (bg.amount >= 5_000_000_000) score += 10;
+
+  return { bgNumber: bg.bgNumber, score, level: deriveRiskLevel(score), reasons, daysUntilExpiry, activeClaims };
+}
+
+export interface CurrencyTotal {
+  currency: string;
+  amount: number;
+}
+
+/** Combines the LC/guarantee/collection exposure the Tool Layer already summed per
+ * currency into one report — still per-currency, never converted (spec §31/§46). */
+export function combineExposure(parts: { currency: string; amount: number }[][]): CurrencyTotal[] {
+  const totals = new Map<string, number>();
+  for (const part of parts) {
+    for (const { currency, amount } of part) totals.set(currency, (totals.get(currency) ?? 0) + amount);
+  }
+  return [...totals.entries()].map(([currency, amount]) => ({ currency, amount }));
 }

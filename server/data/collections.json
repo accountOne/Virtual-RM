@@ -1,5 +1,72 @@
 [
-  { "id": "col-001", "collectionNumber": "COL-2026-021", "type": "EXPORT", "counterparty": "Osaka Trading Corp.", "amount": 1100000000, "currency": "VND", "dueDate": "2026-09-18", "status": "PROCESSING" },
-  { "id": "col-002", "collectionNumber": "COL-2026-020", "type": "IMPORT", "counterparty": "Bangkok Raw Materials Co.", "amount": 640000000, "currency": "VND", "dueDate": "2026-08-30", "status": "OVERDUE" },
-  { "id": "col-003", "collectionNumber": "COL-2026-018", "type": "EXPORT", "counterparty": "Seoul Industrial Partners", "amount": 780000000, "currency": "VND", "dueDate": "2026-08-15", "status": "COMPLETED" }
+  {
+    "id": "col-001",
+    "collectionNumber": "COL-2026-021",
+    "type": "EXPORT",
+    "subType": "DP",
+    "direction": "OUTWARD",
+    "counterparty": "Osaka Trading Corp.",
+    "drawer": "ABC Manufacturing JSC",
+    "drawee": "Osaka Trading Corp.",
+    "amount": 1100000000,
+    "currency": "VND",
+    "dueDate": "2026-09-18",
+    "status": "AWAITING_PAYMENT",
+    "documents": [
+      { "documentType": "BILL_OF_LADING", "required": true, "received": true, "status": "ACCEPTED" },
+      { "documentType": "COMMERCIAL_INVOICE", "required": true, "received": true, "status": "ACCEPTED" }
+    ]
+  },
+  {
+    "id": "col-002",
+    "collectionNumber": "COL-2026-020",
+    "type": "IMPORT",
+    "subType": "DA",
+    "direction": "INWARD",
+    "counterparty": "Bangkok Raw Materials Co.",
+    "drawer": "Bangkok Raw Materials Co.",
+    "drawee": "ABC Manufacturing JSC",
+    "amount": 640000000,
+    "currency": "VND",
+    "dueDate": "2026-08-30",
+    "status": "OVERDUE",
+    "documents": [
+      { "documentType": "BILL_OF_LADING", "required": true, "received": true, "status": "ACCEPTED" }
+    ]
+  },
+  {
+    "id": "col-003",
+    "collectionNumber": "COL-2026-018",
+    "type": "EXPORT",
+    "subType": "DP",
+    "direction": "OUTWARD",
+    "counterparty": "Seoul Industrial Partners",
+    "drawer": "ABC Manufacturing JSC",
+    "drawee": "Seoul Industrial Partners",
+    "amount": 780000000,
+    "currency": "VND",
+    "dueDate": "2026-08-15",
+    "status": "COMPLETED",
+    "documents": [
+      { "documentType": "BILL_OF_LADING", "required": true, "received": true, "status": "ACCEPTED" }
+    ]
+  },
+  {
+    "id": "col-004",
+    "collectionNumber": "COL-2026-023",
+    "type": "IMPORT",
+    "subType": "DA",
+    "direction": "INWARD",
+    "counterparty": "Guangzhou Machinery Ltd.",
+    "drawer": "Guangzhou Machinery Ltd.",
+    "drawee": "ABC Manufacturing JSC",
+    "amount": 430000000,
+    "currency": "VND",
+    "dueDate": "2026-10-05",
+    "status": "AWAITING_ACCEPTANCE",
+    "documents": [
+      { "documentType": "BILL_OF_LADING", "required": true, "received": true, "status": "ACCEPTED" },
+      { "documentType": "BILL_OF_EXCHANGE", "required": true, "received": true, "status": "PENDING" }
+    ]
+  }
 ]

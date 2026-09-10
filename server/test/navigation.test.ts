@@ -1,5 +1,5 @@
 import { answerQuery, buildSecurityContext } from '../src/semantic/semantic-engine';
-import { assert, assertEqual, describe, test } from './test-runner';
+import { assert, assertEqual, assertGreaterOrEqual, describe, test } from './test-runner';
 import fs from 'fs';
 import path from 'path';
 
@@ -71,7 +71,9 @@ describe('navigation actions (10 required)', () => {
     }
   });
 
-  test('navigation-actions.json has exactly the 16 actions defined by the spec', () => {
-    assertEqual(navigationActions.length, 16);
+  // Phase 6 added 5 Trade Finance navigation actions (OPEN_LC_DOCUMENTS/_DISCREPANCY/
+  // _AMENDMENT, OPEN_GUARANTEE_CLAIM, OPEN_TRADE_FINANCE) on top of the spec's original 16.
+  test('navigation-actions.json has at least the 16 actions defined by the spec', () => {
+    assertGreaterOrEqual(navigationActions.length, 16);
   });
 });

@@ -82,10 +82,75 @@ describe('reasoning engine — end to end (10 required)', () => {
   });
 
   test('every reasoning answer carries a NAVIGATE action, never a dead end', async () => {
-    const useCases = ['CASHFLOW_ANALYSIS', 'LIQUIDITY_ANALYSIS', 'IDLE_CASH_ANALYSIS', 'PAYMENT_PRIORITIZATION', 'APPROVAL_PRIORITIZATION', 'PRODUCT_RECOMMENDATION_REASONING'] as const;
+    const useCases = [
+      'CASHFLOW_ANALYSIS', 'LIQUIDITY_ANALYSIS', 'IDLE_CASH_ANALYSIS', 'PAYMENT_PRIORITIZATION', 'APPROVAL_PRIORITIZATION',
+      'PRODUCT_RECOMMENDATION_REASONING', 'LC_RISK_PRIORITIZATION', 'GUARANTEE_RISK_PRIORITIZATION', 'TRADE_FINANCE_EXPOSURE',
+      'TRADE_FINANCE_LIMIT_ANALYSIS', 'TRADE_FINANCE_OVERVIEW', 'TRADE_FINANCE_ATTENTION',
+    ] as const;
     for (const useCase of useCases) {
       const r = await runReasoning({ useCase, security: toUserContext(security), anchorToday, navigationActions, config });
       assert(!!r.answer.action, `${useCase} should always offer a navigation CTA`);
     }
+  });
+
+  // ---- Trade Finance (Phase 6) -------------------------------------------------------------
+  test('LC_RISK_PRIORITIZATION scores real LCs and sorts highest risk first', async () => {
+    const r = await runReasoning({ useCase: 'LC_RISK_PRIORITIZATION', security: toUserContext(security), anchorToday, navigationActions, config });
+    assertEqual(r.debug.toolsUsed.includes('get_lc_deadlines'), true);
+    assertEqual(r.debug.calculationsUsed.includes('LC_RISK_SCORE'), true);
+    const records = r.answer.records as { score: number }[];
+    assert(records.length > 0, 'expected at least one scored LC');
+    for (let i = 1; i < records.length; i++) {
+      assert(records[i].score <= records[i - 1].score, 'records must be sorted by descending risk score');
+    }
+  });
+
+  test('GUARANTEE_RISK_PRIORITIZATION scores real guarantees and sorts highest risk first', async () => {
+    const r = await runReasoning({ useCase: 'GUARANTEE_RISK_PRIORITIZATION', security: toUserContext(security), anchorToday, navigationActions, config });
+    assertEqual(r.debug.toolsUsed.includes('get_guarantee_deadlines'), true);
+    assertEqual(r.debug.calculationsUsed.includes('GUARANTEE_RISK_SCORE'), true);
+    const records = r.answer.records as { score: number }[];
+    assert(records.length > 0, 'expected at least one scored guarantee');
+    for (let i = 1; i < records.length; i++) {
+      assert(records[i].score <= records[i - 1].score, 'records must be sorted by descending risk score');
+    }
+  });
+
+  test('TRADE_FINANCE_EXPOSURE reports a real per-currency total, never converts FX', async () => {
+    const r = await runReasoning({ useCase: 'TRADE_FINANCE_EXPOSURE', security: toUserContext(security), anchorToday, navigationActions, config });
+    assertEqual(r.debug.calculationsUsed.includes('COMBINE_EXPOSURE'), true);
+    assert(r.answer.metrics.length > 0, 'expected at least one exposure metric');
+    assert(r.answer.metrics.every((m) => m.label.startsWith('Tổng exposure')), 'every metric must be a currency exposure total');
+  });
+
+  test('TRADE_FINANCE_LIMIT_ANALYSIS reports the real TRADE_FINANCE limit utilization', async () => {
+    const r = await runReasoning({ useCase: 'TRADE_FINANCE_LIMIT_ANALYSIS', security: toUserContext(security), anchorToday, navigationActions, config });
+    assertEqual(r.debug.calculationsUsed.includes('LIMIT_UTILIZATION'), true);
+    assert(r.answer.metrics.some((m) => m.label === 'Tỷ lệ sử dụng'), 'expected a utilization-rate metric');
+  });
+
+  test('TRADE_FINANCE_OVERVIEW calls all five cross-domain tools', async () => {
+    const r = await runReasoning({ useCase: 'TRADE_FINANCE_OVERVIEW', security: toUserContext(security), anchorToday, navigationActions, config });
+    assertEqual(
+      r.debug.toolsUsed.sort().join(','),
+      ['get_letter_of_credits', 'get_bank_guarantees', 'get_collections', 'get_trade_finance_exposure', 'get_trade_finance_limits'].sort().join(','),
+    );
+  });
+
+  test('TRADE_FINANCE_ATTENTION combines LC risk, guarantee risk, and overdue collections into one ranked list', async () => {
+    const r = await runReasoning({ useCase: 'TRADE_FINANCE_ATTENTION', security: toUserContext(security), anchorToday, navigationActions, config });
+    assertEqual(r.debug.calculationsUsed.includes('LC_RISK_SCORE'), true);
+    assertEqual(r.debug.calculationsUsed.includes('GUARANTEE_RISK_SCORE'), true);
+    const records = r.answer.records as { score: number; loại: string }[];
+    for (let i = 1; i < records.length; i++) {
+      assert(records[i].score <= records[i - 1].score, 'attention items must be sorted by descending score');
+    }
+  });
+
+  test('a tight AI_MAX_STEPS also refuses a Trade Finance use case rather than truncate', async () => {
+    const tightConfig = { ...config, maxSteps: 0 };
+    const r = await runReasoning({ useCase: 'TRADE_FINANCE_OVERVIEW', security: toUserContext(security), anchorToday, navigationActions, config: tightConfig });
+    assertEqual(r.debug.toolsUsed.length, 0);
+    assert(r.answer.summary.length > 0, 'expected a graceful refusal message');
   });
 });

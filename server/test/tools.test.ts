@@ -7,6 +7,10 @@ import {
   getCreditLimits,
   getFxDeals,
   getFxRates,
+  getGuaranteeClaims,
+  getGuaranteeDeadlines,
+  getLcDeadlines,
+  getLcDiscrepancies,
   getLetterOfCredits,
   getLoanObligations,
   getLoans,
@@ -18,6 +22,8 @@ import {
   getReceivables,
   getRecommendations,
   getTasks,
+  getTradeFinanceExposure,
+  getTradeFinanceLimits,
   getTransactions,
   toolRegistry,
 } from '../src/tools';
@@ -110,5 +116,49 @@ describe('tool layer (20 required)', () => {
   test('toolRegistry has an entry for every exported tool name', () => {
     assertEqual(Object.keys(toolRegistry).length >= 20, true, 'expected at least 20 registered tools');
     assertEqual(toolRegistry['get_accounts'].name, 'get_accounts');
+  });
+
+  // ---- Trade Finance (Phase 6) ------------------------------------------------------------
+  test('get_lc_deadlines only returns ACTIVE/DOCUMENT_PENDING/DISCREPANCY LCs', () => {
+    const items = getLcDeadlines.execute(ctx, {});
+    assert(items.length > 0, 'expected at least one LC');
+    assert(items.every((l) => l.status === 'ACTIVE' || l.status === 'DOCUMENT_PENDING' || l.status === 'DISCREPANCY'), 'every LC must be in an open status');
+  });
+
+  test('get_guarantee_deadlines includes CLAIMED guarantees, not just ACTIVE', () => {
+    const items = getGuaranteeDeadlines.execute(ctx, {});
+    assert(items.some((g) => g.status === 'CLAIMED'), 'expected at least one CLAIMED guarantee to be included');
+    assert(items.every((g) => g.status === 'ACTIVE' || g.status === 'CLAIMED'), 'every guarantee must be ACTIVE or CLAIMED');
+  });
+
+  test('get_guarantee_claims attaches bgNumber to each claim', () => {
+    const claims = getGuaranteeClaims.execute(ctx, {});
+    assert(claims.length > 0, 'expected at least one claim across all guarantees');
+    assert(claims.every((c) => !!c.bgNumber), 'every claim must carry its parent bgNumber');
+  });
+
+  test('get_lc_discrepancies scopes to one lcNumber when given', () => {
+    const all = getLcDiscrepancies.execute(ctx, {});
+    assert(all.length > 0, 'expected at least one discrepancy across all LCs');
+    const oneLc = all[0].lcNumber;
+    const scoped = getLcDiscrepancies.execute(ctx, { lcNumber: oneLc });
+    assert(scoped.every((d) => d.lcNumber === oneLc), 'scoped discrepancies must all belong to the requested LC');
+  });
+
+  test('get_trade_finance_exposure returns per-currency totals for LC, guarantee, and collection', () => {
+    const exposure = getTradeFinanceExposure.execute(ctx, {});
+    assert(exposure.lc.length > 0 && exposure.guarantee.length > 0 && exposure.collection.length > 0, 'expected exposure in all three categories');
+    assert(exposure.lc.every((e) => e.amount > 0), 'LC exposure amounts must be positive');
+  });
+
+  test('get_trade_finance_limits returns the TRADE_FINANCE credit limit record', () => {
+    const limit = getTradeFinanceLimits.execute(ctx, {});
+    assert(!!limit && limit.limitType === 'TRADE_FINANCE', 'expected the TRADE_FINANCE credit limit record');
+  });
+
+  test('toolRegistry includes the new Trade Finance tools', () => {
+    for (const name of ['get_lc_deadlines', 'get_guarantee_deadlines', 'get_trade_finance_exposure', 'get_trade_finance_limits']) {
+      assertEqual(toolRegistry[name]?.name, name);
+    }
   });
 });

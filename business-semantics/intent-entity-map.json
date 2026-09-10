@@ -4,10 +4,13 @@
     "status": [
       "ACCOUNT_LIST",
       "TRANSACTION_LIST",
+      "TRANSACTION_FAILED",
       "PAYMENT_STATUS",
       "PAYMENT_PENDING",
+      "PAYMENT_FAILED",
       "APPROVAL_PENDING",
       "TASK_LIST",
+      "TASK_DUE",
       "ALERT_LIST",
       "LC_LIST",
       "GUARANTEE_LIST",
@@ -61,7 +64,13 @@
       "APPROVAL_APPROVE",
       "APPROVAL_REJECT",
       "LC_STATUS",
-      "LC_DETAIL"
+      "LC_DETAIL",
+      "LC_DOCUMENT_STATUS",
+      "LC_DISCREPANCY",
+      "LC_AMENDMENT",
+      "GUARANTEE_CLAIM",
+      "GUARANTEE_EXTENSION",
+      "COLLECTION_PAYMENT_STATUS"
     ],
     "amount": [
       "TRANSACTION_BY_AMOUNT",
@@ -72,10 +81,16 @@
     ],
     "beneficiary": [
       "TRANSACTION_BY_BENEFICIARY",
-      "PAYMENT_CREATE"
+      "PAYMENT_CREATE",
+      "APPROVAL_DETAIL",
+      "APPROVAL_APPROVE",
+      "APPROVAL_REJECT"
     ],
     "supplier": [
-      "TRANSACTION_BY_BENEFICIARY"
+      "TRANSACTION_BY_BENEFICIARY",
+      "APPROVAL_DETAIL",
+      "APPROVAL_APPROVE",
+      "APPROVAL_REJECT"
     ],
     "paymentType": [
       "APPROVAL_PENDING"

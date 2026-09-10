@@ -95,7 +95,11 @@ function main(): void {
   loadJson<unknown>('intent-entity-map.json');
 
   // ---- Required counts -------------------------------------------------------
-  if (intents.length !== 50) fail(`intents.json must have exactly 50 intents, found ${intents.length}`);
+  // Same floor-not-cap reasoning as synonymCount below: Phase 6 (Trade Finance) added
+  // genuinely new intents (LC document/discrepancy/amendment, guarantee claim/extension,
+  // collection overdue/payment-status, plus two human-in-the-loop request intents) rather
+  // than force new capability into the original 50 — see docs/phase-6-semantic-model.md.
+  if (intents.length < 50) fail(`intents.json must have at least 50 intents, found ${intents.length}`);
   if (entities.length !== 30) fail(`entities.json must have exactly 30 entities, found ${entities.length}`);
 
   // The spec's "~300 terms" was a floor, not a cap: intent-disambiguation fixes (see
@@ -179,7 +183,7 @@ function main(): void {
   console.log('Business Banking Semantic Pack validation');
   console.log('  domains:', domains.length);
   console.log('  entities:', entities.length, entities.length === 30 ? '✓' : '✗ (expected 30)');
-  console.log('  intents:', intents.length, intents.length === 50 ? '✓' : '✗ (expected 50)');
+  console.log('  intents:', intents.length, intents.length >= 50 ? '✓' : '✗ (expected >= 50)');
   console.log('  synonym terms:', synonymCount, synonymCount >= 300 ? '✓' : '✗ (expected >= 300)');
   console.log('  synonym concepts:', Object.keys(synonyms).length);
   console.log('  sample questions:', sampleQueries.length, sampleQueries.length === 100 ? '✓' : '✗ (expected 100)');

@@ -1,5 +1,5 @@
 import { describe, test, assertEqual } from './test-runner';
-import { _resetConversationContextForTests, resolveCurrencyFollowUp, setConversationContext } from '../src/ai/conversation-context';
+import { _resetConversationContextForTests, resolveCurrencyFollowUp, resolveDocumentFollowUp, setConversationContext } from '../src/ai/conversation-context';
 
 describe('multi-turn conversation context (10 required)', () => {
   test('a currency follow-up after ACCOUNT_HIGHEST_BALANCE replays that intent', () => {
@@ -73,5 +73,74 @@ describe('multi-turn conversation context (10 required)', () => {
     const r = resolveCurrencyFollowUp('USD?', 'bob');
     assertEqual(r, undefined);
     _resetConversationContextForTests();
+  });
+
+  // ---- Trade Finance (Phase 6) — bare document-number follow-up (spec §45) ----------------
+  test('a bare LC number after LC_LIST resolves to LC_DETAIL', () => {
+    _resetConversationContextForTests();
+    setConversationContext('u1', { lastIntent: 'LC_LIST' });
+    const r = resolveDocumentFollowUp('LC-2026-001', 'u1');
+    assertEqual(r?.intent, 'LC_DETAIL');
+    assertEqual(r?.documentId, 'LC-2026-001');
+  });
+
+  test('a bare BG number after GUARANTEE_LIST resolves to GUARANTEE_LIST with a documentId', () => {
+    _resetConversationContextForTests();
+    setConversationContext('u1', { lastIntent: 'GUARANTEE_LIST' });
+    const r = resolveDocumentFollowUp('còn BG-2026-013 thì sao', 'u1');
+    assertEqual(r?.intent, 'GUARANTEE_LIST');
+    assertEqual(r?.documentId, 'BG-2026-013');
+  });
+
+  test('an LC number follow-up also fires after the narrower LC intents (LC_DISCREPANCY etc.)', () => {
+    _resetConversationContextForTests();
+    setConversationContext('u1', { lastIntent: 'LC_DISCREPANCY' });
+    const r = resolveDocumentFollowUp('LC-2026-002', 'u1');
+    assertEqual(r?.intent, 'LC_DETAIL');
+  });
+
+  test('an LC number follow-up also fires right after LC_RISK_PRIORITIZATION (a ranked LC list)', () => {
+    _resetConversationContextForTests();
+    setConversationContext('u1', { lastIntent: 'LC_RISK_PRIORITIZATION' });
+    const r = resolveDocumentFollowUp('LC-2026-001', 'u1');
+    assertEqual(r?.intent, 'LC_DETAIL');
+    assertEqual(r?.documentId, 'LC-2026-001');
+  });
+
+  test('a BG number follow-up also fires right after GUARANTEE_RISK_PRIORITIZATION (a ranked guarantee list)', () => {
+    _resetConversationContextForTests();
+    setConversationContext('u1', { lastIntent: 'GUARANTEE_RISK_PRIORITIZATION' });
+    const r = resolveDocumentFollowUp('BG-2026-013', 'u1');
+    assertEqual(r?.intent, 'GUARANTEE_LIST');
+    assertEqual(r?.documentId, 'BG-2026-013');
+  });
+
+  test('does not fire a document follow-up after an unrelated previous intent', () => {
+    _resetConversationContextForTests();
+    setConversationContext('u1', { lastIntent: 'ACCOUNT_BALANCE' });
+    const r = resolveDocumentFollowUp('LC-2026-001', 'u1');
+    assertEqual(r, undefined);
+  });
+
+  test('does not fire a document follow-up on a long, fully-formed new question', () => {
+    _resetConversationContextForTests();
+    setConversationContext('u1', { lastIntent: 'LC_LIST' });
+    const r = resolveDocumentFollowUp('Cho tôi biết thêm chi tiết về LC-2026-001 và cả tình hình tài khoản của công ty', 'u1');
+    assertEqual(r, undefined);
+  });
+
+  test('does not fire a document follow-up when the message has no document number', () => {
+    _resetConversationContextForTests();
+    setConversationContext('u1', { lastIntent: 'LC_LIST' });
+    const r = resolveDocumentFollowUp('còn cái nào khác không', 'u1');
+    assertEqual(r, undefined);
+  });
+
+  test('an LC number does not fire a follow-up after a guarantee-family intent, and vice versa', () => {
+    _resetConversationContextForTests();
+    setConversationContext('u1', { lastIntent: 'GUARANTEE_LIST' });
+    assertEqual(resolveDocumentFollowUp('LC-2026-001', 'u1'), undefined);
+    setConversationContext('u1', { lastIntent: 'LC_LIST' });
+    assertEqual(resolveDocumentFollowUp('BG-2026-013', 'u1'), undefined);
   });
 });

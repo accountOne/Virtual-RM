@@ -7,7 +7,13 @@ export type ReasoningUseCase =
   | 'IDLE_CASH_ANALYSIS'
   | 'PAYMENT_PRIORITIZATION'
   | 'APPROVAL_PRIORITIZATION'
-  | 'PRODUCT_RECOMMENDATION_REASONING';
+  | 'PRODUCT_RECOMMENDATION_REASONING'
+  | 'LC_RISK_PRIORITIZATION'
+  | 'GUARANTEE_RISK_PRIORITIZATION'
+  | 'TRADE_FINANCE_EXPOSURE'
+  | 'TRADE_FINANCE_LIMIT_ANALYSIS'
+  | 'TRADE_FINANCE_OVERVIEW'
+  | 'TRADE_FINANCE_ATTENTION';
 
 export interface RoutingDecision {
   reasoningRequired: boolean;
@@ -70,6 +76,39 @@ export function routeQuery(rawMessage: string, resolvedIntent: string | undefine
   // specific enough ("nhàn rỗi"/"rảnh rỗi" as a 2-word phrase) not to need that gate.
   if (hasAny(normalized, ['nhàn rỗi', 'rảnh rỗi', 'chưa dùng đến'])) {
     return { reasoningRequired: true, useCase: 'IDLE_CASH_ANALYSIS' };
+  }
+
+  // ---- Rule 1b: Trade Finance (Phase 6) — also no dedicated intent, pure keyword trigger --
+  // Distinct from the existing single-lookup intents (LC_EXPIRY, GUARANTEE_EXPIRY, ...): these
+  // are the cross-domain/analytical questions docs/phase-6-trade-finance-architecture.md §4
+  // calls out — risk *prioritization* (deadline + documents + discrepancy + amount combined),
+  // not just "which LC expires soonest". Phrases require "lc"/"bảo lãnh" plus a risk word, or
+  // an explicit "trade finance" mention, so none of these shadow the plain lookup intents.
+  if (hasAny(normalized, ['lc nào rủi ro', 'rủi ro lc', 'lc nào cần chú ý', 'lc nào đáng lo ngại', 'ưu tiên xử lý lc'])) {
+    return { reasoningRequired: true, useCase: 'LC_RISK_PRIORITIZATION' };
+  }
+  if (
+    hasAny(normalized, [
+      'bảo lãnh nào rủi ro', 'rủi ro bảo lãnh', 'bảo lãnh nào cần chú ý', 'bảo lãnh nào đáng lo ngại', 'ưu tiên xử lý bảo lãnh',
+    ])
+  ) {
+    return { reasoningRequired: true, useCase: 'GUARANTEE_RISK_PRIORITIZATION' };
+  }
+  if (
+    hasAny(normalized, [
+      'tổng exposure trade finance', 'exposure trade finance', 'tổng dư nợ trade finance', 'exposure lc và bảo lãnh', 'tổng exposure lc bảo lãnh',
+    ])
+  ) {
+    return { reasoningRequired: true, useCase: 'TRADE_FINANCE_EXPOSURE' };
+  }
+  if (hasAny(normalized, ['hạn mức trade finance', 'hạn mức lc và bảo lãnh', 'còn bao nhiêu hạn mức trade finance'])) {
+    return { reasoningRequired: true, useCase: 'TRADE_FINANCE_LIMIT_ANALYSIS' };
+  }
+  if (hasAny(normalized, ['tổng quan trade finance', 'tình hình trade finance'])) {
+    return { reasoningRequired: true, useCase: 'TRADE_FINANCE_OVERVIEW' };
+  }
+  if (hasAny(normalized, ['trade finance cần chú ý', 'trade finance hôm nay có gì', 'việc trade finance cần làm', 'trade finance cần xử lý gì'])) {
+    return { reasoningRequired: true, useCase: 'TRADE_FINANCE_ATTENTION' };
   }
 
   // ---- Rule 2: existing intent, refine simple vs. reasoning by keyword -------------------

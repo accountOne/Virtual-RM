@@ -99,4 +99,44 @@ describe('model router (20 required)', () => {
     const r = routeQuery('Công ty có đủ tiền trả các khoản sắp tới không?', undefined, disabledConfig);
     assertEqual(r.reasoningRequired, false);
   });
+
+  // ---- Trade Finance (Phase 6) -------------------------------------------------------------
+  test('"LC nào rủi ro cao nhất" routes to LC_RISK_PRIORITIZATION', () => {
+    const r = routeQuery('LC nào rủi ro cao nhất?', undefined, enabledConfig);
+    assertEqual(r.reasoningRequired, true);
+    assertEqual(r.useCase, 'LC_RISK_PRIORITIZATION');
+  });
+  test('"bảo lãnh nào cần chú ý" routes to GUARANTEE_RISK_PRIORITIZATION', () => {
+    const r = routeQuery('Bảo lãnh nào cần chú ý?', undefined, enabledConfig);
+    assertEqual(r.reasoningRequired, true);
+    assertEqual(r.useCase, 'GUARANTEE_RISK_PRIORITIZATION');
+  });
+  test('"tổng exposure trade finance" routes to TRADE_FINANCE_EXPOSURE', () => {
+    const r = routeQuery('Tổng exposure Trade Finance là bao nhiêu?', undefined, enabledConfig);
+    assertEqual(r.reasoningRequired, true);
+    assertEqual(r.useCase, 'TRADE_FINANCE_EXPOSURE');
+  });
+  test('"hạn mức trade finance" routes to TRADE_FINANCE_LIMIT_ANALYSIS', () => {
+    const r = routeQuery('Hạn mức Trade Finance còn bao nhiêu?', undefined, enabledConfig);
+    assertEqual(r.reasoningRequired, true);
+    assertEqual(r.useCase, 'TRADE_FINANCE_LIMIT_ANALYSIS');
+  });
+  test('"tổng quan trade finance" routes to TRADE_FINANCE_OVERVIEW', () => {
+    const r = routeQuery('Tổng quan Trade Finance thế nào?', undefined, enabledConfig);
+    assertEqual(r.reasoningRequired, true);
+    assertEqual(r.useCase, 'TRADE_FINANCE_OVERVIEW');
+  });
+  test('"trade finance cần chú ý hôm nay" routes to TRADE_FINANCE_ATTENTION', () => {
+    const r = routeQuery('Trade Finance cần chú ý gì hôm nay?', undefined, enabledConfig);
+    assertEqual(r.reasoningRequired, true);
+    assertEqual(r.useCase, 'TRADE_FINANCE_ATTENTION');
+  });
+  test('generic "hạn mức tín dụng" question does not get hijacked by the Trade Finance limit trigger', () => {
+    const r = routeQuery('Room tín dụng còn bao nhiêu?', 'CREDIT_LIMIT', enabledConfig);
+    assertEqual(r.reasoningRequired, false);
+  });
+  test('AI_REASONING_ENABLED=false also disables the Trade Finance triggers', () => {
+    const r = routeQuery('LC nào rủi ro cao nhất?', undefined, disabledConfig);
+    assertEqual(r.reasoningRequired, false);
+  });
 });

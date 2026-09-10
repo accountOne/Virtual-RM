@@ -8,7 +8,12 @@ import { DateRange, MetricItem, NavigationActionDef, SemanticAnswer } from '../s
 import { formatShortVnd } from '../utils/currency.util';
 import {
   getAccountBalance,
+  getBankGuarantees,
   getCashPosition,
+  getCollections,
+  getGuaranteeDeadlines,
+  getLcDeadlines,
+  getLetterOfCredits,
   getPayables,
   getPaymentOrders,
   getPendingApprovals,
@@ -16,9 +21,21 @@ import {
   getReceivables,
   getRecommendations,
   getLoanObligations,
+  getTradeFinanceExposure,
+  getTradeFinanceLimits,
   getTransactions,
 } from '../tools';
-import { calculateCashBuffer, calculateLiquidityGap, calculateNetCashflow, PriorityItem, rankByUrgency } from '../calculation/financial-calculations';
+import {
+  calculateCashBuffer,
+  calculateGuaranteeRisk,
+  calculateLcRisk,
+  calculateLiquidityGap,
+  calculateNetCashflow,
+  combineExposure,
+  CurrencyTotal,
+  PriorityItem,
+  rankByUrgency,
+} from '../calculation/financial-calculations';
 import { AIConfig, ReasoningRequest, UserContext } from './types';
 import { getAiProvider } from './ai-client';
 import { ReasoningUseCase } from './model-router';
@@ -79,6 +96,17 @@ function priorityRecords(items: PriorityItem[]): unknown[] {
 
 const URGENCY_ICON: Record<PriorityItem['urgency'], string> = { HIGH: '⚠️', MEDIUM: '🟠', LOW: '🔵' };
 
+/** Same VND-shorthand-else-raw-code convention as response-generator.ts's local `fmt()` —
+ * exposure/limit amounts here span multiple currencies (LC amounts are often USD), so a
+ * VND-only formatter isn't enough. */
+function formatCcy(amount: number, currency: string): string {
+  return currency === 'VND' ? formatShortVnd(amount) : `${amount.toLocaleString('vi-VN')} ${currency}`;
+}
+
+function formatCcyList(totals: CurrencyTotal[]): string {
+  return totals.length === 0 ? 'không có' : totals.map((t) => formatCcy(t.amount, t.currency)).join(', ');
+}
+
 function formatPriorityInsights(items: PriorityItem[]): string[] {
   return items.slice(0, 5).map((item, i) => {
     const due = item.daysUntilDue === undefined ? '' : item.daysUntilDue <= 0 ? 'Đến hạn: hôm nay' : `Đến hạn: ${item.daysUntilDue} ngày nữa`;
@@ -97,6 +125,12 @@ const PLANS: Record<ReasoningUseCase, string[]> = {
   PAYMENT_PRIORITIZATION: [getPayables.name],
   APPROVAL_PRIORITIZATION: [getPendingApprovals.name],
   PRODUCT_RECOMMENDATION_REASONING: [getCashPosition.name, getReceivables.name, getPayables.name, getRecommendations.name, getProducts.name],
+  LC_RISK_PRIORITIZATION: [getLcDeadlines.name],
+  GUARANTEE_RISK_PRIORITIZATION: [getGuaranteeDeadlines.name],
+  TRADE_FINANCE_EXPOSURE: [getTradeFinanceExposure.name],
+  TRADE_FINANCE_LIMIT_ANALYSIS: [getTradeFinanceLimits.name],
+  TRADE_FINANCE_OVERVIEW: [getLetterOfCredits.name, getBankGuarantees.name, getCollections.name, getTradeFinanceExposure.name, getTradeFinanceLimits.name],
+  TRADE_FINANCE_ATTENTION: [getLcDeadlines.name, getGuaranteeDeadlines.name, getCollections.name],
 };
 
 export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
@@ -344,6 +378,233 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
           insights: reasoning.insights,
           recommendation: reasoning.recommendation,
           action: buildAction('OPEN_PRODUCT', navigationActions),
+        },
+        debug: { useCase, plan, toolsUsed, calculationsUsed },
+      };
+    }
+
+    // ---- Trade Finance (Phase 6) ---------------------------------------------------------
+
+    case 'LC_RISK_PRIORITIZATION': {
+      const lcs = getLcDeadlines.execute(security, {});
+      toolsUsed.push(getLcDeadlines.name);
+      const scored = lcs.map((lc) => calculateLcRisk(lc, anchorToday)).sort((a, b) => b.score - a.score);
+      calculationsUsed.push('LC_RISK_SCORE');
+      const highCount = scored.filter((s) => s.level === 'HIGH').length;
+      const top = scored[0];
+
+      const reasoning = await provider.reason(
+        buildRequest('LC_RISK_PRIORITIZATION', 'Xếp hạng LC theo mức độ rủi ro cần xử lý', {
+          count: scored.length,
+          highCount,
+          topLcNumber: top?.lcNumber,
+          topReasons: top?.reasons ?? [],
+        }),
+      );
+
+      return {
+        answer: {
+          title: reasoning.title,
+          summary: reasoning.summary,
+          metrics: [
+            { label: 'Số LC đang theo dõi', value: String(scored.length) },
+            { label: 'Mức rủi ro cao', value: String(highCount) },
+          ],
+          records: scored,
+          insights: reasoning.insights,
+          action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+        },
+        debug: { useCase, plan, toolsUsed, calculationsUsed },
+      };
+    }
+
+    case 'GUARANTEE_RISK_PRIORITIZATION': {
+      const guarantees = getGuaranteeDeadlines.execute(security, {});
+      toolsUsed.push(getGuaranteeDeadlines.name);
+      const scored = guarantees.map((g) => calculateGuaranteeRisk(g, anchorToday)).sort((a, b) => b.score - a.score);
+      calculationsUsed.push('GUARANTEE_RISK_SCORE');
+      const highCount = scored.filter((s) => s.level === 'HIGH').length;
+      const top = scored[0];
+
+      const reasoning = await provider.reason(
+        buildRequest('GUARANTEE_RISK_PRIORITIZATION', 'Xếp hạng bảo lãnh theo mức độ rủi ro cần xử lý', {
+          count: scored.length,
+          highCount,
+          topBgNumber: top?.bgNumber,
+          topReasons: top?.reasons ?? [],
+        }),
+      );
+
+      return {
+        answer: {
+          title: reasoning.title,
+          summary: reasoning.summary,
+          metrics: [
+            { label: 'Số bảo lãnh đang theo dõi', value: String(scored.length) },
+            { label: 'Mức rủi ro cao', value: String(highCount) },
+          ],
+          records: scored,
+          insights: reasoning.insights,
+          action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+        },
+        debug: { useCase, plan, toolsUsed, calculationsUsed },
+      };
+    }
+
+    case 'TRADE_FINANCE_EXPOSURE': {
+      const exposure = getTradeFinanceExposure.execute(security, {});
+      toolsUsed.push(getTradeFinanceExposure.name);
+      const total = combineExposure([exposure.lc, exposure.guarantee, exposure.collection]);
+      calculationsUsed.push('COMBINE_EXPOSURE');
+
+      const reasoning = await provider.reason(
+        buildRequest('TRADE_FINANCE_EXPOSURE', 'Tổng hợp exposure Trade Finance theo loại và theo tiền tệ', {
+          lcExposure: formatCcyList(exposure.lc),
+          guaranteeExposure: formatCcyList(exposure.guarantee),
+          collectionExposure: formatCcyList(exposure.collection),
+          totalExposure: formatCcyList(total),
+        }),
+      );
+
+      const metrics: MetricItem[] = total.map((t) => ({ label: `Tổng exposure (${t.currency})`, value: formatCcy(t.amount, t.currency) }));
+      return {
+        answer: {
+          title: reasoning.title,
+          summary: reasoning.summary,
+          metrics,
+          records: [
+            ...exposure.lc.map((e) => ({ ...e, loại: 'LC' })),
+            ...exposure.guarantee.map((e) => ({ ...e, loại: 'Bảo lãnh' })),
+            ...exposure.collection.map((e) => ({ ...e, loại: 'Nhờ thu' })),
+          ],
+          insights: reasoning.insights,
+          action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+        },
+        debug: { useCase, plan, toolsUsed, calculationsUsed },
+      };
+    }
+
+    case 'TRADE_FINANCE_LIMIT_ANALYSIS': {
+      const limit = getTradeFinanceLimits.execute(security, {});
+      toolsUsed.push(getTradeFinanceLimits.name);
+      if (!limit) {
+        return {
+          answer: { title: 'Hạn mức Trade Finance', summary: 'Hiện chưa thiết lập hạn mức Trade Finance.', metrics: [], records: [] },
+          debug: { useCase, plan, toolsUsed, calculationsUsed },
+        };
+      }
+      const utilization = limit.totalLimit > 0 ? Math.round((limit.usedAmount / limit.totalLimit) * 100) : 0;
+      calculationsUsed.push('LIMIT_UTILIZATION');
+
+      const reasoning = await provider.reason(
+        buildRequest('TRADE_FINANCE_LIMIT_ANALYSIS', 'Đánh giá hạn mức Trade Finance', {
+          totalLimit: formatCcy(limit.totalLimit, limit.currency),
+          usedAmount: formatCcy(limit.usedAmount, limit.currency),
+          availableAmount: formatCcy(limit.availableAmount, limit.currency),
+          utilization,
+        }),
+      );
+
+      return {
+        answer: {
+          title: reasoning.title,
+          summary: reasoning.summary,
+          metrics: [
+            { label: 'Tổng hạn mức', value: formatCcy(limit.totalLimit, limit.currency) },
+            { label: 'Đã sử dụng', value: formatCcy(limit.usedAmount, limit.currency) },
+            { label: 'Còn khả dụng', value: formatCcy(limit.availableAmount, limit.currency) },
+            { label: 'Tỷ lệ sử dụng', value: `${utilization}%` },
+          ],
+          records: [limit],
+          insights: reasoning.insights,
+          recommendation: reasoning.recommendation,
+          action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+        },
+        debug: { useCase, plan, toolsUsed, calculationsUsed },
+      };
+    }
+
+    case 'TRADE_FINANCE_OVERVIEW': {
+      const lcs = getLetterOfCredits.execute(security, {});
+      const guarantees = getBankGuarantees.execute(security, {});
+      const collections = getCollections.execute(security, {});
+      const exposure = getTradeFinanceExposure.execute(security, {});
+      const limit = getTradeFinanceLimits.execute(security, {});
+      toolsUsed.push(getLetterOfCredits.name, getBankGuarantees.name, getCollections.name, getTradeFinanceExposure.name, getTradeFinanceLimits.name);
+
+      const total = combineExposure([exposure.lc, exposure.guarantee, exposure.collection]);
+      calculationsUsed.push('COMBINE_EXPOSURE');
+
+      const activeLcs = lcs.filter((l) => l.status !== 'EXPIRED' && l.status !== 'CANCELLED' && l.status !== 'COMPLETED').length;
+      const activeGuarantees = guarantees.filter((g) => g.status !== 'EXPIRED' && g.status !== 'CANCELLED').length;
+      const openCollections = collections.filter((c) => c.status !== 'COMPLETED' && c.status !== 'CANCELLED').length;
+      const utilization = limit && limit.totalLimit > 0 ? Math.round((limit.usedAmount / limit.totalLimit) * 100) : undefined;
+
+      const reasoning = await provider.reason(
+        buildRequest('TRADE_FINANCE_OVERVIEW', 'Tổng quan hoạt động Trade Finance', {
+          activeLcs,
+          activeGuarantees,
+          openCollections,
+          totalExposure: formatCcyList(total),
+          utilization,
+        }),
+      );
+
+      const metrics: MetricItem[] = [
+        { label: 'LC đang hiệu lực', value: String(activeLcs) },
+        { label: 'Bảo lãnh đang hiệu lực', value: String(activeGuarantees) },
+        { label: 'Nhờ thu đang xử lý', value: String(openCollections) },
+        ...total.map((t) => ({ label: `Tổng exposure (${t.currency})`, value: formatCcy(t.amount, t.currency) })),
+      ];
+      return {
+        answer: {
+          title: reasoning.title,
+          summary: reasoning.summary,
+          metrics,
+          records: [],
+          insights: reasoning.insights,
+          action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+        },
+        debug: { useCase, plan, toolsUsed, calculationsUsed },
+      };
+    }
+
+    case 'TRADE_FINANCE_ATTENTION': {
+      const lcs = getLcDeadlines.execute(security, {});
+      const guarantees = getGuaranteeDeadlines.execute(security, {});
+      const collections = getCollections.execute(security, {});
+      toolsUsed.push(getLcDeadlines.name, getGuaranteeDeadlines.name, getCollections.name);
+
+      const lcRisk = lcs.map((lc) => calculateLcRisk(lc, anchorToday)).filter((s) => s.score > 0);
+      const bgRisk = guarantees.map((g) => calculateGuaranteeRisk(g, anchorToday)).filter((s) => s.score > 0);
+      const overdueCollections = collections.filter((c) => c.status === 'OVERDUE');
+      calculationsUsed.push('LC_RISK_SCORE', 'GUARANTEE_RISK_SCORE');
+
+      const attentionItems = [
+        ...lcRisk.map((s) => ({ loại: 'LC', mã: s.lcNumber, score: s.score, level: s.level, reasons: s.reasons })),
+        ...bgRisk.map((s) => ({ loại: 'Bảo lãnh', mã: s.bgNumber, score: s.score, level: s.level, reasons: s.reasons })),
+        ...overdueCollections.map((c) => ({ loại: 'Nhờ thu', mã: c.collectionNumber, score: 50, level: 'HIGH' as const, reasons: ['Đã quá hạn'] })),
+      ].sort((a, b) => b.score - a.score);
+      const highCount = attentionItems.filter((i) => i.level === 'HIGH').length;
+
+      const reasoning = await provider.reason(
+        buildRequest('TRADE_FINANCE_ATTENTION', 'Trade Finance cần chú ý hôm nay', {
+          count: attentionItems.length,
+          highCount,
+        }),
+      );
+
+      return {
+        answer: {
+          title: reasoning.title,
+          summary: reasoning.summary,
+          metrics: [
+            { label: 'Việc cần chú ý', value: String(attentionItems.length) },
+            { label: 'Mức ưu tiên cao', value: String(highCount) },
+          ],
+          records: attentionItems,
+          insights: reasoning.insights,
+          action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
         },
         debug: { useCase, plan, toolsUsed, calculationsUsed },
       };

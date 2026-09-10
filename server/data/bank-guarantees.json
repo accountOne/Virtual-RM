@@ -1,5 +1,79 @@
 [
-  { "id": "bg-001", "bgNumber": "BG-2026-011", "type": "PERFORMANCE_BOND", "beneficiary": "Ban QLDA Khu công nghiệp Long An", "amount": 900000000, "currency": "VND", "issueDate": "2026-05-01", "expiryDate": "2026-09-25", "status": "ACTIVE" },
-  { "id": "bg-002", "bgNumber": "BG-2026-012", "type": "BID_BOND", "beneficiary": "Tổng công ty Xây dựng Miền Nam", "amount": 300000000, "currency": "VND", "issueDate": "2026-08-01", "expiryDate": "2026-11-01", "status": "ACTIVE" },
-  { "id": "bg-003", "bgNumber": "BG-2025-098", "type": "ADVANCE_PAYMENT", "beneficiary": "Công ty CP Vật liệu Xây dựng An Phát", "amount": 500000000, "currency": "VND", "issueDate": "2025-12-01", "expiryDate": "2026-06-01", "status": "EXPIRED" }
+  {
+    "id": "bg-001",
+    "bgNumber": "BG-2026-011",
+    "type": "PERFORMANCE_BOND",
+    "beneficiary": "Ban QLDA Khu công nghiệp Long An",
+    "applicant": "ABC Manufacturing JSC",
+    "amount": 900000000,
+    "currency": "VND",
+    "issueDate": "2026-05-01",
+    "expiryDate": "2026-09-25",
+    "status": "ACTIVE",
+    "outstandingAmount": 900000000,
+    "extensionRequested": true,
+    "documents": [
+      { "documentType": "GUARANTEE_APPLICATION", "required": true, "received": true, "status": "ACCEPTED" },
+      { "documentType": "UNDERLYING_CONTRACT", "required": true, "received": true, "status": "ACCEPTED" }
+    ],
+    "claims": [],
+    "riskFlags": ["EXPIRY_NEAR"]
+  },
+  {
+    "id": "bg-002",
+    "bgNumber": "BG-2026-012",
+    "type": "BID_BOND",
+    "beneficiary": "Tổng công ty Xây dựng Miền Nam",
+    "applicant": "ABC Manufacturing JSC",
+    "amount": 300000000,
+    "currency": "VND",
+    "issueDate": "2026-08-01",
+    "expiryDate": "2026-11-01",
+    "status": "ACTIVE",
+    "outstandingAmount": 300000000,
+    "extensionRequested": false,
+    "documents": [
+      { "documentType": "GUARANTEE_APPLICATION", "required": true, "received": true, "status": "ACCEPTED" }
+    ],
+    "claims": [],
+    "riskFlags": []
+  },
+  {
+    "id": "bg-003",
+    "bgNumber": "BG-2025-098",
+    "type": "ADVANCE_PAYMENT",
+    "beneficiary": "Công ty CP Vật liệu Xây dựng An Phát",
+    "applicant": "ABC Manufacturing JSC",
+    "amount": 500000000,
+    "currency": "VND",
+    "issueDate": "2025-12-01",
+    "expiryDate": "2026-06-01",
+    "status": "EXPIRED",
+    "outstandingAmount": 0,
+    "extensionRequested": false,
+    "documents": [],
+    "claims": [],
+    "riskFlags": []
+  },
+  {
+    "id": "bg-004",
+    "bgNumber": "BG-2026-013",
+    "type": "PAYMENT_GUARANTEE",
+    "beneficiary": "Công ty CP Thương mại Đông Nam",
+    "applicant": "ABC Manufacturing JSC",
+    "amount": 12000000000,
+    "currency": "VND",
+    "issueDate": "2026-04-10",
+    "expiryDate": "2027-01-10",
+    "status": "CLAIMED",
+    "outstandingAmount": 12000000000,
+    "extensionRequested": false,
+    "documents": [
+      { "documentType": "GUARANTEE_APPLICATION", "required": true, "received": true, "status": "ACCEPTED" }
+    ],
+    "claims": [
+      { "id": "claim-001", "amount": 3000000000, "status": "UNDER_REVIEW", "claimDate": "2026-09-05" }
+    ],
+    "riskFlags": ["ACTIVE_CLAIM"]
+  }
 ]

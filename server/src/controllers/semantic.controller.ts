@@ -5,6 +5,7 @@ import {
   businessBriefing,
   getIntentDef,
   getNavigationActions,
+  tradeFinanceBriefing,
 } from '../semantic/semantic-engine';
 import { buildQuery } from '../semantic/query-builder';
 import { generateAnswer } from '../semantic/response-generator';
@@ -14,7 +15,7 @@ import { loadAiConfig } from '../ai/ai-client';
 import { routeQuery } from '../ai/model-router';
 import { runReasoning } from '../ai/reasoning-engine';
 import { toUserContext } from '../ai/types';
-import { getConversationContext, resolveCurrencyFollowUp, setConversationContext } from '../ai/conversation-context';
+import { getConversationContext, resolveCurrencyFollowUp, resolveDocumentFollowUp, setConversationContext } from '../ai/conversation-context';
 import { stripDiacritics } from '../semantic/normalizer';
 
 /** "Cho tôi business briefing hôm nay." (spec §27 demo scenario #15) is a request for the
@@ -25,6 +26,14 @@ import { stripDiacritics } from '../semantic/normalizer';
 function isBriefingRequest(message: string): boolean {
   const normalized = stripDiacritics(message.toLowerCase());
   return ['business briefing', 'briefing hom nay', 'tong quan hom nay', 'bao cao hom nay'].some((p) => normalized.includes(p));
+}
+
+/** Phase 6 — same idea as isBriefingRequest above, scoped to Trade Finance. Checked *before*
+ * isBriefingRequest in query() below since "trade finance briefing hôm nay" would otherwise
+ * also match isBriefingRequest's broader "briefing hom nay" substring. */
+function isTradeFinanceBriefingRequest(message: string): boolean {
+  const normalized = stripDiacritics(message.toLowerCase());
+  return ['trade finance briefing', 'briefing trade finance', 'bao cao trade finance'].some((p) => normalized.includes(p));
 }
 
 /** SEMANTIC_DEBUG=true surfaces matchedTerms/entities/filters in the response — useful during
@@ -58,10 +67,35 @@ export const semanticController = {
     const debug = debugEnabled();
     const config = loadAiConfig();
 
+    // ---- Typed-in-chat Trade Finance briefing request (Phase 6) — checked before the plain
+    // business-briefing trigger below since it would otherwise also match it. --------------
+    if (isTradeFinanceBriefingRequest(message)) {
+      setConversationContext(security.userId, { lastIntent: 'TRADE_FINANCE_BRIEFING' });
+      return res.json(tradeFinanceBriefing(security));
+    }
+
     // ---- Typed-in-chat business briefing request ------------------------------------------
     if (isBriefingRequest(message)) {
       setConversationContext(security.userId, { lastIntent: 'BUSINESS_BRIEFING' });
       return res.json(businessBriefing(security));
+    }
+
+    // ---- Multi-turn LC/Guarantee document-number follow-up (Phase 6, spec §45) -----------
+    const docFollowUp = resolveDocumentFollowUp(message, security.userId);
+    if (docFollowUp) {
+      const intentDef = getIntentDef(docFollowUp.intent);
+      if (intentDef) {
+        const anchorToday = getAnchorDates().today;
+        const query = buildQuery({ intent: intentDef, confidence: 1, entities: { documentId: docFollowUp.documentId }, security, matchedTerms: [] });
+        const answer = generateAnswer({ query, anchorToday, navigationActions: getNavigationActions() });
+        setConversationContext(security.userId, { lastIntent: docFollowUp.intent });
+        const result: SemanticQueryResult = {
+          success: true,
+          semantic: { intent: docFollowUp.intent, confidence: 1, ...(debug ? { entities: query.entities, filters: query.filters } : {}) },
+          answer,
+        };
+        return res.json(result);
+      }
     }
 
     // ---- Multi-turn currency follow-up (spec §17) ----------------------------------------
@@ -130,6 +164,13 @@ export const semanticController = {
     const { userId, role } = req.query as { userId?: string; role?: 'MAKER' | 'CHECKER' | 'ADMIN' };
     const security = buildSecurityContext(userId, role);
     res.json(businessBriefing(security));
+  },
+
+  /** GET /api/virtual-rm/trade-finance-briefing — Phase 6, same pattern as briefing() above. */
+  tradeFinanceBriefing(req: Request, res: Response) {
+    const { userId, role } = req.query as { userId?: string; role?: 'MAKER' | 'CHECKER' | 'ADMIN' };
+    const security = buildSecurityContext(userId, role);
+    res.json(tradeFinanceBriefing(security));
   },
 };
 

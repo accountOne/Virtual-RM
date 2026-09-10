@@ -1,4 +1,4 @@
-import { answerQuery, buildSecurityContext } from '../src/semantic/semantic-engine';
+import { answerQuery, buildSecurityContext, tradeFinanceBriefing } from '../src/semantic/semantic-engine';
 import { assert, assertEqual, assertGreaterOrEqual, describe, test } from './test-runner';
 
 const sec = buildSecurityContext('msb_ck', 'CHECKER');
@@ -107,10 +107,11 @@ describe('end-to-end query execution — real data, not just intent (20 required
     assertEqual(r.answer.records[0].status, 'ACTIVE');
   });
 
-  test('GUARANTEE_LIST returns all 3 seeded bank guarantees', () => {
+  // Phase 6 added a 4th seeded guarantee (bg-004, with a claim) for claim-reasoning tests.
+  test('GUARANTEE_LIST returns all 4 seeded bank guarantees', () => {
     const r = ask('Công ty có bảo lãnh thực hiện hợp đồng nào không?');
     assertEqual(r.semantic.intent, 'GUARANTEE_LIST');
-    assertEqual(r.answer.records.length, 3);
+    assertEqual(r.answer.records.length, 4);
   });
 
   test('LOAN_LIST returns all 3 seeded loans', () => {
@@ -144,5 +145,45 @@ describe('end-to-end query execution — real data, not just intent (20 required
     const r = ask('asdkjaslkdj xyz random gibberish 12345');
     assertEqual(r.semantic.intent, 'CLARIFICATION_NEEDED');
     assertGreaterOrEqual(r.answer.suggestedQuestions.length, 1);
+  });
+});
+
+describe('Trade Finance deterministic intents (Phase 6)', () => {
+  test('LC_DOCUMENT_STATUS reports a real document checklist', () => {
+    const r = ask('Chứng từ LC còn thiếu gì không?');
+    assertEqual(r.semantic.intent, 'LC_DOCUMENT_STATUS');
+    assert(r.answer.records.length > 0, 'expected a document checklist');
+  });
+
+  test('LC_DISCREPANCY reports real discrepancies', () => {
+    const r = ask('LC này có sai biệt không?');
+    assertEqual(r.semantic.intent, 'LC_DISCREPANCY');
+    assert(Array.isArray(r.answer.records), 'expected a records array');
+  });
+
+  test('GUARANTEE_CLAIM reports the real seeded claim on bg-004', () => {
+    const r = ask('Có yêu cầu gọi bảo lãnh nào không?');
+    assertEqual(r.semantic.intent, 'GUARANTEE_CLAIM');
+    assert(r.answer.records.length >= 1, 'expected at least the one seeded claim');
+  });
+
+  test('COLLECTION_OVERDUE reports the real overdue collection', () => {
+    const r = ask('Nhờ thu nào đã quá hạn?');
+    assertEqual(r.semantic.intent, 'COLLECTION_OVERDUE');
+    assert(r.answer.records.every((c: any) => c.status === 'OVERDUE'), 'every returned collection must be OVERDUE');
+  });
+
+  test('a bare BG number narrows GUARANTEE_LIST to that one guarantee\'s detail', () => {
+    const r = ask('Bảo lãnh BG-2026-013 thế nào?');
+    assertEqual(r.semantic.intent, 'GUARANTEE_LIST');
+    assertEqual(r.answer.records.length, 1);
+    assertEqual(r.answer.records[0].bgNumber, 'BG-2026-013');
+  });
+
+  test('TRADE_FINANCE_BRIEFING is callable directly, same pattern as businessBriefing', () => {
+    const r = tradeFinanceBriefing(sec);
+    assertEqual(r.semantic.intent, 'TRADE_FINANCE_BRIEFING');
+    assert(r.answer.metrics.length > 0, 'expected briefing metrics');
+    assert(!!r.answer.insights?.length, 'expected at least one RM insight');
   });
 });

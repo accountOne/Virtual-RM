@@ -202,6 +202,36 @@ export function businessBriefing(security: SecurityContext): SemanticQueryResult
   return { success: true, semantic: { intent: 'BUSINESS_BRIEFING', confidence: 1 }, answer };
 }
 
+const TRADE_FINANCE_BRIEFING_INTENT: IntentDef = {
+  id: 'TRADE_FINANCE_BRIEFING',
+  domain: 'TRADE_FINANCE',
+  entity: 'RelationshipManager',
+  description: 'Tổng hợp tình hình Trade Finance hôm nay (LC, bảo lãnh, nhờ thu)',
+  priority: 100,
+  synonymConcepts: [],
+  supportedEntities: [],
+  responseTemplate: 'TRADE_FINANCE_BRIEFING',
+  navigationAction: 'OPEN_TRADE_FINANCE',
+};
+
+/** TRADE_FINANCE_BRIEFING (Phase 6) — same extension pattern as BUSINESS_BRIEFING above:
+ * a dedicated endpoint callable without going through intent detection, plus a chat trigger
+ * (see semantic.controller.ts's isTradeFinanceBriefingRequest). */
+export function tradeFinanceBriefing(security: SecurityContext): SemanticQueryResult {
+  const p = getPack();
+  const anchorToday = getAnchorDates().today;
+  setAnchorDate(anchorToday);
+  const query = buildQuery({
+    intent: TRADE_FINANCE_BRIEFING_INTENT,
+    confidence: 1,
+    entities: {},
+    security,
+    matchedTerms: [],
+  });
+  const answer = generateAnswer({ query, anchorToday, navigationActions: p.navigationActions });
+  return { success: true, semantic: { intent: 'TRADE_FINANCE_BRIEFING', confidence: 1 }, answer };
+}
+
 function clarification(confidence: number, question: string): ClarificationResult {
   return {
     success: true,

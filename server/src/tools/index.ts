@@ -39,6 +39,8 @@ import {
   CreditLimit,
   FxDeal,
   FxRate,
+  GuaranteeClaim,
+  LcDiscrepancy,
   LetterOfCredit,
   Loan,
   Payable,
@@ -48,6 +50,8 @@ import {
   Receivable,
   Recommendation,
   Task,
+  TradeAmendment,
+  TradeDocument,
   Transaction,
 } from '../models';
 import { DateRange } from '../semantic/types';
@@ -196,6 +200,170 @@ export const getCollections = tool<Record<string, never>, Collection[]>('get_col
   collectionsRepository.readAll(),
 );
 
+// ---- Trade finance (Phase 6) ----------------------------------------------------------------
+
+/** Sums amount/outstanding per currency — never converts, per spec §31/§46's "không tự quy đổi
+ * FX nếu chưa có FX rate" (a real conversion would need get_fx_rate + an explicit calculation
+ * step; this demo reports exposure the honest way, one line per currency, rather than guess). */
+export interface ExposureByCurrency {
+  currency: string;
+  amount: number;
+}
+
+function sumByCurrency<T>(items: T[], currency: (item: T) => string, amount: (item: T) => number): ExposureByCurrency[] {
+  const totals = new Map<string, number>();
+  for (const item of items) totals.set(currency(item), (totals.get(currency(item)) ?? 0) + amount(item));
+  return [...totals.entries()].map(([currency, amount]) => ({ currency, amount }));
+}
+
+export const getLcDeadlines = tool<Record<string, never>, LetterOfCredit[]>(
+  'get_lc_deadlines',
+  'Active LCs with their expiry/shipment/presentation dates, for deadline reasoning',
+  (_ctx) => letterOfCreditsRepository.readAll().filter((l) => l.status === 'ACTIVE' || l.status === 'DOCUMENT_PENDING' || l.status === 'DISCREPANCY'),
+);
+
+export const getLcDocuments = tool<{ lcNumber?: string }, TradeDocument[]>(
+  'get_lc_documents',
+  'Document checklist for one LC (or the first active one needing attention if none named)',
+  (_ctx, { lcNumber }) => {
+    const items = letterOfCreditsRepository.readAll();
+    const found = lcNumber
+      ? items.find((l) => l.lcNumber === lcNumber)
+      : items.find((l) => l.status === 'ACTIVE' && l.documents.some((d) => d.status !== 'ACCEPTED'));
+    return found?.documents ?? [];
+  },
+);
+
+export const getLcDiscrepancies = tool<{ lcNumber?: string }, (LcDiscrepancy & { lcNumber: string })[]>(
+  'get_lc_discrepancies',
+  'Discrepancies for one LC, or across all LCs if none named',
+  (_ctx, { lcNumber }) => {
+    const items = letterOfCreditsRepository.readAll();
+    const scoped = lcNumber ? items.filter((l) => l.lcNumber === lcNumber) : items;
+    return scoped.flatMap((l) => l.discrepancies.map((d) => ({ ...d, lcNumber: l.lcNumber })));
+  },
+);
+
+export const getLcAmendments = tool<{ lcNumber?: string }, (TradeAmendment & { lcNumber: string })[]>(
+  'get_lc_amendments',
+  'Amendments for one LC, or across all LCs if none named',
+  (_ctx, { lcNumber }) => {
+    const items = letterOfCreditsRepository.readAll();
+    const scoped = lcNumber ? items.filter((l) => l.lcNumber === lcNumber) : items;
+    return scoped.flatMap((l) => l.amendments.map((a) => ({ ...a, lcNumber: l.lcNumber })));
+  },
+);
+
+export const getLcExposure = tool<Record<string, never>, ExposureByCurrency[]>('get_lc_exposure', 'Outstanding LC exposure, summed per currency', (_ctx) =>
+  sumByCurrency(
+    letterOfCreditsRepository.readAll().filter((l) => l.status !== 'EXPIRED' && l.status !== 'CANCELLED' && l.status !== 'COMPLETED'),
+    (l) => l.currency,
+    (l) => l.outstandingAmount,
+  ),
+);
+
+export const getGuaranteeDocuments = tool<{ bgNumber?: string }, TradeDocument[]>(
+  'get_guarantee_documents',
+  'Document checklist for one guarantee',
+  (_ctx, { bgNumber }) => {
+    const items = bankGuaranteesRepository.readAll();
+    const found = bgNumber ? items.find((g) => g.bgNumber === bgNumber) : items.find((g) => g.status === 'ACTIVE');
+    return found?.documents ?? [];
+  },
+);
+
+export const getGuaranteeClaims = tool<{ bgNumber?: string }, (GuaranteeClaim & { bgNumber: string })[]>(
+  'get_guarantee_claims',
+  'Claims for one guarantee, or across all guarantees if none named',
+  (_ctx, { bgNumber }) => {
+    const items = bankGuaranteesRepository.readAll();
+    const scoped = bgNumber ? items.filter((g) => g.bgNumber === bgNumber) : items;
+    return scoped.flatMap((g) => g.claims.map((c) => ({ ...c, bgNumber: g.bgNumber })));
+  },
+);
+
+export const getGuaranteeDeadlines = tool<Record<string, never>, BankGuarantee[]>(
+  'get_guarantee_deadlines',
+  'Active or claimed guarantees, for deadline/extension/claim reasoning',
+  (_ctx) => bankGuaranteesRepository.readAll().filter((g) => g.status === 'ACTIVE' || g.status === 'CLAIMED'),
+);
+
+export const getGuaranteeExposure = tool<Record<string, never>, ExposureByCurrency[]>(
+  'get_guarantee_exposure',
+  'Outstanding guarantee exposure, summed per currency',
+  (_ctx) =>
+    sumByCurrency(
+      bankGuaranteesRepository.readAll().filter((g) => g.status !== 'EXPIRED' && g.status !== 'CANCELLED'),
+      (g) => g.currency,
+      (g) => g.outstandingAmount,
+    ),
+);
+
+export const getCollectionDocuments = tool<{ collectionNumber?: string }, TradeDocument[]>(
+  'get_collection_documents',
+  'Document checklist for one collection',
+  (_ctx, { collectionNumber }) => {
+    const items = collectionsRepository.readAll();
+    const found = collectionNumber ? items.find((c) => c.collectionNumber === collectionNumber) : items[0];
+    return found?.documents ?? [];
+  },
+);
+
+export const getCollectionDeadlines = tool<Record<string, never>, Collection[]>(
+  'get_collection_deadlines',
+  'Collections not yet completed, with their due dates, for overdue/deadline reasoning',
+  (_ctx) => collectionsRepository.readAll().filter((c) => c.status !== 'COMPLETED' && c.status !== 'CANCELLED'),
+);
+
+export const getCollectionExposure = tool<Record<string, never>, ExposureByCurrency[]>(
+  'get_collection_exposure',
+  'Open collection exposure, summed per currency',
+  (_ctx) =>
+    sumByCurrency(
+      collectionsRepository.readAll().filter((c) => c.status !== 'COMPLETED' && c.status !== 'CANCELLED'),
+      (c) => c.currency,
+      (c) => c.amount,
+    ),
+);
+
+export interface TradeFinanceExposure {
+  lc: ExposureByCurrency[];
+  guarantee: ExposureByCurrency[];
+  collection: ExposureByCurrency[];
+}
+
+/** Composed once here (rather than the Reasoning Engine calling the 3 exposure tools above
+ * separately) since "total Trade Finance exposure" is asked as one question often enough
+ * (spec §31/§46) to be worth its own named tool — it still only reads repositories, it
+ * doesn't call another tool's `execute`, keeping tools flat/non-composing. */
+export const getTradeFinanceExposure = tool<Record<string, never>, TradeFinanceExposure>(
+  'get_trade_finance_exposure',
+  'LC + guarantee + collection exposure, each summed per currency',
+  (_ctx) => ({
+    lc: sumByCurrency(
+      letterOfCreditsRepository.readAll().filter((l) => l.status !== 'EXPIRED' && l.status !== 'CANCELLED' && l.status !== 'COMPLETED'),
+      (l) => l.currency,
+      (l) => l.outstandingAmount,
+    ),
+    guarantee: sumByCurrency(
+      bankGuaranteesRepository.readAll().filter((g) => g.status !== 'EXPIRED' && g.status !== 'CANCELLED'),
+      (g) => g.currency,
+      (g) => g.outstandingAmount,
+    ),
+    collection: sumByCurrency(
+      collectionsRepository.readAll().filter((c) => c.status !== 'COMPLETED' && c.status !== 'CANCELLED'),
+      (c) => c.currency,
+      (c) => c.amount,
+    ),
+  }),
+);
+
+export const getTradeFinanceLimits = tool<Record<string, never>, CreditLimit | undefined>(
+  'get_trade_finance_limits',
+  'The TRADE_FINANCE credit limit record (total/used/available)',
+  (_ctx) => creditLimitsRepository.readAll().find((c) => c.limitType === 'TRADE_FINANCE'),
+);
+
 // ---- Lending ------------------------------------------------------------------------------
 
 export const getLoans = tool<Record<string, never>, Loan[]>('get_loans', 'All loans', (_ctx) => loansRepository.readAll());
@@ -235,6 +403,20 @@ export const toolRegistry: Record<string, Tool<any, any>> = {
   [getLetterOfCredits.name]: getLetterOfCredits,
   [getBankGuarantees.name]: getBankGuarantees,
   [getCollections.name]: getCollections,
+  [getLcDeadlines.name]: getLcDeadlines,
+  [getLcDocuments.name]: getLcDocuments,
+  [getLcDiscrepancies.name]: getLcDiscrepancies,
+  [getLcAmendments.name]: getLcAmendments,
+  [getLcExposure.name]: getLcExposure,
+  [getGuaranteeDocuments.name]: getGuaranteeDocuments,
+  [getGuaranteeClaims.name]: getGuaranteeClaims,
+  [getGuaranteeDeadlines.name]: getGuaranteeDeadlines,
+  [getGuaranteeExposure.name]: getGuaranteeExposure,
+  [getCollectionDocuments.name]: getCollectionDocuments,
+  [getCollectionDeadlines.name]: getCollectionDeadlines,
+  [getCollectionExposure.name]: getCollectionExposure,
+  [getTradeFinanceExposure.name]: getTradeFinanceExposure,
+  [getTradeFinanceLimits.name]: getTradeFinanceLimits,
   [getLoans.name]: getLoans,
   [getCreditLimits.name]: getCreditLimits,
   [getProducts.name]: getProducts,

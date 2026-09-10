@@ -536,5 +536,79 @@
     "xu hướng mua bán ngoại tệ",
     "trạng thái ngoại tệ",
     "cân đối mua bán ngoại tệ"
+  ],
+  "lcDocument": [
+    "chứng từ lc",
+    "thiếu chứng từ",
+    "chứng từ đã đủ chưa",
+    "checklist lc",
+    "hồ sơ lc còn thiếu",
+    "chứng từ còn thiếu",
+    "đã đủ chứng từ chưa",
+    "chứng từ lc đã đủ chưa"
+  ],
+  "lcDiscrepancy": [
+    "sai biệt",
+    "discrepancy",
+    "lc có sai biệt",
+    "có sai biệt không",
+    "chứng từ sai biệt",
+    "lc này có sai biệt không",
+    "sai biệt của lc"
+  ],
+  "lcAmendment": [
+    "amendment",
+    "sửa đổi lc",
+    "tu chỉnh lc",
+    "amendment đang chờ",
+    "có amendment nào",
+    "amendment nào đang chờ"
+  ],
+  "lcRequest": [
+    "tôi muốn mở lc",
+    "muốn mở lc",
+    "mở lc nhập khẩu",
+    "mở lc xuất khẩu",
+    "phát hành lc",
+    "tôi muốn sửa lc",
+    "tôi muốn gia hạn lc",
+    "mở thư tín dụng",
+    "tôi muốn mở thư tín dụng"
+  ],
+  "guaranteeClaim": [
+    "gọi bảo lãnh",
+    "yêu cầu gọi bảo lãnh",
+    "claim bảo lãnh",
+    "có yêu cầu gọi bảo lãnh",
+    "có yêu cầu gọi bảo lãnh nào không"
+  ],
+  "guaranteeExtension": [
+    "cần gia hạn",
+    "bảo lãnh cần gia hạn",
+    "gia hạn bảo lãnh",
+    "yêu cầu gia hạn",
+    "bảo lãnh nào cần gia hạn"
+  ],
+  "guaranteeRequest": [
+    "tôi muốn phát hành bảo lãnh",
+    "phát hành bảo lãnh mới",
+    "mở bảo lãnh",
+    "tôi muốn mở bảo lãnh"
+  ],
+  "collectionOverdue": [
+    "nhờ thu quá hạn",
+    "nhờ thu nào quá hạn",
+    "quá hạn thanh toán nhờ thu",
+    "nhờ thu nào đã quá hạn"
+  ],
+  "collectionPaymentStatus": [
+    "nhờ thu nào đang chờ thanh toán",
+    "nhờ thu chưa chấp nhận",
+    "nhờ thu đang chờ thanh toán",
+    "đang chờ thanh toán",
+    "chưa chấp nhận nhờ thu",
+    "d/a nào chưa chấp nhận",
+    "d/p nào chưa thanh toán",
+    "nhờ thu đã nhận chứng từ chưa"
   ]
 }

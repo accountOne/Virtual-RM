@@ -1,17 +1,43 @@
 import { describe, test, assertEqual } from './test-runner';
 import {
   calculateCashBuffer,
+  calculateGuaranteeRisk,
+  calculateLcRisk,
   calculateLiquidityGap,
   calculateNetCashflow,
   calculateOutstanding,
   calculateProjectedCash,
+  combineExposure,
+  daysUntil,
   rankByUrgency,
 } from '../src/calculation/financial-calculations';
-import { Loan, Payable, Receivable, Transaction } from '../src/models';
+import { BankGuarantee, LetterOfCredit, Loan, Payable, Receivable, Transaction } from '../src/models';
 
 function txn(type: 'CREDIT' | 'DEBIT', amount: number): Transaction {
   return {
     id: 't', accountId: 'a', date: '2026-09-01', type, category: 'x', amount, currency: 'VND', counterparty: 'c', description: 'd', status: 'COMPLETED',
+  };
+}
+
+const ANCHOR = '2026-09-10';
+
+function lc(overrides: Partial<LetterOfCredit> = {}): LetterOfCredit {
+  return {
+    id: 'lc-x', lcNumber: 'LC-TEST-001', type: 'IMPORT', subType: 'SIGHT', referenceNo: 'REF-1',
+    beneficiary: 'Seller Co.', applicant: 'ABC Manufacturing JSC', amount: 100_000_000, currency: 'VND',
+    issueDate: '2026-01-01', expiryDate: '2026-12-01', status: 'ACTIVE', issuingBank: 'MSB', advisingBank: 'Foreign Bank',
+    latestShipmentDate: '2026-11-01', presentationPeriodDays: 21, paymentTerm: 'SIGHT', availableWith: 'Nominated Bank',
+    outstandingAmount: 100_000_000, documents: [], discrepancies: [], amendments: [], riskFlags: [],
+    ...overrides,
+  };
+}
+
+function bg(overrides: Partial<BankGuarantee> = {}): BankGuarantee {
+  return {
+    id: 'bg-x', bgNumber: 'BG-TEST-001', type: 'PERFORMANCE_BOND', beneficiary: 'Buyer Co.', applicant: 'ABC Manufacturing JSC',
+    amount: 100_000_000, currency: 'VND', issueDate: '2026-01-01', expiryDate: '2026-12-01', status: 'ACTIVE',
+    outstandingAmount: 100_000_000, extensionRequested: false, documents: [], claims: [], riskFlags: [],
+    ...overrides,
   };
 }
 
@@ -97,5 +123,79 @@ describe('calculation engine (10 required)', () => {
       { id: 'medium', label: 'Medium', amount: 100, currency: 'VND', dueDate: '2026-09-11', anchorToday: '2026-09-09' },
     ]);
     assertEqual(ranked.map((r) => r.id).join(','), 'high,medium,low');
+  });
+
+  // ---- Trade Finance (Phase 6) ------------------------------------------------------------
+  test('daysUntil computes positive and negative day counts against an anchor date', () => {
+    assertEqual(daysUntil('2026-09-20', ANCHOR), 10);
+    assertEqual(daysUntil('2026-09-01', ANCHOR), -9);
+    assertEqual(daysUntil(ANCHOR, ANCHOR), 0);
+  });
+
+  test('LC_RISK_SCORE: a clean LC far from any deadline scores 0 (LOW)', () => {
+    const r = calculateLcRisk(lc({ latestShipmentDate: '2027-01-01', expiryDate: '2027-02-01' }), ANCHOR);
+    assertEqual(r.score, 0);
+    assertEqual(r.level, 'LOW');
+    assertEqual(r.reasons.length, 0);
+  });
+
+  test('LC_RISK_SCORE: shipment deadline within 3 days adds 40 and pushes to MEDIUM', () => {
+    const r = calculateLcRisk(lc({ latestShipmentDate: '2026-09-12', expiryDate: '2027-02-01' }), ANCHOR);
+    assertEqual(r.score, 40);
+    assertEqual(r.level, 'MEDIUM');
+    assertEqual(r.daysUntilShipment, 2);
+  });
+
+  test('LC_RISK_SCORE: open discrepancies, document gaps, and a large amount all add up', () => {
+    const risky = lc({
+      latestShipmentDate: '2027-01-01',
+      expiryDate: '2027-02-01',
+      amount: 2_000_000_000,
+      discrepancies: [{ id: 'd1', description: 'x', status: 'OPEN', raisedDate: ANCHOR }],
+      documents: [{ documentType: 'BILL_OF_LADING', required: true, received: false, status: 'MISSING' }],
+    });
+    const r = calculateLcRisk(risky, ANCHOR);
+    // 20 (1 open discrepancy) + 15 (1 doc gap) + 10 (amount >= 1.5B) = 45
+    assertEqual(r.score, 45);
+    assertEqual(r.level, 'MEDIUM');
+    assertEqual(r.openDiscrepancies, 1);
+    assertEqual(r.documentGaps, 1);
+  });
+
+  test('LC_RISK_SCORE: a waived discrepancy does not count as open', () => {
+    const r = calculateLcRisk(lc({ discrepancies: [{ id: 'd1', description: 'x', status: 'WAIVED', raisedDate: ANCHOR }] }), ANCHOR);
+    assertEqual(r.openDiscrepancies, 0);
+  });
+
+  test('GUARANTEE_RISK_SCORE: a guarantee with an active claim scores HIGH', () => {
+    const r = calculateGuaranteeRisk(bg({ expiryDate: '2027-06-01', claims: [{ id: 'c1', amount: 1_000_000, status: 'UNDER_REVIEW', claimDate: ANCHOR }] }), ANCHOR);
+    assertEqual(r.score, 40);
+    assertEqual(r.level, 'MEDIUM');
+    assertEqual(r.activeClaims, 1);
+  });
+
+  test('GUARANTEE_RISK_SCORE: a settled claim does not count as active', () => {
+    const r = calculateGuaranteeRisk(bg({ claims: [{ id: 'c1', amount: 1_000_000, status: 'SETTLED', claimDate: ANCHOR }] }), ANCHOR);
+    assertEqual(r.activeClaims, 0);
+  });
+
+  test('GUARANTEE_RISK_SCORE: extensionRequested plus a near expiry combine to HIGH', () => {
+    const r = calculateGuaranteeRisk(bg({ expiryDate: '2026-09-15', extensionRequested: true }), ANCHOR);
+    // 30 (extension requested) + 25 (expiry <= 14 days) = 55
+    assertEqual(r.score, 55);
+    assertEqual(r.level, 'HIGH');
+  });
+
+  test('COMBINE_EXPOSURE sums matching currencies across parts and keeps others separate', () => {
+    const total = combineExposure([
+      [{ currency: 'VND', amount: 1000 }, { currency: 'USD', amount: 50 }],
+      [{ currency: 'VND', amount: 500 }],
+      [{ currency: 'EUR', amount: 20 }],
+    ]);
+    const byCcy = Object.fromEntries(total.map((t) => [t.currency, t.amount]));
+    assertEqual(byCcy['VND'], 1500);
+    assertEqual(byCcy['USD'], 50);
+    assertEqual(byCcy['EUR'], 20);
+    assertEqual(total.length, 3);
   });
 });

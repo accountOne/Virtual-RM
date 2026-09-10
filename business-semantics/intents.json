@@ -761,6 +761,138 @@
     "navigationAction": "OPEN_COLLECTION"
   },
   {
+    "id": "LC_DOCUMENT_STATUS",
+    "domain": "TRADE_FINANCE",
+    "entity": "LetterOfCredit",
+    "description": "Kiểm tra checklist chứng từ của một LC — đã nhận đủ, còn thiếu, hay có sai biệt",
+    "priority": 85,
+    "synonymConcepts": [
+      "lcDocument"
+    ],
+    "supportedEntities": [
+      "documentId"
+    ],
+    "responseTemplate": "LC_DOCUMENT_STATUS",
+    "navigationAction": "OPEN_LC_DOCUMENTS"
+  },
+  {
+    "id": "LC_DISCREPANCY",
+    "domain": "TRADE_FINANCE",
+    "entity": "LetterOfCredit",
+    "description": "Tra cứu sai biệt (discrepancy) chứng từ của một LC",
+    "priority": 88,
+    "synonymConcepts": [
+      "lcDiscrepancy"
+    ],
+    "supportedEntities": [
+      "documentId"
+    ],
+    "responseTemplate": "LC_DISCREPANCY",
+    "navigationAction": "OPEN_LC_DISCREPANCY"
+  },
+  {
+    "id": "LC_AMENDMENT",
+    "domain": "TRADE_FINANCE",
+    "entity": "LetterOfCredit",
+    "description": "Tra cứu tu chỉnh (amendment) đang chờ xử lý của một LC",
+    "priority": 84,
+    "synonymConcepts": [
+      "lcAmendment"
+    ],
+    "supportedEntities": [
+      "documentId"
+    ],
+    "responseTemplate": "LC_AMENDMENT",
+    "navigationAction": "OPEN_LC_AMENDMENT"
+  },
+  {
+    "id": "LC_REQUEST",
+    "domain": "TRADE_FINANCE",
+    "entity": "LetterOfCredit",
+    "description": "Khách hàng muốn mở, sửa đổi hoặc gia hạn một LC — chỉ chuẩn bị checklist và điều hướng, không tự phát hành/sửa/gia hạn",
+    "priority": 95,
+    "synonymConcepts": [
+      "lcRequest"
+    ],
+    "supportedEntities": [],
+    "responseTemplate": "LC_REQUEST",
+    "navigationAction": "OPEN_LC"
+  },
+  {
+    "id": "GUARANTEE_CLAIM",
+    "domain": "TRADE_FINANCE",
+    "entity": "BankGuarantee",
+    "description": "Tra cứu yêu cầu gọi bảo lãnh (claim) đang xử lý",
+    "priority": 88,
+    "synonymConcepts": [
+      "guaranteeClaim"
+    ],
+    "supportedEntities": [
+      "documentId"
+    ],
+    "responseTemplate": "GUARANTEE_CLAIM",
+    "navigationAction": "OPEN_GUARANTEE_CLAIM"
+  },
+  {
+    "id": "GUARANTEE_EXTENSION",
+    "domain": "TRADE_FINANCE",
+    "entity": "BankGuarantee",
+    "description": "Tìm bảo lãnh cần gia hạn (khác với sắp hết hạn đơn thuần — đã có yêu cầu gia hạn)",
+    "priority": 86,
+    "synonymConcepts": [
+      "guaranteeExtension"
+    ],
+    "supportedEntities": [
+      "documentId"
+    ],
+    "responseTemplate": "GUARANTEE_EXTENSION",
+    "navigationAction": "OPEN_GUARANTEE"
+  },
+  {
+    "id": "GUARANTEE_REQUEST",
+    "domain": "TRADE_FINANCE",
+    "entity": "BankGuarantee",
+    "description": "Khách hàng muốn phát hành bảo lãnh mới — chỉ chuẩn bị checklist và điều hướng, không tự phát hành",
+    "priority": 95,
+    "synonymConcepts": [
+      "guaranteeRequest"
+    ],
+    "supportedEntities": [],
+    "responseTemplate": "GUARANTEE_REQUEST",
+    "navigationAction": "OPEN_GUARANTEE"
+  },
+  {
+    "id": "COLLECTION_OVERDUE",
+    "domain": "TRADE_FINANCE",
+    "entity": "Collection",
+    "description": "Tìm bộ nhờ thu đã quá hạn thanh toán/chấp nhận",
+    "priority": 85,
+    "synonymConcepts": [
+      "collectionOverdue"
+    ],
+    "supportedEntities": [
+      "status"
+    ],
+    "responseTemplate": "COLLECTION_OVERDUE",
+    "navigationAction": "OPEN_COLLECTION"
+  },
+  {
+    "id": "COLLECTION_PAYMENT_STATUS",
+    "domain": "TRADE_FINANCE",
+    "entity": "Collection",
+    "description": "Tra cứu nhờ thu đang chờ thanh toán (D/P) hoặc chờ chấp nhận (D/A)",
+    "priority": 84,
+    "synonymConcepts": [
+      "collectionPaymentStatus"
+    ],
+    "supportedEntities": [
+      "documentId",
+      "status"
+    ],
+    "responseTemplate": "COLLECTION_PAYMENT_STATUS",
+    "navigationAction": "OPEN_COLLECTION"
+  },
+  {
     "id": "LOAN_LIST",
     "domain": "LENDING",
     "entity": "Loan",

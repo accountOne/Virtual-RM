@@ -20,6 +20,12 @@ const SUGGESTED_QUESTIONS = [
   'Giao dịch lớn nhất?',
   'Khoản vay sắp đến hạn?',
   'Tỷ giá USD hôm nay?',
+  // Phase 6 (Trade Finance) quick actions — same idea, natural-language so they route
+  // through the Model Router's Trade Finance rules (see server/src/ai/model-router.ts).
+  '📄 LC nào rủi ro cao nhất?',
+  '🏦 Bảo lãnh nào cần chú ý?',
+  '💱 Tổng exposure Trade Finance?',
+  '📰 Trade Finance briefing hôm nay',
 ];
 
 const CHAT_STORAGE_KEY = 'vrm_chat_messages';

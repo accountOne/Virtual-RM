@@ -29,6 +29,7 @@ apiRouter.post('/rm/query', rmController.query);
 // Deterministic, local NLU for the Virtual RM chat; does not replace /rm/query above.
 apiRouter.post('/virtual-rm/query', semanticController.query);
 apiRouter.get('/virtual-rm/briefing', semanticController.briefing);
+apiRouter.get('/virtual-rm/trade-finance-briefing', semanticController.tradeFinanceBriefing);
 
 apiRouter.put('/admin/customer', adminController.updateCustomer);
 apiRouter.put('/admin/accounts', adminController.replaceAccounts);
