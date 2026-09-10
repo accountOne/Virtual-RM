@@ -56,8 +56,7 @@ const CAPABILITIES: Capability[] = [
       </header>
 
       <!-- Hero -->
-      <section class="relative overflow-hidden">
-        <div class="absolute inset-0 -z-10" [style.background]="heroBg"></div>
+      <section class="relative overflow-hidden" [style.background]="heroBg">
         <div class="max-w-5xl mx-auto px-4 sm:px-8 py-16 sm:py-24 text-white">
           <p class="text-xs font-semibold uppercase tracking-wider text-white/70 mb-3">Digital Business Banking</p>
           <h1 class="text-3xl sm:text-4xl font-semibold leading-tight max-w-2xl">

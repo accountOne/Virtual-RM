@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RmDataService } from '../../core/services/rm-data.service';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
@@ -26,6 +26,14 @@ const STATUS_CLASS: Record<string, string> = {
 
       <ng-container *ngIf="rmData.loaded()">
         <h1 class="text-xl font-semibold text-ink-800">Tài khoản</h1>
+
+        <div class="card p-4 flex flex-wrap items-center gap-x-8 gap-y-2">
+          <p class="text-xs font-semibold text-ink-400 uppercase tracking-wider w-full sm:w-auto">Tổng quan tài khoản</p>
+          <div *ngFor="let entry of totalsByCurrency()">
+            <span class="text-xs text-ink-400">{{ entry.currency }}: </span>
+            <span class="text-sm font-semibold text-ink-800">{{ entry.total | vnd: entry.currency }}</span>
+          </div>
+        </div>
 
         <div class="grid sm:grid-cols-2 gap-4">
           <button
@@ -95,4 +103,12 @@ export class AccountsPageComponent {
     const all = this.rmData.transactions();
     return id ? all.filter((t) => t.accountId === id) : all;
   }
+
+  readonly totalsByCurrency = computed(() => {
+    const totals = new Map<string, number>();
+    for (const acc of this.rmData.accounts()) {
+      totals.set(acc.currency, (totals.get(acc.currency) ?? 0) + acc.balance);
+    }
+    return Array.from(totals, ([currency, total]) => ({ currency, total }));
+  });
 }

@@ -11,16 +11,35 @@ interface NavItem {
   rolesAllowed?: ('MAKER' | 'CHECKER' | 'ADMIN')[];
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Tổng quan', link: '/dashboard', icon: '🏠' },
-  { label: 'Tài khoản', link: '/accounts', icon: '💳' },
-  { label: 'Thanh toán', link: '/payments', icon: '💸' },
-  { label: 'Phê duyệt', link: '/payments/approval', icon: '✅', rolesAllowed: ['CHECKER', 'ADMIN'] },
-  { label: 'Khoản vay', link: '/loans', icon: '🏦' },
-  { label: 'FX', link: '/fx', icon: '💱' },
-  { label: 'Sản phẩm', link: '/products', icon: '💡' },
-  { label: 'Báo cáo', link: '/reports', icon: '📊' },
-  { label: 'Virtual RM', link: '/virtual-rm', icon: '👩‍💼' },
+interface NavGroup {
+  /** Omit for an ungrouped, top-level item (e.g. the primary "Tổng quan" entry). */
+  heading?: string;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  { items: [{ label: 'Tổng quan', link: '/dashboard', icon: '🏠' }] },
+  {
+    heading: 'Tài khoản',
+    items: [{ label: 'Quản lý tài khoản', link: '/accounts', icon: '💳' }],
+  },
+  {
+    heading: 'Chuyển khoản & thanh toán',
+    items: [
+      { label: 'Thanh toán', link: '/payments', icon: '💸' },
+      { label: 'Phê duyệt', link: '/payments/approval', icon: '✅', rolesAllowed: ['CHECKER', 'ADMIN'] },
+    ],
+  },
+  {
+    heading: 'Tín dụng & đầu tư',
+    items: [
+      { label: 'Khoản vay', link: '/loans', icon: '🏦' },
+      { label: 'FX', link: '/fx', icon: '💱' },
+      { label: 'Sản phẩm', link: '/products', icon: '💡' },
+    ],
+  },
+  { items: [{ label: 'Báo cáo', link: '/reports', icon: '📊' }] },
+  { items: [{ label: 'Virtual RM', link: '/virtual-rm', icon: '👩‍💼' }] },
 ];
 
 @Component({
@@ -43,18 +62,25 @@ const NAV_ITEMS: NavItem[] = [
         <span class="font-semibold text-ink-800">Menu</span>
       </div>
 
-      <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <a
-          *ngFor="let item of visibleNavItems()"
-          [routerLink]="item.link"
-          routerLinkActive="bg-brand-50 text-brand-700"
-          [routerLinkActiveOptions]="{ exact: true }"
-          (click)="close.emit()"
-          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-600 hover:bg-ink-50 transition-colors"
-        >
-          <span class="text-base">{{ item.icon }}</span>
-          {{ item.label }}
-        </a>
+      <nav class="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+        <div *ngFor="let group of visibleNavGroups()">
+          <p *ngIf="group.heading" class="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+            {{ group.heading }}
+          </p>
+          <div class="space-y-1">
+            <a
+              *ngFor="let item of group.items"
+              [routerLink]="item.link"
+              routerLinkActive="bg-brand-50 text-brand-700"
+              [routerLinkActiveOptions]="{ exact: true }"
+              (click)="close.emit()"
+              class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-600 hover:bg-ink-50 transition-colors"
+            >
+              <span class="text-base">{{ item.icon }}</span>
+              {{ item.label }}
+            </a>
+          </div>
+        </div>
       </nav>
 
       <div class="px-3 py-4 border-t border-ink-100 space-y-1">
@@ -87,7 +113,10 @@ export class SidebarComponent {
 
   readonly auth = inject(AuthService);
 
-  readonly visibleNavItems = computed(() =>
-    NAV_ITEMS.filter((item) => !item.rolesAllowed || this.auth.hasRole(...item.rolesAllowed)),
+  readonly visibleNavGroups = computed(() =>
+    NAV_GROUPS.map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.rolesAllowed || this.auth.hasRole(...item.rolesAllowed)),
+    })).filter((group) => group.items.length > 0),
   );
 }

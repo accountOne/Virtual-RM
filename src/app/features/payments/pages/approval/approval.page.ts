@@ -12,7 +12,7 @@ import { VndPipe } from '../../../../shared/pipes/vnd.pipe';
   standalone: true,
   imports: [CommonModule, LoadingSpinnerComponent, EmptyStateComponent, VndPipe],
   template: `
-    <div class="max-w-3xl mx-auto p-4 sm:p-6 space-y-5 pb-24">
+    <div class="max-w-5xl mx-auto p-4 sm:p-6 space-y-5 pb-24">
       <app-loading-spinner *ngIf="rmData.loading() && !rmData.loaded()" />
 
       <ng-container *ngIf="rmData.loaded()">
@@ -31,21 +31,51 @@ import { VndPipe } from '../../../../shared/pipes/vnd.pipe';
           subtitle="Mọi giao dịch đã được xử lý."
         />
 
-        <div class="space-y-3">
-          <div *ngFor="let t of rmData.pendingTransactions()" class="card p-4 flex items-start gap-3">
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-ink-800">{{ t.description }}</p>
-              <p class="text-xs text-ink-400 mt-0.5">{{ t.counterparty }} · {{ t.date | slice: 0:10 }} · {{ t.category }}</p>
-              <p class="text-lg font-semibold text-ink-800 mt-2">{{ t.amount | vnd: t.currency }}</p>
-            </div>
-            <div class="flex flex-col gap-2 shrink-0">
-              <button class="btn-primary !py-1.5 !text-xs" [disabled]="busyId() === t.id" (click)="approve(t.id, t.description)">
-                ✓ Phê duyệt
-              </button>
-              <button class="btn-danger !py-1.5 !text-xs" [disabled]="busyId() === t.id" (click)="reject(t.id, t.description)">
-                ✕ Từ chối
-              </button>
-            </div>
+        <div class="card overflow-hidden" *ngIf="rmData.pendingTransactions().length > 0">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-xs text-ink-400 border-b border-ink-100">
+                  <th class="py-2.5 px-4 font-medium">Thời gian</th>
+                  <th class="py-2.5 px-3 font-medium">Loại giao dịch</th>
+                  <th class="py-2.5 px-3 font-medium">Đối tác</th>
+                  <th class="py-2.5 px-3 font-medium text-right">Số tiền</th>
+                  <th class="py-2.5 px-3 font-medium">Loại tiền</th>
+                  <th class="py-2.5 px-3 font-medium">Trạng thái</th>
+                  <th class="py-2.5 px-4 font-medium text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let t of rmData.pendingTransactions()" class="border-b border-ink-50 last:border-0 hover:bg-ink-50/60">
+                  <td class="py-3 px-4 text-ink-400 whitespace-nowrap">{{ t.date | slice: 0:10 }}</td>
+                  <td class="py-3 px-3 text-ink-700">{{ t.description }}</td>
+                  <td class="py-3 px-3 text-ink-500">{{ t.counterparty }}</td>
+                  <td class="py-3 px-3 text-right font-medium text-ink-800 whitespace-nowrap">{{ t.amount.toLocaleString('vi-VN') }}</td>
+                  <td class="py-3 px-3 text-ink-500">{{ t.currency }}</td>
+                  <td class="py-3 px-3"><span class="badge bg-amber-50 text-warn">Chờ duyệt</span></td>
+                  <td class="py-3 px-4">
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        class="w-7 h-7 rounded-full flex items-center justify-center text-positive hover:bg-teal-50 disabled:opacity-40"
+                        [disabled]="busyId() === t.id"
+                        [attr.aria-label]="'Phê duyệt ' + t.description"
+                        (click)="approve(t.id, t.description)"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </button>
+                      <button
+                        class="w-7 h-7 rounded-full flex items-center justify-center text-negative hover:bg-red-50 disabled:opacity-40"
+                        [disabled]="busyId() === t.id"
+                        [attr.aria-label]="'Từ chối ' + t.description"
+                        (click)="reject(t.id, t.description)"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </ng-container>

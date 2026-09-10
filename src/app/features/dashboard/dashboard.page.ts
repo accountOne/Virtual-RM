@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { RmDataService } from '../../core/services/rm-data.service';
@@ -20,6 +20,28 @@ import { VndPipe } from '../../shared/pipes/vnd.pipe';
           <p class="text-sm text-ink-500 mt-1">Tổng quan tài khoản doanh nghiệp hôm nay</p>
         </div>
 
+        <div class="card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-ink-800">Tổng quan tài sản</h2>
+            <button
+              class="text-ink-400 hover:text-ink-600 p-1"
+              [attr.aria-label]="balanceHidden() ? 'Hiện số dư' : 'Ẩn số dư'"
+              (click)="balanceHidden.set(!balanceHidden())"
+            >
+              <svg *ngIf="!balanceHidden()" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/></svg>
+              <svg *ngIf="balanceHidden()" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.24 4.24M9.9 5.1A11.6 11.6 0 0 1 12 5c7 0 11 7 11 7a13.4 13.4 0 0 1-3.2 3.9M6.6 6.6C3.5 8.6 1 12 1 12s4 7 11 7a10.6 10.6 0 0 0 4.2-.86" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-x-6 gap-y-2">
+            <div *ngFor="let entry of balanceByCurrency()">
+              <p class="text-xs text-ink-400">Số dư {{ entry.currency }}</p>
+              <p class="text-lg font-semibold text-ink-800 mt-0.5">
+                {{ balanceHidden() ? '••••••' : (entry.total | vnd: entry.currency) }}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div class="grid sm:grid-cols-2 gap-4">
           <div *ngFor="let acc of rmData.accounts()" class="card p-5">
             <div class="flex items-center justify-between">
@@ -30,6 +52,28 @@ import { VndPipe } from '../../shared/pipes/vnd.pipe';
             <p class="text-xs text-ink-400 font-mono mt-0.5">{{ acc.accountNumber }}</p>
             <p class="text-2xl font-semibold text-ink-800 mt-3">{{ acc.balance | vnd: acc.currency }}</p>
             <p class="text-xs text-ink-400 mt-1">Khả dụng: {{ acc.availableBalance | vnd: acc.currency }}</p>
+          </div>
+        </div>
+
+        <div class="card p-5" *ngIf="rmData.pendingTransactions().length > 0">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-ink-800">
+              Yêu cầu chờ duyệt
+              <span class="badge bg-amber-50 text-warn ml-1">{{ rmData.pendingTransactions().length }}</span>
+            </h2>
+            <a routerLink="/payments/approval" class="text-xs font-semibold text-brand-600 hover:underline">Xem tất cả →</a>
+          </div>
+          <div class="divide-y divide-ink-100">
+            <div *ngFor="let t of rmData.pendingTransactions().slice(0, 4)" class="py-2.5 flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-sm text-ink-700 truncate">{{ t.description }}</p>
+                <p class="text-xs text-ink-400">{{ t.date | slice: 0:10 }} · {{ t.counterparty }}</p>
+              </div>
+              <div class="flex items-center gap-3 shrink-0">
+                <p class="text-sm font-medium text-ink-800">{{ t.amount | vnd: t.currency }}</p>
+                <span class="badge bg-amber-50 text-warn">Chờ duyệt</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -89,4 +133,13 @@ import { VndPipe } from '../../shared/pipes/vnd.pipe';
 export class DashboardPageComponent {
   readonly rmData = inject(RmDataService);
   readonly auth = inject(AuthService);
+  readonly balanceHidden = signal(false);
+
+  readonly balanceByCurrency = computed(() => {
+    const totals = new Map<string, number>();
+    for (const acc of this.rmData.accounts()) {
+      totals.set(acc.currency, (totals.get(acc.currency) ?? 0) + acc.balance);
+    }
+    return Array.from(totals, ([currency, total]) => ({ currency, total }));
+  });
 }

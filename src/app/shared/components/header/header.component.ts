@@ -3,6 +3,7 @@ import { Component, EventEmitter, HostListener, Output, inject, signal } from '@
 import { Router, RouterLink } from '@angular/router';
 import { AuthService, ROLE_LABEL } from '../../../core/services/auth.service';
 import { RmDataService } from '../../../core/services/rm-data.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-header',
@@ -21,6 +22,25 @@ import { RmDataService } from '../../../core/services/rm-data.service';
       </div>
 
       <div class="flex items-center gap-3 sm:gap-4">
+        <!-- Help center -->
+        <button
+          class="hidden sm:flex items-center gap-1.5 text-ink-400 hover:text-ink-600 p-1 text-xs font-medium"
+          aria-label="Trung tâm hỗ trợ"
+          (click)="toast.show('Trung tâm hỗ trợ — chưa khả dụng trong bản demo.')"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.29c-.7.32-1 .77-1 1.46v.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="16.5" r=".9" fill="currentColor"/></svg>
+          Trung tâm hỗ trợ
+        </button>
+
+        <!-- Search -->
+        <button
+          class="text-ink-400 hover:text-ink-600 p-1"
+          aria-label="Tìm kiếm"
+          (click)="toast.show('Tìm kiếm — chưa khả dụng trong bản demo.')"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+
         <!-- Notifications -->
         <div class="relative">
           <button
@@ -103,6 +123,7 @@ import { RmDataService } from '../../../core/services/rm-data.service';
 export class HeaderComponent {
   readonly rmData = inject(RmDataService);
   readonly auth = inject(AuthService);
+  readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
   @Output() menuToggle = new EventEmitter<void>();
