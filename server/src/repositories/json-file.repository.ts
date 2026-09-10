@@ -46,6 +46,14 @@ export class JsonFileRepository<T extends { id?: string }> {
     return items;
   }
 
+  delete(id: string): boolean {
+    const items = this.readAll();
+    const next = items.filter((item) => item.id !== id);
+    if (next.length === items.length) return false;
+    this.writeAll(next);
+    return true;
+  }
+
   reset(): void {
     const seedRaw = fs.readFileSync(this.seedPath, 'utf-8');
     fs.writeFileSync(this.filePath, seedRaw, 'utf-8');

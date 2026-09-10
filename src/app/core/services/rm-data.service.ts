@@ -63,16 +63,22 @@ export class RmDataService {
     }
   }
 
-  /** Re-pulls the data most likely to change after a mutating action (approve/reject/complete). */
+  /** Re-pulls the data most likely to change after a mutating action (approve/reject/complete):
+   * approving/rejecting a transaction moves money (accounts), changes the pending queue
+   * (transactions), and can clear the seeded approval task/alert (tasks, alerts, briefing). */
   async refreshDynamic(): Promise<void> {
-    const [transactions, tasks, briefing, recommendations] = await Promise.all([
+    const [accounts, transactions, tasks, alerts, briefing, recommendations] = await Promise.all([
+      firstValueFrom(this.http.get<Account[]>('/api/accounts')),
       firstValueFrom(this.http.get<Transaction[]>('/api/transactions')),
       firstValueFrom(this.http.get<Task[]>('/api/tasks')),
+      firstValueFrom(this.http.get<Alert[]>('/api/alerts')),
       firstValueFrom(this.http.get<Briefing>('/api/rm/briefing')),
       firstValueFrom(this.http.get<Recommendation[]>('/api/recommendations')),
     ]);
+    this.accounts.set(accounts);
     this.transactions.set(transactions);
     this.tasks.set(tasks);
+    this.alerts.set(alerts);
     this.briefing.set(briefing);
     this.recommendations.set(recommendations);
   }

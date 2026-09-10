@@ -1,14 +1,23 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, HostListener, Output, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService, ROLE_LABEL } from '../../../core/services/auth.service';
+import { ChatUiService } from '../../../core/services/chat-ui.service';
 import { RmDataService } from '../../../core/services/rm-data.service';
 import { ToastService } from '../../../core/services/toast.service';
+
+interface SearchResult {
+  icon: string;
+  title: string;
+  subtitle: string;
+  link: string;
+}
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, FormsModule],
   template: `
     <header class="h-16 shrink-0 flex items-center justify-between px-4 lg:px-6 bg-white border-b border-ink-100 sticky top-0 z-30">
       <div class="flex items-center gap-3">
@@ -22,24 +31,58 @@ import { ToastService } from '../../../core/services/toast.service';
       </div>
 
       <div class="flex items-center gap-3 sm:gap-4">
-        <!-- Help center -->
+        <!-- Help center — hands off straight to the Virtual RM chat, the actual support channel in this demo -->
         <button
           class="hidden sm:flex items-center gap-1.5 text-ink-400 hover:text-ink-600 p-1 text-xs font-medium"
           aria-label="Trung tâm hỗ trợ"
-          (click)="toast.show('Trung tâm hỗ trợ — chưa khả dụng trong bản demo.')"
+          (click)="chatUi.openChat()"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.29c-.7.32-1 .77-1 1.46v.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="16.5" r=".9" fill="currentColor"/></svg>
           Trung tâm hỗ trợ
         </button>
 
         <!-- Search -->
-        <button
-          class="text-ink-400 hover:text-ink-600 p-1"
-          aria-label="Tìm kiếm"
-          (click)="toast.show('Tìm kiếm — chưa khả dụng trong bản demo.')"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </button>
+        <div class="relative">
+          <button
+            class="text-ink-400 hover:text-ink-600 p-1"
+            aria-label="Tìm kiếm"
+            (click)="toggleSearch(); $event.stopPropagation()"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+
+          <div
+            *ngIf="searchOpen()"
+            class="absolute right-0 mt-2 w-80 max-w-[90vw] card shadow-pop p-3 z-40"
+            (click)="$event.stopPropagation()"
+          >
+            <input
+              [(ngModel)]="searchQuery"
+              type="text"
+              autofocus
+              placeholder="Tìm tài khoản, giao dịch, sản phẩm, việc cần làm..."
+              class="w-full rounded-lg border border-ink-200 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400"
+            />
+            <div class="mt-2 max-h-80 overflow-y-auto" *ngIf="searchQuery.trim().length > 0">
+              <ng-container *ngIf="searchResults() as results">
+                <button
+                  *ngFor="let r of results"
+                  (click)="goToResult(r)"
+                  class="w-full text-left px-2 py-2 hover:bg-ink-50 rounded-lg transition-colors flex items-start gap-2.5"
+                >
+                  <span class="text-base leading-none mt-0.5">{{ r.icon }}</span>
+                  <span class="min-w-0">
+                    <span class="block text-sm text-ink-800 font-medium truncate">{{ r.title }}</span>
+                    <span class="block text-xs text-ink-400 mt-0.5 truncate">{{ r.subtitle }}</span>
+                  </span>
+                </button>
+                <p *ngIf="results.length === 0" class="px-2 py-4 text-sm text-ink-400 text-center">
+                  Không tìm thấy kết quả phù hợp.
+                </p>
+              </ng-container>
+            </div>
+          </div>
+        </div>
 
         <!-- Notifications -->
         <div class="relative">
@@ -124,27 +167,77 @@ export class HeaderComponent {
   readonly rmData = inject(RmDataService);
   readonly auth = inject(AuthService);
   readonly toast = inject(ToastService);
+  readonly chatUi = inject(ChatUiService);
   private readonly router = inject(Router);
 
   @Output() menuToggle = new EventEmitter<void>();
 
   readonly bellOpen = signal(false);
   readonly profileOpen = signal(false);
+  readonly searchOpen = signal(false);
+  searchQuery = '';
 
   @HostListener('document:click')
   closeMenus(): void {
     this.bellOpen.set(false);
     this.profileOpen.set(false);
+    this.searchOpen.set(false);
   }
 
   toggleBell(): void {
     this.bellOpen.update((v) => !v);
     this.profileOpen.set(false);
+    this.searchOpen.set(false);
   }
 
   toggleProfile(): void {
     this.profileOpen.update((v) => !v);
     this.bellOpen.set(false);
+    this.searchOpen.set(false);
+  }
+
+  toggleSearch(): void {
+    this.searchOpen.update((v) => !v);
+    this.bellOpen.set(false);
+    this.profileOpen.set(false);
+    if (!this.searchOpen()) this.searchQuery = '';
+  }
+
+  /** Free-text search across accounts, transactions, products, and open tasks — matched
+   * case- and diacritic-insensitively (Vietnamese input rarely matches accents exactly). */
+  searchResults(): SearchResult[] {
+    const q = normalize(this.searchQuery);
+    if (!q) return [];
+    const results: SearchResult[] = [];
+
+    for (const acc of this.rmData.accounts()) {
+      if (normalize(acc.accountName).includes(q) || acc.accountNumber.includes(q)) {
+        results.push({ icon: '💳', title: acc.accountName, subtitle: acc.accountNumber, link: '/accounts' });
+      }
+    }
+    for (const p of this.rmData.products()) {
+      if (normalize(p.name).includes(q) || normalize(p.category).includes(q)) {
+        results.push({ icon: '💡', title: p.name, subtitle: p.category, link: p.ctaLink });
+      }
+    }
+    for (const task of this.rmData.tasks()) {
+      if (task.status === 'OPEN' && normalize(task.title).includes(q)) {
+        results.push({ icon: '📋', title: task.title, subtitle: task.description, link: task.actionLink });
+      }
+    }
+    for (const t of this.rmData.transactions()) {
+      if (normalize(t.description).includes(q) || normalize(t.counterparty).includes(q)) {
+        results.push({ icon: '💸', title: t.description, subtitle: t.counterparty, link: '/accounts' });
+      }
+    }
+
+    return results.slice(0, 8);
+  }
+
+  goToResult(result: SearchResult): void {
+    this.searchOpen.set(false);
+    this.searchQuery = '';
+    this.router.navigateByUrl(result.link);
   }
 
   goTo(link: string): void {
@@ -178,4 +271,13 @@ export class HeaderComponent {
         .join('') || 'AB'
     );
   }
+}
+
+// Combining diacritical marks block (U+0300-U+036F) — built from char codes rather than a
+// literal escape so the accents don't sit invisibly in the source between the brackets.
+const COMBINING_MARKS = new RegExp(`[${String.fromCharCode(0x300)}-${String.fromCharCode(0x36f)}]`, 'g');
+
+/** Lowercases and strips Vietnamese diacritics so search matches regardless of accents. */
+function normalize(value: string): string {
+  return value.trim().toLowerCase().normalize('NFD').replace(COMBINING_MARKS, '').replace(/đ/g, 'd');
 }

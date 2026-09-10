@@ -48,10 +48,6 @@ const CAPABILITIES: Capability[] = [
           <div class="w-8 h-8 rounded-lg bg-brand-500 text-white flex items-center justify-center font-bold text-sm">M</div>
           <span class="font-semibold text-ink-800">MSB Business Banking</span>
         </div>
-        <nav class="hidden sm:flex items-center gap-6 text-sm font-medium text-ink-500">
-          <a href="#capabilities" class="hover:text-ink-800">Virtual RM</a>
-          <a href="#journey" class="hover:text-ink-800">Trải nghiệm</a>
-        </nav>
         <a routerLink="/login" class="btn-primary !py-1.5 !px-4 text-sm">Đăng nhập</a>
       </header>
 
@@ -88,24 +84,6 @@ const CAPABILITIES: Capability[] = [
             <div class="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-lg mb-3">{{ c.icon }}</div>
             <p class="text-sm font-semibold text-ink-800">{{ c.title }}</p>
             <p class="text-sm text-ink-500 mt-1.5 leading-relaxed">{{ c.description }}</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- Journey -->
-      <section id="journey" class="bg-ink-50 border-y border-ink-100">
-        <div class="max-w-5xl mx-auto px-4 sm:px-8 py-14">
-          <h2 class="text-xl font-semibold text-ink-800 text-center">Trải nghiệm liền mạch</h2>
-          <div class="flex flex-wrap items-center justify-center gap-2 mt-8 text-sm font-medium text-ink-600">
-            <span class="badge bg-white border border-ink-200">Đăng nhập</span>
-            <span class="text-ink-300">→</span>
-            <span class="badge bg-white border border-ink-200">Tổng quan doanh nghiệp</span>
-            <span class="text-ink-300">→</span>
-            <span class="badge bg-white border border-ink-200">Tài khoản &amp; Thanh toán</span>
-            <span class="text-ink-300">→</span>
-            <span class="badge bg-white border border-ink-200">Phê duyệt</span>
-            <span class="text-ink-300">→</span>
-            <span class="badge bg-brand-500 text-white">Virtual RM</span>
           </div>
         </div>
       </section>
