@@ -69,10 +69,12 @@ function filterTransactions(query: SemanticQuery, dateRange?: DateRange): Transa
   return items.sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
-function buildAction(navId: string, navigationActions: NavigationActionDef[]): AnswerAction | undefined {
+/** `entityId` (Phase 7) deep-links straight to one record's dedicated screen (e.g.
+ * /trade-finance/lc/LC-2026-001) instead of the list — see types.ts::AnswerAction. */
+function buildAction(navId: string, navigationActions: NavigationActionDef[], entityId?: string): AnswerAction | undefined {
   const nav = navigationActions.find((n) => n.id === navId);
   if (!nav) return undefined;
-  return { label: nav.labelVi, type: 'NAVIGATE', target: nav.id };
+  return { label: nav.labelVi, type: 'NAVIGATE', target: nav.id, ...(entityId ? { entityId } : {}) };
 }
 
 function periodLabel(range?: DateRange): string {
@@ -86,14 +88,18 @@ function periodLabel(range?: DateRange): string {
 }
 
 export function generateAnswer(ctx: GenerateContext): SemanticAnswer {
-  const { query, dateRange, navigationActions } = ctx;
-  const action = query.action ? buildAction(query.action, navigationActions) : undefined;
+  const { query, navigationActions } = ctx;
+  const genericAction = query.action ? buildAction(query.action, navigationActions) : undefined;
   const handler = HANDLERS[query.intent];
   if (!handler) return unknownAnswer(navigationActions);
-  return { ...handler(ctx), action };
+  const result = handler(ctx);
+  // A handler that names its own action/actions (Phase 7: a specific record's deep link, or
+  // several) takes precedence over the intent's generic navigationAction; everything else
+  // (the overwhelming majority of handlers) keeps falling back to the generic one unchanged.
+  return { ...result, action: result.action ?? genericAction };
 }
 
-type Handler = (ctx: GenerateContext) => Omit<SemanticAnswer, 'action'>;
+type Handler = (ctx: GenerateContext) => Omit<SemanticAnswer, 'action' | 'actions'> & Partial<Pick<SemanticAnswer, 'action' | 'actions'>>;
 
 const HANDLERS: Record<string, Handler> = {
   // ---- ACCOUNT --------------------------------------------------------------
@@ -546,16 +552,26 @@ const HANDLERS: Record<string, Handler> = {
       summary: `${found.lcNumber} đang ở trạng thái ${found.status}, hết hạn ${found.expiryDate}.`,
       metrics: [{ label: 'Trạng thái', value: found.status }],
       records: [found],
+      action: buildAction('OPEN_LC_DETAIL', ctx.navigationActions, found.lcNumber),
     };
   },
+  // Phase 7: one CTA per highlighted LC (straight to its dedicated screen) plus a "view all"
+  // CTA — the exact shape the Trade Finance screens spec's own worked examples show.
   LC_EXPIRY: (ctx) => {
     const range = ctx.dateRange ?? { from: ctx.anchorToday, to: addDaysLocal(ctx.anchorToday, 30) };
     const items = letterOfCreditsRepository.readAll().filter((l) => l.status === 'ACTIVE' && isWithinRange(l.expiryDate, range));
+    const perLc = items
+      .slice(0, 3)
+      .map((l) => buildAction('OPEN_LC_DETAIL', ctx.navigationActions, l.lcNumber))
+      .filter((a): a is AnswerAction => !!a)
+      .map((a, i) => ({ ...a, label: `Xem ${items[i].lcNumber}` }));
+    const viewAll = buildAction('OPEN_LC', ctx.navigationActions);
     return {
       title: 'LC sắp hết hạn',
       summary: `${items.length} thư tín dụng sắp hết hạn trong ${periodLabel(range)}.`,
       metrics: [{ label: 'Số LC sắp hết hạn', value: String(items.length) }],
       records: items,
+      actions: viewAll ? [...perLc, { ...viewAll, label: 'Xem tất cả LC' }] : perLc,
     };
   },
   LC_DETAIL: (ctx) => {
@@ -567,6 +583,7 @@ const HANDLERS: Record<string, Handler> = {
       summary: `${found.lcNumber} — giá trị ${fmt(found.amount, found.currency)}, hết hạn ${found.expiryDate}.`,
       metrics: [{ label: 'Giá trị', value: fmt(found.amount, found.currency) }],
       records: [found],
+      action: buildAction('OPEN_LC_DETAIL', ctx.navigationActions, found.lcNumber),
     };
   },
   GUARANTEE_LIST: (ctx) => {
@@ -580,6 +597,7 @@ const HANDLERS: Record<string, Handler> = {
         summary: `${found.bgNumber} — giá trị ${fmt(found.amount, found.currency)}, trạng thái ${found.status}, hết hạn ${found.expiryDate}.`,
         metrics: [{ label: 'Giá trị', value: fmt(found.amount, found.currency) }],
         records: [found],
+        action: buildAction('OPEN_GUARANTEE_DETAIL', ctx.navigationActions, found.bgNumber),
       };
     }
     return {
@@ -592,11 +610,18 @@ const HANDLERS: Record<string, Handler> = {
   GUARANTEE_EXPIRY: (ctx) => {
     const range = ctx.dateRange ?? { from: ctx.anchorToday, to: addDaysLocal(ctx.anchorToday, 30) };
     const items = bankGuaranteesRepository.readAll().filter((g) => g.status === 'ACTIVE' && isWithinRange(g.expiryDate, range));
+    const perBg = items
+      .slice(0, 3)
+      .map((g) => buildAction('OPEN_GUARANTEE_DETAIL', ctx.navigationActions, g.bgNumber))
+      .filter((a): a is AnswerAction => !!a)
+      .map((a, i) => ({ ...a, label: `Xem ${items[i].bgNumber}` }));
+    const viewAll = buildAction('OPEN_GUARANTEE', ctx.navigationActions);
     return {
       title: 'Bảo lãnh sắp đáo hạn',
       summary: `${items.length} bảo lãnh sắp đáo hạn trong ${periodLabel(range)}.`,
       metrics: [{ label: 'Số bảo lãnh', value: String(items.length) }],
       records: items,
+      actions: viewAll ? [...perBg, { ...viewAll, label: 'Xem tất cả bảo lãnh' }] : perBg,
     };
   },
   COLLECTION_LIST: () => {
@@ -631,6 +656,7 @@ const HANDLERS: Record<string, Handler> = {
           : `Hồ sơ ${found.lcNumber} chưa đầy đủ — thiếu ${missing.length}, đang chờ/sai biệt ${pending.length}.`,
       metrics,
       records: found.documents,
+      action: buildAction('OPEN_LC_DOCUMENTS', ctx.navigationActions, found.lcNumber),
     };
   },
   LC_DISCREPANCY: (ctx) => {
@@ -649,6 +675,7 @@ const HANDLERS: Record<string, Handler> = {
           : `${found.lcNumber} có ${found.discrepancies.length} sai biệt, ${open.length} đang mở.`,
       metrics: [{ label: 'Số sai biệt', value: String(found.discrepancies.length) }],
       records: found.discrepancies,
+      action: buildAction('OPEN_LC_DISCREPANCY', ctx.navigationActions, found.lcNumber),
     };
   },
   LC_AMENDMENT: (ctx) => {
@@ -662,6 +689,7 @@ const HANDLERS: Record<string, Handler> = {
         summary: found.amendments.length === 0 ? `${found.lcNumber} hiện không có amendment nào.` : `${found.lcNumber} có ${found.amendments.length} amendment.`,
         metrics: [{ label: 'Số amendment', value: String(found.amendments.length) }],
         records: found.amendments,
+        action: buildAction('OPEN_LC_AMENDMENT', ctx.navigationActions, found.lcNumber),
       };
     }
     const pending = items.flatMap((l) => l.amendments.filter((a) => a.status === 'PENDING').map((a) => ({ ...a, lcNumber: l.lcNumber })));
@@ -692,6 +720,7 @@ const HANDLERS: Record<string, Handler> = {
         summary: found.claims.length === 0 ? `${found.bgNumber} hiện không có yêu cầu gọi bảo lãnh nào.` : `${found.bgNumber} có ${found.claims.length} yêu cầu gọi bảo lãnh.`,
         metrics: [{ label: 'Số claim', value: String(found.claims.length) }],
         records: found.claims,
+        action: buildAction('OPEN_GUARANTEE_CLAIM', ctx.navigationActions, found.bgNumber),
       };
     }
     const withClaims = items.filter((g) => g.claims.length > 0);
@@ -721,13 +750,20 @@ const HANDLERS: Record<string, Handler> = {
     metrics: [],
     records: [],
   }),
-  COLLECTION_OVERDUE: () => {
+  COLLECTION_OVERDUE: (ctx) => {
     const items = collectionsRepository.readAll().filter((c) => c.status === 'OVERDUE');
+    const perCollection = items
+      .slice(0, 3)
+      .map((c) => buildAction('OPEN_COLLECTION_DETAIL', ctx.navigationActions, c.collectionNumber))
+      .filter((a): a is AnswerAction => !!a)
+      .map((a, i) => ({ ...a, label: `Xem ${items[i].collectionNumber}` }));
+    const viewAll = buildAction('OPEN_COLLECTION', ctx.navigationActions);
     return {
       title: 'Nhờ thu quá hạn',
       summary: items.length === 0 ? 'Hiện không có bộ nhờ thu nào quá hạn.' : `${items.length} bộ nhờ thu đã quá hạn.`,
       metrics: [{ label: 'Số bộ quá hạn', value: String(items.length) }],
       records: items,
+      actions: viewAll ? [...perCollection, { ...viewAll, label: 'Xem tất cả nhờ thu' }] : perCollection,
     };
   },
   COLLECTION_PAYMENT_STATUS: (ctx) => {
@@ -741,6 +777,7 @@ const HANDLERS: Record<string, Handler> = {
         summary: `${found.collectionNumber} (${found.subType}) đang ở trạng thái ${found.status}.`,
         metrics: [{ label: 'Trạng thái', value: found.status }],
         records: [found],
+        action: buildAction('OPEN_COLLECTION_DETAIL', ctx.navigationActions, found.collectionNumber),
       };
     }
     const waiting = items.filter((c) => c.status === 'AWAITING_PAYMENT' || c.status === 'AWAITING_ACCEPTANCE');

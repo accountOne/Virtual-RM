@@ -107,11 +107,12 @@ describe('end-to-end query execution — real data, not just intent (20 required
     assertEqual(r.answer.records[0].status, 'ACTIVE');
   });
 
-  // Phase 6 added a 4th seeded guarantee (bg-004, with a claim) for claim-reasoning tests.
-  test('GUARANTEE_LIST returns all 4 seeded bank guarantees', () => {
+  // Phase 6 added a 4th seeded guarantee (bg-004, with a claim) for claim-reasoning tests;
+  // Phase 7 added a 5th (bg-005, PENDING_APPROVAL) for the dedicated Trade Finance screens.
+  test('GUARANTEE_LIST returns all 5 seeded bank guarantees', () => {
     const r = ask('Công ty có bảo lãnh thực hiện hợp đồng nào không?');
     assertEqual(r.semantic.intent, 'GUARANTEE_LIST');
-    assertEqual(r.answer.records.length, 4);
+    assertEqual(r.answer.records.length, 5);
   });
 
   test('LOAN_LIST returns all 3 seeded loans', () => {

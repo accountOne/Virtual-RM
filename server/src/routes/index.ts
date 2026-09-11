@@ -9,6 +9,7 @@ import { recommendationsController } from '../controllers/recommendations.contro
 import { rmController } from '../controllers/rm.controller';
 import { adminController } from '../controllers/admin.controller';
 import { semanticController } from '../controllers/semantic.controller';
+import { tradeFinanceController } from '../controllers/trade-finance.controller';
 
 export const apiRouter = Router();
 
@@ -30,6 +31,19 @@ apiRouter.post('/rm/query', rmController.query);
 apiRouter.post('/virtual-rm/query', semanticController.query);
 apiRouter.get('/virtual-rm/briefing', semanticController.briefing);
 apiRouter.get('/virtual-rm/trade-finance-briefing', semanticController.tradeFinanceBriefing);
+
+// Phase 7 — dedicated Trade Finance Business Banking screens (system-of-record REST API,
+// separate from the chat query API above; both read the same underlying repositories).
+apiRouter.get('/trade-finance/summary', tradeFinanceController.summary);
+apiRouter.get('/trade-finance/lc', tradeFinanceController.listLc);
+apiRouter.get('/trade-finance/lc/:id', tradeFinanceController.getLc);
+apiRouter.post('/trade-finance/lc', tradeFinanceController.createLc);
+apiRouter.get('/trade-finance/guarantees', tradeFinanceController.listGuarantees);
+apiRouter.get('/trade-finance/guarantees/:id', tradeFinanceController.getGuarantee);
+apiRouter.post('/trade-finance/guarantees', tradeFinanceController.createGuarantee);
+apiRouter.get('/trade-finance/collections', tradeFinanceController.listCollections);
+apiRouter.get('/trade-finance/collections/:id', tradeFinanceController.getCollection);
+apiRouter.post('/trade-finance/collections', tradeFinanceController.createCollection);
 
 apiRouter.put('/admin/customer', adminController.updateCustomer);
 apiRouter.put('/admin/accounts', adminController.replaceAccounts);

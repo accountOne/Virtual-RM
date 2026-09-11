@@ -77,10 +77,10 @@ interface RunInput {
   companyName?: string;
 }
 
-function buildAction(navId: string, navigationActions: NavigationActionDef[]): SemanticAnswer['action'] | undefined {
+function buildAction(navId: string, navigationActions: NavigationActionDef[], entityId?: string): SemanticAnswer['action'] | undefined {
   const nav = navigationActions.find((n) => n.id === navId);
   if (!nav) return undefined;
-  return { label: nav.labelVi, type: 'NAVIGATE', target: nav.id };
+  return { label: nav.labelVi, type: 'NAVIGATE', target: nav.id, ...(entityId ? { entityId } : {}) };
 }
 
 function priorityRecords(items: PriorityItem[]): unknown[] {
@@ -402,6 +402,16 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         }),
       );
 
+      const lcActions = scored
+        .filter((s) => s.score > 0)
+        .slice(0, 3)
+        .map((s) => {
+          const a = buildAction('OPEN_LC_DETAIL', navigationActions, s.lcNumber);
+          return a ? { ...a, label: `Xem ${s.lcNumber}` } : undefined;
+        })
+        .filter((a): a is NonNullable<typeof a> => !!a);
+      const lcViewAll = buildAction('OPEN_LC', navigationActions);
+
       return {
         answer: {
           title: reasoning.title,
@@ -413,6 +423,7 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
           records: scored,
           insights: reasoning.insights,
           action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+          actions: lcViewAll ? [...lcActions, { ...lcViewAll, label: 'Xem tất cả LC' }] : lcActions,
         },
         debug: { useCase, plan, toolsUsed, calculationsUsed },
       };
@@ -435,6 +446,16 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         }),
       );
 
+      const bgActions = scored
+        .filter((s) => s.score > 0)
+        .slice(0, 3)
+        .map((s) => {
+          const a = buildAction('OPEN_GUARANTEE_DETAIL', navigationActions, s.bgNumber);
+          return a ? { ...a, label: `Xem ${s.bgNumber}` } : undefined;
+        })
+        .filter((a): a is NonNullable<typeof a> => !!a);
+      const bgViewAll = buildAction('OPEN_GUARANTEE', navigationActions);
+
       return {
         answer: {
           title: reasoning.title,
@@ -446,6 +467,7 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
           records: scored,
           insights: reasoning.insights,
           action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+          actions: bgViewAll ? [...bgActions, { ...bgViewAll, label: 'Xem tất cả bảo lãnh' }] : bgActions,
         },
         debug: { useCase, plan, toolsUsed, calculationsUsed },
       };
@@ -594,6 +616,16 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         }),
       );
 
+      const attentionNavTarget: Record<string, string> = { LC: 'OPEN_LC_DETAIL', 'Bảo lãnh': 'OPEN_GUARANTEE_DETAIL', 'Nhờ thu': 'OPEN_COLLECTION_DETAIL' };
+      const attentionActions = attentionItems
+        .slice(0, 3)
+        .map((item) => {
+          const a = buildAction(attentionNavTarget[item.loại], navigationActions, item.mã);
+          return a ? { ...a, label: `Xem ${item.mã}` } : undefined;
+        })
+        .filter((a): a is NonNullable<typeof a> => !!a);
+      const attentionViewAll = buildAction('OPEN_TRADE_FINANCE', navigationActions);
+
       return {
         answer: {
           title: reasoning.title,
@@ -605,6 +637,7 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
           records: attentionItems,
           insights: reasoning.insights,
           action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+          actions: attentionViewAll ? [...attentionActions, { ...attentionViewAll, label: 'Xem Trade Finance Dashboard' }] : attentionActions,
         },
         debug: { useCase, plan, toolsUsed, calculationsUsed },
       };

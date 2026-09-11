@@ -125,7 +125,9 @@ export type Intent =
 export interface RmAnswer {
   intent: Intent;
   message: string;
-  cta?: { label: string; link: string };
+  /** Phase 7 — usually one CTA, but a "2 LC sắp hết hạn" style answer carries one per
+   * highlighted record plus a "view all", so this is always an array (possibly empty). */
+  ctas: { label: string; link: string }[];
   data?: unknown;
 }
 
@@ -133,6 +135,8 @@ export interface ChatMessage {
   id: string;
   from: 'USER' | 'RM';
   text: string;
-  cta?: { label: string; link: string };
+  ctas?: { label: string; link: string }[];
   timestamp: number;
 }
+
+export * from './trade-finance.model';

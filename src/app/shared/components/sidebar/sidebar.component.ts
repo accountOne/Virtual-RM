@@ -31,6 +31,15 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    heading: 'Trade Finance',
+    items: [
+      { label: 'Tổng quan Trade Finance', link: '/trade-finance', icon: '📊' },
+      { label: 'Thư tín dụng (LC)', link: '/trade-finance/lc', icon: '📄' },
+      { label: 'Bảo lãnh ngân hàng', link: '/trade-finance/guarantees', icon: '🛡️' },
+      { label: 'Nhờ thu', link: '/trade-finance/collections', icon: '📥' },
+    ],
+  },
+  {
     heading: 'Tín dụng & đầu tư',
     items: [
       { label: 'Khoản vay', link: '/loans', icon: '🏦' },

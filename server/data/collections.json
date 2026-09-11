@@ -13,8 +13,18 @@
     "dueDate": "2026-09-18",
     "status": "AWAITING_PAYMENT",
     "documents": [
-      { "documentType": "BILL_OF_LADING", "required": true, "received": true, "status": "ACCEPTED" },
-      { "documentType": "COMMERCIAL_INVOICE", "required": true, "received": true, "status": "ACCEPTED" }
+      {
+        "documentType": "BILL_OF_LADING",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      },
+      {
+        "documentType": "COMMERCIAL_INVOICE",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      }
     ]
   },
   {
@@ -31,7 +41,12 @@
     "dueDate": "2026-08-30",
     "status": "OVERDUE",
     "documents": [
-      { "documentType": "BILL_OF_LADING", "required": true, "received": true, "status": "ACCEPTED" }
+      {
+        "documentType": "BILL_OF_LADING",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      }
     ]
   },
   {
@@ -48,7 +63,12 @@
     "dueDate": "2026-08-15",
     "status": "COMPLETED",
     "documents": [
-      { "documentType": "BILL_OF_LADING", "required": true, "received": true, "status": "ACCEPTED" }
+      {
+        "documentType": "BILL_OF_LADING",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      }
     ]
   },
   {
@@ -65,8 +85,18 @@
     "dueDate": "2026-10-05",
     "status": "AWAITING_ACCEPTANCE",
     "documents": [
-      { "documentType": "BILL_OF_LADING", "required": true, "received": true, "status": "ACCEPTED" },
-      { "documentType": "BILL_OF_EXCHANGE", "required": true, "received": true, "status": "PENDING" }
+      {
+        "documentType": "BILL_OF_LADING",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      },
+      {
+        "documentType": "BILL_OF_EXCHANGE",
+        "required": true,
+        "received": true,
+        "status": "PENDING"
+      }
     ]
   }
 ]

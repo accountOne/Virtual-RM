@@ -28,6 +28,16 @@ const SUGGESTED_QUESTIONS = [
   '📰 Trade Finance briefing hôm nay',
 ];
 
+/** Phase 7 — direct-navigate shortcuts (open the dedicated screen immediately, not a chat
+ * question) so Virtual RM behaves as an RM embedded into Business Banking, not a standalone
+ * chatbot the user must ask their way through to reach a real screen. */
+const QUICK_NAV = [
+  { icon: '📄', label: 'LC', link: '/trade-finance/lc' },
+  { icon: '🛡️', label: 'Bảo lãnh', link: '/trade-finance/guarantees' },
+  { icon: '📥', label: 'Nhờ thu', link: '/trade-finance/collections' },
+  { icon: '📊', label: 'Trade Finance', link: '/trade-finance' },
+];
+
 const CHAT_STORAGE_KEY = 'vrm_chat_messages';
 
 let idCounter = 0;
@@ -47,14 +57,16 @@ let idCounter = 0;
             "
           >
             <p class="whitespace-pre-line">{{ msg.text }}</p>
-            <button
-              *ngIf="msg.cta"
-              (click)="goTo(msg.cta.link)"
-              class="mt-2 text-xs font-semibold underline underline-offset-2"
-              [ngClass]="msg.from === 'USER' ? 'text-white' : 'text-brand-600'"
-            >
-              {{ msg.cta.label }} →
-            </button>
+            <div *ngIf="msg.ctas?.length" class="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+              <button
+                *ngFor="let cta of msg.ctas"
+                (click)="goTo(cta.link)"
+                class="text-xs font-semibold underline underline-offset-2"
+                [ngClass]="msg.from === 'USER' ? 'text-white' : 'text-brand-600'"
+              >
+                {{ cta.label }} →
+              </button>
+            </div>
           </div>
         </div>
         <div *ngIf="thinking()" class="flex">
@@ -64,15 +76,29 @@ let idCounter = 0;
         <!-- Scrolls with the messages (not a fixed-height sibling below) so a growing
              chip list can never push the input form out of the sheet's fixed-height,
              overflow-hidden container on mobile — see rm-widget.component.ts's h-[50dvh]. -->
-        <div class="flex gap-1.5 flex-wrap" *ngIf="messages().length <= 1">
-          <button
-            *ngFor="let q of suggested"
-            (click)="ask(q)"
-            class="text-xs px-2.5 py-1.5 rounded-full bg-ink-50 text-ink-600 hover:bg-ink-100 transition-colors"
-          >
-            {{ q }}
-          </button>
-        </div>
+        <ng-container *ngIf="messages().length <= 1">
+          <!-- Direct-navigate shortcuts: open the dedicated screen right away, not a chat
+               question — Virtual RM as an RM embedded into Business Banking, not a chatbot
+               that stands in for the real screens. -->
+          <div class="flex gap-1.5 flex-wrap">
+            <button
+              *ngFor="let n of quickNav"
+              (click)="goTo(n.link)"
+              class="text-xs px-2.5 py-1.5 rounded-full border border-ink-200 text-ink-700 hover:bg-ink-50 transition-colors font-medium"
+            >
+              {{ n.icon }} {{ n.label }}
+            </button>
+          </div>
+          <div class="flex gap-1.5 flex-wrap">
+            <button
+              *ngFor="let q of suggested"
+              (click)="ask(q)"
+              class="text-xs px-2.5 py-1.5 rounded-full bg-ink-50 text-ink-600 hover:bg-ink-100 transition-colors"
+            >
+              {{ q }}
+            </button>
+          </div>
+        </ng-container>
       </div>
 
       <div class="px-4 pb-1 shrink-0" *ngIf="messages().length > 1">
@@ -100,6 +126,7 @@ export class RmChatComponent {
   @ViewChild('scrollEl') scrollEl?: ElementRef<HTMLDivElement>;
 
   readonly suggested = SUGGESTED_QUESTIONS;
+  readonly quickNav = QUICK_NAV;
   readonly messages = signal<ChatMessage[]>([]);
   readonly thinking = signal(false);
   draft = '';
@@ -135,7 +162,7 @@ export class RmChatComponent {
     this.thinking.set(true);
     try {
       const answer = await this.rmData.askRm(question);
-      this.pushMessage({ from: 'RM', text: answer.message, cta: answer.cta });
+      this.pushMessage({ from: 'RM', text: answer.message, ctas: answer.ctas });
     } catch {
       this.pushMessage({ from: 'RM', text: 'Xin lỗi, hệ thống đang gặp sự cố. Anh/chị thử lại sau ít phút nhé.' });
     } finally {

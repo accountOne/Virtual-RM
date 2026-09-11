@@ -13,11 +13,23 @@
     "outstandingAmount": 900000000,
     "extensionRequested": true,
     "documents": [
-      { "documentType": "GUARANTEE_APPLICATION", "required": true, "received": true, "status": "ACCEPTED" },
-      { "documentType": "UNDERLYING_CONTRACT", "required": true, "received": true, "status": "ACCEPTED" }
+      {
+        "documentType": "GUARANTEE_APPLICATION",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      },
+      {
+        "documentType": "UNDERLYING_CONTRACT",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      }
     ],
     "claims": [],
-    "riskFlags": ["EXPIRY_NEAR"]
+    "riskFlags": [
+      "EXPIRY_NEAR"
+    ]
   },
   {
     "id": "bg-002",
@@ -33,7 +45,12 @@
     "outstandingAmount": 300000000,
     "extensionRequested": false,
     "documents": [
-      { "documentType": "GUARANTEE_APPLICATION", "required": true, "received": true, "status": "ACCEPTED" }
+      {
+        "documentType": "GUARANTEE_APPLICATION",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      }
     ],
     "claims": [],
     "riskFlags": []
@@ -69,11 +86,40 @@
     "outstandingAmount": 12000000000,
     "extensionRequested": false,
     "documents": [
-      { "documentType": "GUARANTEE_APPLICATION", "required": true, "received": true, "status": "ACCEPTED" }
+      {
+        "documentType": "GUARANTEE_APPLICATION",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      }
     ],
     "claims": [
-      { "id": "claim-001", "amount": 3000000000, "status": "UNDER_REVIEW", "claimDate": "2026-09-05" }
+      {
+        "id": "claim-001",
+        "amount": 3000000000,
+        "status": "UNDER_REVIEW",
+        "claimDate": "2026-09-05"
+      }
     ],
-    "riskFlags": ["ACTIVE_CLAIM"]
+    "riskFlags": [
+      "ACTIVE_CLAIM"
+    ]
+  },
+  {
+    "id": "bg-005",
+    "bgNumber": "BG-2026-014",
+    "type": "BID_BOND",
+    "beneficiary": "Ban Quản lý Dự án Đầu tư Xây dựng TP.HCM",
+    "applicant": "ABC Manufacturing JSC",
+    "amount": 450000000,
+    "currency": "VND",
+    "issueDate": "2026-09-10",
+    "expiryDate": "2027-03-10",
+    "status": "PENDING_APPROVAL",
+    "outstandingAmount": 0,
+    "extensionRequested": false,
+    "documents": [],
+    "claims": [],
+    "riskFlags": []
   }
 ]

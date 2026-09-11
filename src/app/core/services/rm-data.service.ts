@@ -27,23 +27,51 @@ const NAV_ACTION_ROUTES: Record<string, string> = {
   OPEN_APPROVAL: '/payments/approval',
   OPEN_PAYROLL: '/payments',
   OPEN_FX: '/fx',
-  OPEN_LC: '/products',
-  OPEN_LC_DOCUMENTS: '/products',
-  OPEN_LC_DISCREPANCY: '/products',
-  OPEN_LC_AMENDMENT: '/products',
-  OPEN_GUARANTEE: '/products',
-  OPEN_GUARANTEE_CLAIM: '/products',
-  OPEN_COLLECTION: '/products',
-  OPEN_TRADE_FINANCE: '/products',
+  OPEN_LC: '/trade-finance/lc',
+  OPEN_LC_DETAIL: '/trade-finance/lc',
+  OPEN_LC_DOCUMENTS: '/trade-finance/lc',
+  OPEN_LC_DISCREPANCY: '/trade-finance/lc',
+  OPEN_LC_AMENDMENT: '/trade-finance/lc',
+  OPEN_LC_CREATE: '/trade-finance/lc/create',
+  OPEN_GUARANTEE: '/trade-finance/guarantees',
+  OPEN_GUARANTEE_DETAIL: '/trade-finance/guarantees',
+  OPEN_GUARANTEE_CLAIM: '/trade-finance/guarantees',
+  OPEN_GUARANTEE_CREATE: '/trade-finance/guarantees/create',
+  OPEN_COLLECTION: '/trade-finance/collections',
+  OPEN_COLLECTION_DETAIL: '/trade-finance/collections',
+  OPEN_TRADE_FINANCE: '/trade-finance',
   OPEN_LOAN: '/loans',
   OPEN_PRODUCT: '/products',
   OPEN_TASK: '/virtual-rm',
   OPEN_ALERT: '/virtual-rm',
 };
 
+/** Phase 7 — a query-string-anchor suffix so OPEN_LC_DOCUMENTS/_DISCREPANCY/_AMENDMENT and
+ * OPEN_GUARANTEE_CLAIM land directly on the right section of the (single) LC/Guarantee
+ * detail page instead of just its top. */
+const TARGET_ANCHOR: Record<string, string> = {
+  OPEN_LC_DOCUMENTS: '#documents',
+  OPEN_LC_DISCREPANCY: '#discrepancy',
+  OPEN_LC_AMENDMENT: '#amendment',
+  OPEN_GUARANTEE_CLAIM: '#claims',
+};
+
+function buildLink(target: string, entityId?: string): string {
+  const base = NAV_ACTION_ROUTES[target] ?? '/dashboard';
+  if (!entityId) return base;
+  return `${base}/${entityId}${TARGET_ANCHOR[target] ?? ''}`;
+}
+
 interface SemanticMetric {
   label: string;
   value: string;
+}
+
+interface SemanticAnswerAction {
+  label: string;
+  type: 'NAVIGATE';
+  target: string;
+  entityId?: string;
 }
 
 interface SemanticAnswer {
@@ -51,7 +79,10 @@ interface SemanticAnswer {
   summary: string;
   metrics: SemanticMetric[];
   records: unknown[];
-  action?: { label: string; type: 'NAVIGATE'; target: string };
+  action?: SemanticAnswerAction;
+  /** Phase 7 — an answer about several records (e.g. "2 LC sắp hết hạn") carries one CTA per
+   * highlighted record plus a "view all"; falls back to `action` alone when absent. */
+  actions?: SemanticAnswerAction[];
   suggestedQuestions?: string[];
   /** Phase 5 (AI Reasoning) — populated only when the Reasoning Engine produced this
    * answer (see server/src/ai/reasoning-engine.ts). */
@@ -189,14 +220,13 @@ export class RmDataService {
       lines.push(`Gợi ý: ${answer.suggestedQuestions.slice(0, 3).join(' · ')}`);
     }
 
-    const cta = answer.action
-      ? { label: answer.action.label, link: NAV_ACTION_ROUTES[answer.action.target] ?? '/dashboard' }
-      : undefined;
+    const source = answer.actions?.length ? answer.actions : answer.action ? [answer.action] : [];
+    const ctas = source.map((a) => ({ label: a.label, link: buildLink(a.target, a.entityId) }));
 
     return {
       intent: intent as RmAnswer['intent'],
       message: lines.join('\n'),
-      cta,
+      ctas,
       data: answer.records,
     };
   }

@@ -51,6 +51,13 @@ export interface AnswerAction {
   label: string;
   type: 'NAVIGATE';
   target: string;
+  /** Phase 7 (dedicated Trade Finance screens) — when target identifies a single record
+   * (e.g. OPEN_LC_DETAIL), entityId carries which one (e.g. an lcNumber) so the frontend can
+   * deep-link straight to /trade-finance/lc/:id instead of the list. entityType is metadata
+   * only, for a future generic detail-route resolver — the frontend today switches on
+   * `target`, not entityType. */
+  entityId?: string;
+  entityType?: string;
 }
 
 export interface SemanticAnswer {
@@ -59,6 +66,11 @@ export interface SemanticAnswer {
   metrics: MetricItem[];
   records: unknown[];
   action?: AnswerAction;
+  /** Phase 7 — an answer that's naturally about more than one thing (e.g. "2 LC sắp hết hạn")
+   * can offer one CTA per highlighted record plus a "view all" CTA, instead of forcing a
+   * single link. Optional and additive: every existing handler keeps using `action` alone,
+   * the frontend renders `actions` when present and falls back to `action` otherwise. */
+  actions?: AnswerAction[];
   /** Phase 5 (AI Reasoning) additions — populated only when a Reasoning Engine use case
    * produced this answer; absent for the plain deterministic path. See
    * server/src/ai/reasoning-engine.ts and docs/phase-5-architecture.md. */

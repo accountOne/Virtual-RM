@@ -94,6 +94,73 @@ export const routes: Routes = [
     title: 'Sản phẩm — MSB Business Banking',
   },
   {
+    path: 'trade-finance',
+    loadComponent: () =>
+      import('./features/trade-finance/pages/trade-finance-dashboard.page').then((m) => m.TradeFinanceDashboardPageComponent),
+    canActivate: [authGuard],
+    title: 'Trade Finance — MSB Business Banking',
+  },
+  {
+    path: 'trade-finance/lc/create',
+    loadComponent: () => import('./features/trade-finance/pages/lc-create.page').then((m) => m.LcCreatePageComponent),
+    canActivate: [authGuard],
+    title: 'Yêu cầu mở LC — MSB Business Banking',
+  },
+  {
+    path: 'trade-finance/lc/:id',
+    loadComponent: () => import('./features/trade-finance/pages/lc-detail.page').then((m) => m.LcDetailPageComponent),
+    canActivate: [authGuard],
+    title: 'Chi tiết LC — MSB Business Banking',
+  },
+  {
+    path: 'trade-finance/lc',
+    loadComponent: () => import('./features/trade-finance/pages/lc-list.page').then((m) => m.LcListPageComponent),
+    canActivate: [authGuard],
+    title: 'Thư tín dụng — MSB Business Banking',
+  },
+  {
+    path: 'trade-finance/guarantees/create',
+    loadComponent: () =>
+      import('./features/trade-finance/pages/guarantee-create.page').then((m) => m.GuaranteeCreatePageComponent),
+    canActivate: [authGuard],
+    title: 'Yêu cầu phát hành bảo lãnh — MSB Business Banking',
+  },
+  {
+    path: 'trade-finance/guarantees/:id',
+    loadComponent: () =>
+      import('./features/trade-finance/pages/guarantee-detail.page').then((m) => m.GuaranteeDetailPageComponent),
+    canActivate: [authGuard],
+    title: 'Chi tiết bảo lãnh — MSB Business Banking',
+  },
+  {
+    path: 'trade-finance/guarantees',
+    loadComponent: () =>
+      import('./features/trade-finance/pages/guarantee-list.page').then((m) => m.GuaranteeListPageComponent),
+    canActivate: [authGuard],
+    title: 'Bảo lãnh ngân hàng — MSB Business Banking',
+  },
+  {
+    path: 'trade-finance/collections/create',
+    loadComponent: () =>
+      import('./features/trade-finance/pages/collection-create.page').then((m) => m.CollectionCreatePageComponent),
+    canActivate: [authGuard],
+    title: 'Yêu cầu nhờ thu — MSB Business Banking',
+  },
+  {
+    path: 'trade-finance/collections/:id',
+    loadComponent: () =>
+      import('./features/trade-finance/pages/collection-detail.page').then((m) => m.CollectionDetailPageComponent),
+    canActivate: [authGuard],
+    title: 'Chi tiết nhờ thu — MSB Business Banking',
+  },
+  {
+    path: 'trade-finance/collections',
+    loadComponent: () =>
+      import('./features/trade-finance/pages/collection-list.page').then((m) => m.CollectionListPageComponent),
+    canActivate: [authGuard],
+    title: 'Nhờ thu — MSB Business Banking',
+  },
+  {
     path: 'reports',
     loadComponent: () => import('./features/reports/reports.page').then((m) => m.ReportsPageComponent),
     canActivate: [authGuard],

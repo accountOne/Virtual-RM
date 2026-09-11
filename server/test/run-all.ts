@@ -16,6 +16,7 @@ import './calculation-engine.test';
 import './reasoning-engine.test';
 import './conversation-context.test';
 import './security-isolation.test';
+import './trade-finance-service.test';
 
 import { runAll } from './test-runner';
 

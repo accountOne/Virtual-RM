@@ -816,7 +816,7 @@
     ],
     "supportedEntities": [],
     "responseTemplate": "LC_REQUEST",
-    "navigationAction": "OPEN_LC"
+    "navigationAction": "OPEN_LC_CREATE"
   },
   {
     "id": "GUARANTEE_CLAIM",
@@ -859,7 +859,7 @@
     ],
     "supportedEntities": [],
     "responseTemplate": "GUARANTEE_REQUEST",
-    "navigationAction": "OPEN_GUARANTEE"
+    "navigationAction": "OPEN_GUARANTEE_CREATE"
   },
   {
     "id": "COLLECTION_OVERDUE",

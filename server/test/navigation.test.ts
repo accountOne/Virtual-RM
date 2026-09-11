@@ -50,10 +50,17 @@ describe('navigation actions (10 required)', () => {
     assertEqual(routeById.get('OPEN_PRODUCT'), '/products');
   });
 
-  test('LC_EXPIRY navigates to OPEN_LC (mapped to /products — no dedicated LC page in this demo)', () => {
+  // Phase 7: LC_EXPIRY now carries a real per-record CTA to the dedicated LC screen (plus a
+  // "view all" one) instead of the old generic OPEN_LC-to-/products fallback.
+  test('LC_EXPIRY navigates to the dedicated LC screen(s)', () => {
     const r = ask('LC nào sắp hết hạn?');
-    assertEqual(r.answer.action.target, 'OPEN_LC');
-    assertEqual(routeById.get('OPEN_LC'), '/products');
+    assertEqual(routeById.get('OPEN_LC'), '/trade-finance/lc');
+    assertEqual(routeById.get('OPEN_LC_DETAIL'), '/trade-finance/lc');
+    assert(Array.isArray(r.answer.actions) && r.answer.actions.length > 0, 'expected at least one navigation action');
+    assert(
+      r.answer.actions.every((a: any) => a.target === 'OPEN_LC_DETAIL' || a.target === 'OPEN_LC'),
+      'every action must point at the dedicated LC screen or LC detail',
+    );
   });
 
   test('GREETING navigates to OPEN_DASHBOARD -> /dashboard', () => {

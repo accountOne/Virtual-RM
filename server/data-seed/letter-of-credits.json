@@ -20,17 +20,50 @@
     "availableWith": "Nominated Bank",
     "outstandingAmount": 1800000000,
     "documents": [
-      { "documentType": "COMMERCIAL_INVOICE", "required": true, "received": true, "status": "ACCEPTED" },
-      { "documentType": "PACKING_LIST", "required": true, "received": true, "status": "ACCEPTED" },
-      { "documentType": "BILL_OF_LADING", "required": true, "received": true, "status": "ACCEPTED" },
-      { "documentType": "CERTIFICATE_OF_ORIGIN", "required": true, "received": true, "status": "DISCREPANT" },
-      { "documentType": "INSURANCE_CERTIFICATE", "required": true, "received": false, "status": "MISSING" }
+      {
+        "documentType": "COMMERCIAL_INVOICE",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      },
+      {
+        "documentType": "PACKING_LIST",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      },
+      {
+        "documentType": "BILL_OF_LADING",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      },
+      {
+        "documentType": "CERTIFICATE_OF_ORIGIN",
+        "required": true,
+        "received": true,
+        "status": "DISCREPANT"
+      },
+      {
+        "documentType": "INSURANCE_CERTIFICATE",
+        "required": true,
+        "received": false,
+        "status": "MISSING"
+      }
     ],
     "discrepancies": [
-      { "id": "disc-001", "description": "Certificate of Origin thiếu chữ ký của phòng thương mại", "status": "OPEN", "raisedDate": "2026-09-07" }
+      {
+        "id": "disc-001",
+        "description": "Certificate of Origin thiếu chữ ký của phòng thương mại",
+        "status": "OPEN",
+        "raisedDate": "2026-09-07"
+      }
     ],
     "amendments": [],
-    "riskFlags": ["SHIPMENT_DEADLINE_NEAR", "DOCUMENT_DISCREPANCY"]
+    "riskFlags": [
+      "SHIPMENT_DEADLINE_NEAR",
+      "DOCUMENT_DISCREPANCY"
+    ]
   },
   {
     "id": "lc-002",
@@ -53,13 +86,33 @@
     "availableWith": "Advising Bank",
     "outstandingAmount": 2400000000,
     "documents": [
-      { "documentType": "COMMERCIAL_INVOICE", "required": true, "received": true, "status": "ACCEPTED" },
-      { "documentType": "PACKING_LIST", "required": true, "received": true, "status": "ACCEPTED" },
-      { "documentType": "BILL_OF_LADING", "required": true, "received": false, "status": "PENDING" }
+      {
+        "documentType": "COMMERCIAL_INVOICE",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      },
+      {
+        "documentType": "PACKING_LIST",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      },
+      {
+        "documentType": "BILL_OF_LADING",
+        "required": true,
+        "received": false,
+        "status": "PENDING"
+      }
     ],
     "discrepancies": [],
     "amendments": [
-      { "id": "amd-001", "description": "Gia hạn latest shipment date thêm 15 ngày", "status": "PENDING", "requestedDate": "2026-09-05" }
+      {
+        "id": "amd-001",
+        "description": "Gia hạn latest shipment date thêm 15 ngày",
+        "status": "PENDING",
+        "requestedDate": "2026-09-05"
+      }
     ],
     "riskFlags": []
   },
@@ -134,10 +187,103 @@
     "availableWith": "Nominated Bank",
     "outstandingAmount": 620000000,
     "documents": [
-      { "documentType": "COMMERCIAL_INVOICE", "required": true, "received": true, "status": "ACCEPTED" },
-      { "documentType": "PACKING_LIST", "required": true, "received": true, "status": "ACCEPTED" },
-      { "documentType": "BILL_OF_LADING", "required": true, "received": true, "status": "ACCEPTED" }
+      {
+        "documentType": "COMMERCIAL_INVOICE",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      },
+      {
+        "documentType": "PACKING_LIST",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      },
+      {
+        "documentType": "BILL_OF_LADING",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      }
     ],
+    "discrepancies": [],
+    "amendments": [],
+    "riskFlags": []
+  },
+  {
+    "id": "lc-006",
+    "lcNumber": "LC-2026-007",
+    "type": "EXPORT",
+    "subType": "USANCE",
+    "referenceNo": "MSB-LC-2026-007",
+    "beneficiary": "ABC Manufacturing JSC",
+    "applicant": "Jakarta Trading Partners",
+    "amount": 1450000000,
+    "currency": "VND",
+    "issueDate": "2026-07-10",
+    "expiryDate": "2026-10-15",
+    "status": "DISCREPANCY",
+    "issuingBank": "Bank Mandiri",
+    "advisingBank": "MSB",
+    "latestShipmentDate": "2026-09-25",
+    "presentationPeriodDays": 21,
+    "paymentTerm": "USANCE",
+    "availableWith": "Advising Bank",
+    "outstandingAmount": 1450000000,
+    "documents": [
+      {
+        "documentType": "COMMERCIAL_INVOICE",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      },
+      {
+        "documentType": "PACKING_LIST",
+        "required": true,
+        "received": true,
+        "status": "ACCEPTED"
+      },
+      {
+        "documentType": "BILL_OF_LADING",
+        "required": true,
+        "received": true,
+        "status": "DISCREPANT"
+      }
+    ],
+    "discrepancies": [
+      {
+        "id": "disc-002",
+        "description": "Số lượng hàng trên vận đơn không khớp hóa đơn thương mại",
+        "status": "OPEN",
+        "raisedDate": "2026-09-08"
+      }
+    ],
+    "amendments": [],
+    "riskFlags": [
+      "DOCUMENT_DISCREPANCY"
+    ]
+  },
+  {
+    "id": "lc-007",
+    "lcNumber": "LC-2026-008",
+    "type": "IMPORT",
+    "subType": "SIGHT",
+    "referenceNo": "MSB-LC-2026-008",
+    "beneficiary": "Guangzhou Electronics Supply Co.",
+    "applicant": "ABC Manufacturing JSC",
+    "amount": 980000000,
+    "currency": "VND",
+    "issueDate": "2026-09-10",
+    "expiryDate": "2026-12-10",
+    "status": "PENDING_APPROVAL",
+    "issuingBank": "MSB",
+    "advisingBank": "Bank of China",
+    "latestShipmentDate": "2026-11-25",
+    "presentationPeriodDays": 21,
+    "paymentTerm": "SIGHT",
+    "availableWith": "Nominated Bank",
+    "outstandingAmount": 0,
+    "documents": [],
     "discrepancies": [],
     "amendments": [],
     "riskFlags": []
