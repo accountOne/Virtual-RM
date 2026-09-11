@@ -8,12 +8,21 @@ import { HeaderComponent } from './shared/components/header/header.component';
 import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
 import { ToastContainerComponent } from './shared/components/toast-container/toast-container.component';
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
+import { RmChatLauncherComponent } from './features/virtual-rm/components/rm-chat-launcher/rm-chat-launcher.component';
 import { RmChatSessionService } from './features/virtual-rm/interaction/rm-chat-session.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent, ToastContainerComponent, ConfirmDialogComponent],
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    HeaderComponent,
+    SidebarComponent,
+    ToastContainerComponent,
+    ConfirmDialogComponent,
+    RmChatLauncherComponent,
+  ],
   templateUrl: './app.component.html',
 })
 export class AppComponent {

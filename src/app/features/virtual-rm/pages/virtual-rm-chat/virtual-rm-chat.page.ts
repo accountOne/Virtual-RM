@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { Component, ElementRef, ViewChild, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -73,6 +73,12 @@ const SUGGESTED_QUESTIONS = [
           <div class="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-lg">👩‍💼</div>
           <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-positive ring-2 ring-brand-800"></span>
         </div>
+        <!-- Collapses the full-screen chat back to wherever the customer tapped the floating
+             bubble from — Location.back() reuses that browser-history entry; falling back to
+             the dashboard only covers a direct deep-link with no prior in-app page. -->
+        <button class="p-1.5 rounded-lg hover:bg-white/10 shrink-0" (click)="close()" aria-label="Đóng">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
       </header>
 
       <!-- Message list -->
@@ -146,6 +152,7 @@ const SUGGESTED_QUESTIONS = [
 })
 export class VirtualRmChatPageComponent {
   readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly session = inject(RmChatSessionService);
 
   @ViewChild('scrollEl') scrollEl?: ElementRef<HTMLDivElement>;
@@ -170,6 +177,16 @@ export class VirtualRmChatPageComponent {
       this.messages();
       this.scrollToBottom();
     });
+  }
+
+  /** Collapses the full-screen page back to wherever the customer opened it from — the
+   * floating bubble launcher (`RmChatLauncherComponent`) pushes this route onto the existing
+   * browser history, so going back reuses that entry rather than navigating "somewhere new". A
+   * direct deep-link with no prior in-app page falls back to the dashboard instead of leaving
+   * the app. */
+  close(): void {
+    if (window.history.length > 1) this.location.back();
+    else this.router.navigateByUrl('/dashboard');
   }
 
   ask(question: string): void {
