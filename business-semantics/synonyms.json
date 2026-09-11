@@ -420,7 +420,12 @@
     "muốn thực hiện chuyển tiền",
     "chuyển tiền đơn",
     "muốn chuyển tiền đơn",
-    "tôi muốn lập lệnh chuyển tiền"
+    "tôi muốn lập lệnh chuyển tiền",
+    "tôi muốn thanh toán",
+    "tôi cần thanh toán",
+    "muốn thực hiện thanh toán",
+    "tôi muốn lập lệnh thanh toán",
+    "tôi muốn thực hiện thanh toán"
   ],
   "pending": [
     "đang chờ xử lý",

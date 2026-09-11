@@ -56,4 +56,16 @@ describe('status resolution (15 required)', () => {
   test('no status phrase present -> undefined', () => {
     assertEqual(resolveStatus(norm('tỷ giá usd hôm nay bao nhiêu'), pack), undefined);
   });
+  test('"chuyển" never false-positives as "hủy" (CANCELLED) — regression for a real reported bug', () => {
+    // stripDiacritics("hủy") = "huy", which is a literal substring of stripDiacritics("chuyển")
+    // = "chuyen" (c-H-U-Y-en). A naive .includes() check used to resolve "Tôi muốn chuyển tiền"
+    // to a phantom CANCELLED status, which cascaded into resolving the wrong intent
+    // (PAYMENT_STATUS instead of PAYMENT_CREATE).
+    assertEqual(resolveStatus(norm('tôi muốn chuyển tiền'), pack), undefined);
+    assertEqual(resolveStatus(norm('lập lệnh chuyển khoản mới'), pack), undefined);
+  });
+  test('a real standalone "hủy" is still resolved correctly after the word-boundary fix', () => {
+    assertEqual(resolveStatus(norm('tôi muốn hủy giao dịch'), pack), 'CANCELLED');
+    assertEqual(resolveStatus(norm('lệnh chuyển tiền bị hủy'), pack), 'CANCELLED');
+  });
 });

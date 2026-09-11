@@ -115,6 +115,21 @@ describe('end-to-end query execution — real data, not just intent (20 required
     assertEqual(r.answer.records.length, 5);
   });
 
+  // Regression for a real reported bug: "LC nào đang quá hạn?" used to ignore the resolved
+  // status filter entirely and just list all LCs regardless of status.
+  test('LC_LIST filters by status when one is asked for, instead of ignoring it', () => {
+    const r = ask('LC nào đang quá hạn?');
+    assertEqual(r.semantic.intent, 'LC_LIST');
+    assert(r.answer.records.length > 0, 'expected at least one expired LC in the seed data');
+    for (const lc of r.answer.records as { status: string }[]) assertEqual(lc.status, 'EXPIRED');
+  });
+  test('GUARANTEE_LIST filters by status when one is asked for, instead of ignoring it', () => {
+    const r = ask('Bảo lãnh nào quá hạn?');
+    assertEqual(r.semantic.intent, 'GUARANTEE_LIST');
+    assert(r.answer.records.length > 0, 'expected at least one expired guarantee in the seed data');
+    for (const bg of r.answer.records as { status: string }[]) assertEqual(bg.status, 'EXPIRED');
+  });
+
   test('LOAN_LIST returns all 3 seeded loans', () => {
     const r = ask('Công ty đang có nợ vay ngân hàng nào?');
     assertEqual(r.semantic.intent, 'LOAN_LIST');

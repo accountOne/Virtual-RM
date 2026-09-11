@@ -534,11 +534,18 @@ const HANDLERS: Record<string, Handler> = {
   },
 
   // ---- TRADE FINANCE --------------------------------------------------------------
-  LC_LIST: () => {
-    const items = letterOfCreditsRepository.readAll();
+  LC_LIST: (ctx) => {
+    let items = letterOfCreditsRepository.readAll();
+    // LCs never actually carry status OVERDUE in this data model (only Collections do) — "quá
+    // hạn"/"hết hạn" both mean the same thing for an LC (EXPIRED), so a resolved OVERDUE filter
+    // is remapped here rather than silently returning an always-empty list.
+    const status = ctx.query.filters.status === 'OVERDUE' ? 'EXPIRED' : ctx.query.filters.status;
+    if (status) items = items.filter((l) => l.status === status);
     return {
       title: 'Thư tín dụng',
-      summary: `Doanh nghiệp hiện có ${items.length} thư tín dụng.`,
+      summary: status
+        ? `Doanh nghiệp có ${items.length} thư tín dụng ở trạng thái ${status}.`
+        : `Doanh nghiệp hiện có ${items.length} thư tín dụng.`,
       metrics: [{ label: 'Số LC', value: String(items.length) }],
       records: items,
     };
@@ -600,11 +607,16 @@ const HANDLERS: Record<string, Handler> = {
         action: buildAction('OPEN_GUARANTEE_DETAIL', ctx.navigationActions, found.bgNumber),
       };
     }
+    // Same OVERDUE->EXPIRED remap as LC_LIST — guarantees never carry status OVERDUE either.
+    const status = ctx.query.filters.status === 'OVERDUE' ? 'EXPIRED' : ctx.query.filters.status;
+    const scoped = status ? items.filter((g) => g.status === status) : items;
     return {
       title: 'Bảo lãnh ngân hàng',
-      summary: `Doanh nghiệp hiện có ${items.length} bảo lãnh ngân hàng.`,
-      metrics: [{ label: 'Số bảo lãnh', value: String(items.length) }],
-      records: items,
+      summary: status
+        ? `Doanh nghiệp có ${scoped.length} bảo lãnh ngân hàng ở trạng thái ${status}.`
+        : `Doanh nghiệp hiện có ${scoped.length} bảo lãnh ngân hàng.`,
+      metrics: [{ label: 'Số bảo lãnh', value: String(scoped.length) }],
+      records: scoped,
     };
   },
   GUARANTEE_EXPIRY: (ctx) => {
@@ -624,11 +636,15 @@ const HANDLERS: Record<string, Handler> = {
       actions: viewAll ? [...perBg, { ...viewAll, label: 'Xem tất cả bảo lãnh' }] : perBg,
     };
   },
-  COLLECTION_LIST: () => {
-    const items = collectionsRepository.readAll();
+  COLLECTION_LIST: (ctx) => {
+    let items = collectionsRepository.readAll();
+    const status = ctx.query.filters.status;
+    if (status) items = items.filter((c) => c.status === status);
     return {
       title: 'Nhờ thu',
-      summary: `Doanh nghiệp hiện có ${items.length} bộ chứng từ nhờ thu.`,
+      summary: status
+        ? `Doanh nghiệp có ${items.length} bộ chứng từ nhờ thu ở trạng thái ${status}.`
+        : `Doanh nghiệp hiện có ${items.length} bộ chứng từ nhờ thu.`,
       metrics: [{ label: 'Số bộ chứng từ', value: String(items.length) }],
       records: items,
     };

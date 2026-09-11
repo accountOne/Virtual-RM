@@ -392,6 +392,22 @@ describe('intent detection (50+ required)', () => {
     const r: any = answerQuery('Tôi muốn chuyển tiền đơn', sec, {});
     assertEqual(r.semantic.intent, 'PAYMENT_CREATE');
   });
+  // Regression for a real reported bug: "Tôi muốn chuyển tiền" used to resolve to PAYMENT_STATUS
+  // instead of PAYMENT_CREATE, because "chuyển" false-positive-matched the status keyword "hủy"
+  // (CANCELLED) as a raw substring, which both satisfied PAYMENT_STATUS's requiredSignals gate
+  // and outscored PAYMENT_CREATE via the extra statusCondition bonus — see status-resolver.ts's
+  // word-boundary fix and statuses.test.ts's own regression test for the root cause.
+  test('PAYMENT_CREATE <- "Tôi muốn chuyển tiền" (not PAYMENT_STATUS)', () => {
+    const r: any = answerQuery('Tôi muốn chuyển tiền', sec, {});
+    assertEqual(r.semantic.intent, 'PAYMENT_CREATE');
+  });
+  // Also a real reported bug: a bare "tôi muốn thanh toán" fell through to CLARIFICATION_NEEDED
+  // because paymentCreate's synonym phrase list only had "chuyển tiền"-worded phrasings, not the
+  // equally common "thanh toán"-worded ones.
+  test('PAYMENT_CREATE <- "tôi muốn thanh toán" (not a clarification)', () => {
+    const r: any = answerQuery('tôi muốn thanh toán', sec, {});
+    assertEqual(r.semantic.intent, 'PAYMENT_CREATE');
+  });
   test('APPROVAL_APPROVE <- "Tôi muốn phê duyệt giao dịch này"', () => {
     const r: any = answerQuery('Tôi muốn phê duyệt giao dịch này', sec, {});
     assertEqual(r.semantic.intent, 'APPROVAL_APPROVE');
