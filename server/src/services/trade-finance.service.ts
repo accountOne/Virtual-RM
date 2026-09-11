@@ -28,6 +28,13 @@ const OPEN_COLLECTION_STATUSES = new Set(['PROCESSING', 'AWAITING_PAYMENT', 'AWA
 
 const EXPIRY_WINDOW_DAYS = 30;
 
+/** Phase 5.5 BRD alignment §14/§26 — LC issuance is a Maker-initiated request; a Checker must
+ * never be able to create one. Pure and exported so it's unit-testable independent of the
+ * Express controller that calls it (server/src/controllers/trade-finance.controller.ts). */
+export function canCreateLc(role?: 'MAKER' | 'CHECKER' | 'ADMIN'): boolean {
+  return role !== 'CHECKER';
+}
+
 export interface TradeFinanceStatCard {
   active: number;
   totalOutstanding: CurrencyTotal[];

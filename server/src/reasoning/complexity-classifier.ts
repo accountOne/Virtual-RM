@@ -46,7 +46,10 @@ const REASONING_TYPE: Record<ReasoningUseCase, ReasoningType> = {
   TRADE_FINANCE_OVERVIEW: 'AGGREGATION',
   TRADE_FINANCE_ATTENTION: 'COMPARISON',
   CASHFLOW_DIAGNOSTIC: 'DIAGNOSTIC',
-  DAILY_PRIORITY: 'ADVISORY',
+  // Reclassified from ADVISORY (original Phase 5.5 pass) to PRIORITIZATION — the BRD alignment
+  // pass (docs/phase-5.5-brd-gap-analysis.md §4 item 17) names this exact use case verbatim as
+  // its PRIORITIZATION example ("Hôm nay tôi cần xử lý gì?", "Việc nào urgent nhất?").
+  DAILY_PRIORITY: 'PRIORITIZATION',
 };
 
 export function reasoningTypeOf(useCase: ReasoningUseCase): ReasoningType {

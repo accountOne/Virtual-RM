@@ -42,7 +42,9 @@ describe('complexity classifier (15 required)', () => {
   test('CASHFLOW_DIAGNOSTIC → COMPLEX', () => assertEqual(classifyComplexity('CASHFLOW_DIAGNOSTIC', true), 'COMPLEX'));
   test('DAILY_PRIORITY → COMPLEX', () => assertEqual(classifyComplexity('DAILY_PRIORITY', true), 'COMPLEX'));
   test('reasoningTypeOf CASHFLOW_DIAGNOSTIC → DIAGNOSTIC', () => assertEqual(reasoningTypeOf('CASHFLOW_DIAGNOSTIC'), 'DIAGNOSTIC'));
-  test('reasoningTypeOf DAILY_PRIORITY → ADVISORY', () => assertEqual(reasoningTypeOf('DAILY_PRIORITY'), 'ADVISORY'));
+  // Reclassified PRIORITIZATION per the BRD alignment pass (docs/phase-5.5-brd-gap-analysis.md
+  // §4 item 17) — was ADVISORY in the original Phase 5.5 (Advanced Reasoning) pass.
+  test('reasoningTypeOf DAILY_PRIORITY → PRIORITIZATION', () => assertEqual(reasoningTypeOf('DAILY_PRIORITY'), 'PRIORITIZATION'));
   test('reasoningTypeOf LC_RISK_PRIORITIZATION → COMPARISON', () => assertEqual(reasoningTypeOf('LC_RISK_PRIORITIZATION'), 'COMPARISON'));
 });
 

@@ -54,7 +54,7 @@ import { planSteps } from '../reasoning/query-planner';
 import { calculatedEvidence, pluckEvidence, summarizeEvidence } from '../reasoning/evidence-engine';
 import { safeFallbackAnswer, verifyReasoning } from '../reasoning/verification-engine';
 import { QueryComplexity, ReasoningEvidence, ReasoningType, statusFromVerification, VerificationStatus } from '../reasoning/reasoning-types';
-import { crossDomainPriorities } from '../reasoning/priority-engine';
+import { crossDomainPriorities, ENTITY_NAV_TARGET, ENTITY_SCOPED_NAV_TYPES } from '../reasoning/priority-engine';
 import { Transaction } from '../models';
 
 export interface ReasoningDebugInfo {
@@ -814,20 +814,11 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         }),
       );
 
-      const navByEntityType: Record<string, string> = {
-        LetterOfCredit: 'OPEN_LC_DETAIL',
-        BankGuarantee: 'OPEN_GUARANTEE_DETAIL',
-        Collection: 'OPEN_COLLECTION_DETAIL',
-        Approval: 'OPEN_APPROVAL',
-        Task: 'OPEN_TASK',
-        Payable: 'OPEN_PAYMENT',
-      };
-      const entityScopedTypes = new Set(['LetterOfCredit', 'BankGuarantee', 'Collection']);
       const priorityActions = top3
         .map((item) => {
-          const navId = navByEntityType[item.entityType];
+          const navId = ENTITY_NAV_TARGET[item.entityType];
           if (!navId) return undefined;
-          const a = buildAction(navId, navigationActions, entityScopedTypes.has(item.entityType) ? item.entityId : undefined);
+          const a = buildAction(navId, navigationActions, ENTITY_SCOPED_NAV_TYPES.has(item.entityType) ? item.entityId : undefined);
           return a ? { ...a, label: `Xem ${item.label}` } : undefined;
         })
         .filter((a): a is NonNullable<typeof a> => !!a);

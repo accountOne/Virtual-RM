@@ -169,3 +169,20 @@ export function crossDomainPriorities(input: PriorityInput): CrossDomainPriority
 
   return items.sort((a, b) => b.priorityScore - a.priorityScore);
 }
+
+/** Shared entityType -> navigation-action-id map, so a CrossDomainPriorityItem's navigation
+ * target is computed the same way everywhere it's turned into a CTA (the DAILY_PRIORITY chat
+ * use case in ai/reasoning-engine.ts, and the Daily Dashboard REST endpoint in
+ * services/daily-dashboard.service.ts) instead of two copies drifting apart. */
+export const ENTITY_NAV_TARGET: Record<string, string> = {
+  LetterOfCredit: 'OPEN_LC_DETAIL',
+  BankGuarantee: 'OPEN_GUARANTEE_DETAIL',
+  Collection: 'OPEN_COLLECTION_DETAIL',
+  Approval: 'OPEN_APPROVAL',
+  Task: 'OPEN_TASK',
+  Payable: 'OPEN_PAYMENT',
+};
+
+/** Only LC/Guarantee/Collection deep-link to a specific record (/trade-finance/.../:id) — the
+ * others navigate to a list/screen without an entityId. */
+export const ENTITY_SCOPED_NAV_TYPES = new Set(['LetterOfCredit', 'BankGuarantee', 'Collection']);

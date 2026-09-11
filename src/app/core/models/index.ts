@@ -140,3 +140,4 @@ export interface ChatMessage {
 }
 
 export * from './trade-finance.model';
+export * from './daily-dashboard.model';

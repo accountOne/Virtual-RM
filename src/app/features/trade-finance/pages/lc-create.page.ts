@@ -168,6 +168,11 @@ export class LcCreatePageComponent {
       });
       this.toast.success(`Đã gửi yêu cầu mở LC ${created.lcNumber} — chờ phê duyệt (mô phỏng).`);
       this.router.navigateByUrl(`/trade-finance/lc/${created.lcNumber}`);
+    } catch (err) {
+      // BRD §26 — a Checker's request is rejected server-side (403) with the exact message
+      // the BRD specifies; surfaced here rather than a generic failure toast.
+      const message = (err as { error?: { message?: string } })?.error?.message ?? 'Không thể gửi yêu cầu mở LC. Vui lòng thử lại.';
+      this.toast.error(message);
     } finally {
       this.submitting.set(false);
     }

@@ -1,6 +1,8 @@
 // Core types for the Business Banking Semantic Engine. Deterministic, local, no LLM —
 // see /business-semantics/README.md and docs/semantic-engine.md for the full picture.
 
+import { QueryComplexity, ReasoningType, VerificationStatus } from '../reasoning/reasoning-types';
+
 export type AmountOperatorId = 'GT' | 'GTE' | 'LT' | 'LTE' | 'EQ' | 'BETWEEN';
 
 export interface AmountFilter {
@@ -95,9 +97,13 @@ export interface SemanticQueryResult {
      * *answer's reliability*, not internal reasoning — safe to show a real UI, unlike the
      * plan/toolsUsed/evidenceSummary fields below. */
     reasoningMeta?: {
-      type: 'LOOKUP' | 'AGGREGATION' | 'COMPARISON' | 'DIAGNOSTIC' | 'ADVISORY';
-      complexity: 'SIMPLE' | 'MODERATE' | 'COMPLEX';
-      verificationStatus: 'VERIFIED' | 'WARNING' | 'FAILED';
+      // Kept as the reasoning/ layer's own ReasoningType/QueryComplexity/VerificationStatus
+      // unions (imported below) rather than a hand-duplicated literal list, so the two BRD
+      // alignment additions (PRIORITIZATION/TRANSACTION_ASSISTANCE/DOCUMENT_ANALYSIS) can't
+      // silently drift out of sync between the two files again.
+      type: ReasoningType;
+      complexity: QueryComplexity;
+      verificationStatus: VerificationStatus;
     };
     /** Debug-only (SEMANTIC_DEBUG=true) — structured reasoning metadata per spec §23/§24.
      * Never the model's chain-of-thought, only which tools/calculations/evidence went in. */

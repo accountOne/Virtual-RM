@@ -32,6 +32,9 @@ apiRouter.post('/virtual-rm/query', semanticController.query);
 apiRouter.get('/virtual-rm/briefing', semanticController.briefing);
 apiRouter.get('/virtual-rm/trade-finance-briefing', semanticController.tradeFinanceBriefing);
 
+// Phase 5.5 BRD alignment — Daily Dashboard (docs/phase-5.5-brd-gap-analysis.md §4 item 1).
+apiRouter.get('/virtual-rm/daily-dashboard', semanticController.dailyDashboard);
+
 // Phase 7 — dedicated Trade Finance Business Banking screens (system-of-record REST API,
 // separate from the chat query API above; both read the same underlying repositories).
 apiRouter.get('/trade-finance/summary', tradeFinanceController.summary);

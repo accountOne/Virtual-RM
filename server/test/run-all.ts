@@ -18,6 +18,7 @@ import './conversation-context.test';
 import './security-isolation.test';
 import './trade-finance-service.test';
 import './reasoning-phase55.test';
+import './daily-dashboard.test';
 
 import { runAll } from './test-runner';
 

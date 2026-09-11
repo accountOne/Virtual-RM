@@ -4,8 +4,23 @@
 // Phase 5/6 — it's the additive classification/plan/evidence/verification/priority vocabulary
 // those two files now also speak, per docs/phase-5.5-reasoning-architecture.md.
 
-/** How a question is answered, independent of how complex it is to execute (spec §5). */
-export type ReasoningType = 'LOOKUP' | 'AGGREGATION' | 'COMPARISON' | 'DIAGNOSTIC' | 'ADVISORY';
+/** How a question is answered, independent of how complex it is to execute. The first five
+ * are the original Phase 5.5 (Advanced Reasoning) set; PRIORITIZATION/TRANSACTION_ASSISTANCE/
+ * DOCUMENT_ANALYSIS are the BRD alignment pass's additions (docs/phase-5.5-brd-gap-analysis.md
+ * §4 item 17). PRIORITIZATION is implemented now (the Daily Dashboard's urgent-items ranking —
+ * see reasoning/priority-engine.ts, reclassified from ADVISORY to this dedicated type since the
+ * BRD names it explicitly). TRANSACTION_ASSISTANCE/DOCUMENT_ANALYSIS are declared here so the
+ * type is BRD-complete but have no use case wired to them yet — that's the LC Issuance
+ * Assistant pass, tracked as future work in docs/phase-5.5-brd-alignment.md. */
+export type ReasoningType =
+  | 'LOOKUP'
+  | 'AGGREGATION'
+  | 'COMPARISON'
+  | 'DIAGNOSTIC'
+  | 'ADVISORY'
+  | 'PRIORITIZATION'
+  | 'TRANSACTION_ASSISTANCE'
+  | 'DOCUMENT_ANALYSIS';
 
 /** How much work answering a question takes — decides whether the Reasoning Engine (and its
  * verification layer) runs at all, or the existing fast deterministic path is enough (spec §6).

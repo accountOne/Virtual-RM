@@ -1,5 +1,5 @@
 import { describe, test, assert, assertEqual } from './test-runner';
-import { tradeFinanceService } from '../src/services/trade-finance.service';
+import { canCreateLc, tradeFinanceService } from '../src/services/trade-finance.service';
 import { bankGuaranteesRepository, collectionsRepository, letterOfCreditsRepository } from '../src/repositories';
 
 // createLc/createGuarantee/createCollection persist to server/data/*.json (the same
@@ -85,6 +85,13 @@ describe('Trade Finance dedicated-screens REST API (Phase 7)', () => {
     assert(s.exposure.total.length > 0, 'expected at least one currency in total exposure');
     assert(s.risk.highPriority >= 0, 'risk.highPriority must be non-negative');
   });
+
+  // Phase 5.5 BRD alignment §14/§26 — LC issuance is Maker-initiated; a Checker must never be
+  // able to create one, enforced server-side (server/src/controllers/trade-finance.controller.ts).
+  test('canCreateLc denies a Checker', () => assertEqual(canCreateLc('CHECKER'), false));
+  test('canCreateLc allows a Maker', () => assertEqual(canCreateLc('MAKER'), true));
+  test('canCreateLc allows an Admin', () => assertEqual(canCreateLc('ADMIN'), true));
+  test('canCreateLc allows an unspecified role (demo has no universal auth requirement beyond this)', () => assertEqual(canCreateLc(undefined), true));
 
   // Must run last (test-runner.ts executes tests in registration order within a suite).
   test('cleanup: create* calls above leave server/data/*.json exactly as they found it', () => {

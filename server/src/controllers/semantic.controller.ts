@@ -17,6 +17,7 @@ import { runReasoning } from '../ai/reasoning-engine';
 import { toUserContext } from '../ai/types';
 import { getConversationContext, resolveCurrencyFollowUp, resolveDocumentFollowUp, setConversationContext } from '../ai/conversation-context';
 import { stripDiacritics } from '../semantic/normalizer';
+import { buildDailyDashboard } from '../services/daily-dashboard.service';
 
 /** "Cho tôi business briefing hôm nay." (spec §27 demo scenario #15) is a request for the
  * *standing* daily summary, not a question to route through intent detection — same as how
@@ -188,6 +189,17 @@ export const semanticController = {
     const { userId, role } = req.query as { userId?: string; role?: 'MAKER' | 'CHECKER' | 'ADMIN' };
     const security = buildSecurityContext(userId, role);
     res.json(tradeFinanceBriefing(security));
+  },
+
+  /** GET /api/virtual-rm/daily-dashboard — Phase 5.5 BRD alignment (spec §6/§38). Same
+   * standing-summary pattern as briefing()/tradeFinanceBriefing() above, built on the Reasoning
+   * Engine's Priority Engine rather than the legacy /api/rm/briefing path
+   * (docs/phase-5.5-brd-gap-analysis.md §3.5). */
+  dailyDashboard(req: Request, res: Response) {
+    const { userId, role } = req.query as { userId?: string; role?: 'MAKER' | 'CHECKER' | 'ADMIN' };
+    const security = buildSecurityContext(userId, role);
+    const anchorToday = getAnchorDates().today;
+    res.json(buildDailyDashboard(toUserContext(security), anchorToday, getNavigationActions()));
   },
 };
 
