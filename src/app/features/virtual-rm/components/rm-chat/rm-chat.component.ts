@@ -60,16 +60,19 @@ let idCounter = 0;
         <div *ngIf="thinking()" class="flex">
           <div class="bg-ink-50 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm text-ink-400">● Đang phân tích...</div>
         </div>
-      </div>
 
-      <div class="px-4 pb-2 flex gap-1.5 flex-wrap shrink-0" *ngIf="messages().length <= 1">
-        <button
-          *ngFor="let q of suggested"
-          (click)="ask(q)"
-          class="text-xs px-2.5 py-1.5 rounded-full bg-ink-50 text-ink-600 hover:bg-ink-100 transition-colors"
-        >
-          {{ q }}
-        </button>
+        <!-- Scrolls with the messages (not a fixed-height sibling below) so a growing
+             chip list can never push the input form out of the sheet's fixed-height,
+             overflow-hidden container on mobile — see rm-widget.component.ts's h-[50dvh]. -->
+        <div class="flex gap-1.5 flex-wrap" *ngIf="messages().length <= 1">
+          <button
+            *ngFor="let q of suggested"
+            (click)="ask(q)"
+            class="text-xs px-2.5 py-1.5 rounded-full bg-ink-50 text-ink-600 hover:bg-ink-100 transition-colors"
+          >
+            {{ q }}
+          </button>
+        </div>
       </div>
 
       <div class="px-4 pb-1 shrink-0" *ngIf="messages().length > 1">
