@@ -13,6 +13,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:semantic": "npm run test --prefix server",
+    "test:interaction": "ts-node --project tsconfig.interaction-tests.json src/app/features/virtual-rm/interaction/__tests__/run-all.ts",
     "validate:semantic": "ts-node --project tsconfig.scripts.json scripts/validate-semantic-pack.ts",
     "postinstall": "npm install --prefix server"
   },

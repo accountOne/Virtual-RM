@@ -56,25 +56,28 @@ const TARGET_ANCHOR: Record<string, string> = {
   OPEN_GUARANTEE_CLAIM: '#claims',
 };
 
-function buildLink(target: string, entityId?: string): string {
+/** Exported for `rm-message-builder.ts` (Phase 5.6) so a navigation `RMAction`'s `route` is built
+ * from the exact same table the flattened `RmAnswer` CTAs already use — one source of truth for
+ * "semantic nav target -> Angular route", not a second copy. */
+export function buildLink(target: string, entityId?: string): string {
   const base = NAV_ACTION_ROUTES[target] ?? '/dashboard';
   if (!entityId) return base;
   return `${base}/${entityId}${TARGET_ANCHOR[target] ?? ''}`;
 }
 
-interface SemanticMetric {
+export interface SemanticMetric {
   label: string;
   value: string;
 }
 
-interface SemanticAnswerAction {
+export interface SemanticAnswerAction {
   label: string;
   type: 'NAVIGATE';
   target: string;
   entityId?: string;
 }
 
-interface SemanticAnswer {
+export interface SemanticAnswer {
   title: string;
   summary: string;
   metrics: SemanticMetric[];
@@ -90,7 +93,7 @@ interface SemanticAnswer {
   recommendation?: { title: string; description: string };
 }
 
-interface SemanticQueryApiResult {
+export interface SemanticQueryApiResult {
   success: true;
   semantic: { intent: string; confidence: number; reasoningRequired?: boolean };
   answer: SemanticAnswer;
@@ -188,15 +191,26 @@ export class RmDataService {
    * {message, cta} shape so rm-chat.component.ts doesn't need to change, while still
    * surfacing real numbers (RM style: short, numeric, action — not chatbot prose). */
   async askRm(question: string): Promise<RmAnswer> {
+    return this.toRmAnswer(await this.query(question));
+  }
+
+  /** Phase 5.6 — same call as `askRm()`, but returns the full structured
+   * {semantic, answer} shape instead of the flattened {message, ctas} one, so the RM
+   * Interaction Engine's message builder can render metrics/insights/recommendation/actions
+   * as distinct rich message bubbles instead of one joined string. */
+  async askRmRaw(question: string): Promise<SemanticQueryApiResult> {
+    return this.query(question);
+  }
+
+  private async query(question: string): Promise<SemanticQueryApiResult> {
     const user = this.auth.currentUser();
-    const res = await firstValueFrom(
+    return firstValueFrom(
       this.http.post<SemanticQueryApiResult>('/api/virtual-rm/query', {
         message: question,
         userId: user?.username,
         role: user?.role,
       }),
     );
-    return this.toRmAnswer(res);
   }
 
   private toRmAnswer(res: SemanticQueryApiResult): RmAnswer {
