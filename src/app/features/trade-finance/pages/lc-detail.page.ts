@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LetterOfCredit } from '../../../core/models';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
@@ -149,6 +150,7 @@ export class LcDetailPageComponent implements OnInit {
   private readonly tf = inject(TradeFinanceService);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmDialogService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly stages = STAGES;
   readonly lc = signal<LetterOfCredit | undefined>(undefined);
@@ -161,9 +163,19 @@ export class LcDetailPageComponent implements OnInit {
   readonly statusLabel = statusLabel;
   readonly statusTone = statusTone;
 
-  async ngOnInit(): Promise<void> {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) this.lc.set(await this.tf.lcById(id));
+  ngOnInit(): void {
+    // Angular reuses this component instance across navigations that only change the `:id`
+    // param (same route config, e.g. one Virtual RM CTA to another) — reading the id once from
+    // `route.snapshot` here would leave the page frozen on whichever LC loaded first. Subscribe
+    // to `paramMap` instead so every id change (including the first) reloads.
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((pm) => {
+      void this.loadLc(pm.get('id'));
+    });
+  }
+
+  private async loadLc(id: string | null): Promise<void> {
+    this.loading.set(true);
+    this.lc.set(id ? await this.tf.lcById(id) : undefined);
     this.loading.set(false);
     // Virtual RM's OPEN_LC_DOCUMENTS/_DISCREPANCY/_AMENDMENT navigate here with a URL
     // fragment (e.g. .../LC-2026-001#documents) so "LC001 thiếu chứng từ gì?" lands

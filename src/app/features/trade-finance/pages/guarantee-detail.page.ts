@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { BankGuarantee } from '../../../core/models';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
@@ -83,6 +84,7 @@ export class GuaranteeDetailPageComponent implements OnInit {
   private readonly tf = inject(TradeFinanceService);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmDialogService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly guarantee = signal<BankGuarantee | undefined>(undefined);
   readonly loading = signal(true);
@@ -90,9 +92,18 @@ export class GuaranteeDetailPageComponent implements OnInit {
   readonly statusLabel = statusLabel;
   readonly statusTone = statusTone;
 
-  async ngOnInit(): Promise<void> {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) this.guarantee.set(await this.tf.guaranteeById(id));
+  ngOnInit(): void {
+    // See lc-detail.page.ts's identical fix: Angular reuses this component across
+    // param-only navigations (e.g. one Virtual RM CTA to another guarantee), so a one-time
+    // `route.snapshot` read would leave the page stuck on the first guarantee loaded.
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((pm) => {
+      void this.loadGuarantee(pm.get('id'));
+    });
+  }
+
+  private async loadGuarantee(id: string | null): Promise<void> {
+    this.loading.set(true);
+    this.guarantee.set(id ? await this.tf.guaranteeById(id) : undefined);
     this.loading.set(false);
     const fragment = this.route.snapshot.fragment;
     if (fragment) queueMicrotask(() => document.getElementById(fragment)?.scrollIntoView({ block: 'start' }));

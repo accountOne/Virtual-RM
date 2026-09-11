@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Collection } from '../../../core/models';
 import { TradeFinanceService } from '../../../core/services/trade-finance.service';
@@ -71,6 +72,7 @@ import { DOCUMENT_STATUS_LABEL, statusLabel, statusTone } from '../trade-finance
 export class CollectionDetailPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly tf = inject(TradeFinanceService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly collection = signal<Collection | undefined>(undefined);
   readonly loading = signal(true);
@@ -78,9 +80,18 @@ export class CollectionDetailPageComponent implements OnInit {
   readonly statusLabel = statusLabel;
   readonly statusTone = statusTone;
 
-  async ngOnInit(): Promise<void> {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) this.collection.set(await this.tf.collectionById(id));
+  ngOnInit(): void {
+    // See lc-detail.page.ts's identical fix: Angular reuses this component across
+    // param-only navigations, so a one-time `route.snapshot` read would leave the page stuck
+    // on the first collection loaded.
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((pm) => {
+      void this.loadCollection(pm.get('id'));
+    });
+  }
+
+  private async loadCollection(id: string | null): Promise<void> {
+    this.loading.set(true);
+    this.collection.set(id ? await this.tf.collectionById(id) : undefined);
     this.loading.set(false);
   }
 

@@ -9,6 +9,7 @@ import { SidebarComponent } from './shared/components/sidebar/sidebar.component'
 import { ToastContainerComponent } from './shared/components/toast-container/toast-container.component';
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
 import { RmWidgetComponent } from './features/virtual-rm/components/rm-widget/rm-widget.component';
+import { RmChatSessionService } from './features/virtual-rm/interaction/rm-chat-session.service';
 
 @Component({
   selector: 'app-root',
@@ -28,6 +29,12 @@ export class AppComponent {
   readonly auth = inject(AuthService);
   private readonly rmData = inject(RmDataService);
   private readonly dailyDashboard = inject(DailyDashboardService);
+  // Eagerly instantiate the chat session singleton here (app root), not lazily from
+  // RmChatComponent — RmWidgetComponent mounts RmChatComponent TWICE at once (desktop panel +
+  // mobile sheet), and the session also needs to auto-open the widget itself once the Daily
+  // Dashboard loads (see the service's doc comment), which must work even before either chat
+  // view has ever been rendered.
+  private readonly chatSession = inject(RmChatSessionService);
   readonly mobileMenuOpen = signal(false);
 
   constructor() {
