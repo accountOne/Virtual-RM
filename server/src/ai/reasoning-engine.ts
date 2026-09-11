@@ -1,8 +1,16 @@
-// Reasoning Engine — Phase 5. For each reasoning use case: build a bounded tool-call plan,
-// execute it through the Tool Layer (server/src/tools), run the Calculation Engine over the
-// results, then hand only the *computed facts* to the AI provider to phrase (never raw
-// instructions to "figure out the numbers" — spec §21 no-hallucination policy). If the plan
-// would exceed AI_MAX_STEPS, it stops before calling any tool (spec §9).
+// Reasoning Engine — Phase 5, extended by Phase 5.5 (Advanced Business Reasoning &
+// Verification). For each reasoning use case: build a bounded tool-call plan (now sourced from
+// server/src/reasoning/query-planner.ts instead of a local copy), execute it through the Tool
+// Layer (server/src/tools), run the Calculation Engine over the results, then hand only the
+// *computed facts* to the AI provider to phrase (never raw instructions to "figure out the
+// numbers" — spec §21 no-hallucination policy). If the plan would exceed AI_MAX_STEPS, it stops
+// before calling any tool (spec §9).
+//
+// Phase 5.5 adds: every use case is tagged with a ReasoningType/QueryComplexity
+// (complexity-classifier.ts), collects ReasoningEvidence for its key facts (evidence-engine.ts),
+// and runs the mandatory Verification Engine (verification-engine.ts) before returning — an
+// answer that fails verification is replaced with a safe fallback rather than shown to the user
+// (spec §14). None of this changes the existing 12 use cases' *content*; see finalize() below.
 
 import { DateRange, MetricItem, NavigationActionDef, SemanticAnswer } from '../semantic/types';
 import { formatShortVnd } from '../utils/currency.util';
@@ -10,6 +18,7 @@ import {
   getAccountBalance,
   getBankGuarantees,
   getCashPosition,
+  getCollectionDeadlines,
   getCollections,
   getGuaranteeDeadlines,
   getLcDeadlines,
@@ -21,6 +30,7 @@ import {
   getReceivables,
   getRecommendations,
   getLoanObligations,
+  getTasks,
   getTradeFinanceExposure,
   getTradeFinanceLimits,
   getTransactions,
@@ -39,12 +49,25 @@ import {
 import { AIConfig, ReasoningRequest, UserContext } from './types';
 import { getAiProvider } from './ai-client';
 import { ReasoningUseCase } from './model-router';
+import { classifyComplexity, reasoningTypeOf } from '../reasoning/complexity-classifier';
+import { planSteps } from '../reasoning/query-planner';
+import { calculatedEvidence, pluckEvidence, summarizeEvidence } from '../reasoning/evidence-engine';
+import { safeFallbackAnswer, verifyReasoning } from '../reasoning/verification-engine';
+import { QueryComplexity, ReasoningEvidence, ReasoningType, statusFromVerification, VerificationStatus } from '../reasoning/reasoning-types';
+import { crossDomainPriorities } from '../reasoning/priority-engine';
+import { Transaction } from '../models';
 
 export interface ReasoningDebugInfo {
   useCase: string;
   plan: string[];
   toolsUsed: string[];
   calculationsUsed: string[];
+  /** Phase 5.5 — never chain-of-thought, only the classification/verification metadata spec
+   * §24 explicitly allows in debug output. */
+  reasoningType: ReasoningType;
+  complexity: QueryComplexity;
+  verificationStatus: VerificationStatus;
+  evidenceSummary: ReturnType<typeof summarizeEvidence>;
 }
 
 export interface ReasoningResult {
@@ -62,6 +85,17 @@ function thisMonthRange(anchorToday: string): DateRange {
   const d = new Date(anchorToday.slice(0, 10) + 'T00:00:00Z');
   const from = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-01`;
   return { from, to: anchorToday };
+}
+
+/** The full previous calendar month — e.g. anchorToday 2026-09-11 → 2026-08-01..2026-08-31.
+ * Used only by CASHFLOW_DIAGNOSTIC (Phase 5.5) to compare against the current, still-in-progress
+ * month via thisMonthRange() above. */
+function previousMonthRange(anchorToday: string): DateRange {
+  const d = new Date(anchorToday.slice(0, 10) + 'T00:00:00Z');
+  const firstOfThisMonth = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+  const lastOfPrevMonth = new Date(firstOfThisMonth.getTime() - 86_400_000);
+  const firstOfPrevMonth = new Date(Date.UTC(lastOfPrevMonth.getUTCFullYear(), lastOfPrevMonth.getUTCMonth(), 1));
+  return { from: firstOfPrevMonth.toISOString().slice(0, 10), to: lastOfPrevMonth.toISOString().slice(0, 10) };
 }
 
 function next30DaysRange(anchorToday: string): DateRange {
@@ -116,26 +150,62 @@ function formatPriorityInsights(items: PriorityItem[]): string[] {
   });
 }
 
-/** Plans are defined declaratively per use case so AI_MAX_STEPS can be checked before any
- * tool actually runs (spec §9: "Nếu plan vượt quá giới hạn → dừng"). */
-const PLANS: Record<ReasoningUseCase, string[]> = {
-  CASHFLOW_ANALYSIS: [getTransactions.name],
-  LIQUIDITY_ANALYSIS: [getCashPosition.name, getPayables.name, getLoanObligations.name],
-  IDLE_CASH_ANALYSIS: [getCashPosition.name, getReceivables.name, getPayables.name],
-  PAYMENT_PRIORITIZATION: [getPayables.name],
-  APPROVAL_PRIORITIZATION: [getPendingApprovals.name],
-  PRODUCT_RECOMMENDATION_REASONING: [getCashPosition.name, getReceivables.name, getPayables.name, getRecommendations.name, getProducts.name],
-  LC_RISK_PRIORITIZATION: [getLcDeadlines.name],
-  GUARANTEE_RISK_PRIORITIZATION: [getGuaranteeDeadlines.name],
-  TRADE_FINANCE_EXPOSURE: [getTradeFinanceExposure.name],
-  TRADE_FINANCE_LIMIT_ANALYSIS: [getTradeFinanceLimits.name],
-  TRADE_FINANCE_OVERVIEW: [getLetterOfCredits.name, getBankGuarantees.name, getCollections.name, getTradeFinanceExposure.name, getTradeFinanceLimits.name],
-  TRADE_FINANCE_ATTENTION: [getLcDeadlines.name, getGuaranteeDeadlines.name, getCollections.name],
-};
+/** Groups a transaction list's amounts by a key (e.g. category), for CASHFLOW_DIAGNOSTIC's
+ * period-over-period driver comparison. */
+function groupSum(txns: Transaction[], key: (t: Transaction) => string): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const t of txns) m.set(key(t), (m.get(key(t)) ?? 0) + t.amount);
+  return m;
+}
+
+/** The categories whose amount moved the most between two periods, largest absolute delta
+ * first — the deterministic "which categories actually drove the change" step DIAGNOSTIC
+ * reasoning needs (spec §5's "Identify largest contributors"). */
+function topDeltas(current: Map<string, number>, previous: Map<string, number>, limit: number): { label: string; delta: number }[] {
+  const keys = new Set([...current.keys(), ...previous.keys()]);
+  return [...keys]
+    .map((label) => ({ label, delta: (current.get(label) ?? 0) - (previous.get(label) ?? 0) }))
+    .filter((d) => Math.abs(d.delta) > 0)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+    .slice(0, limit);
+}
+
+/** Plans are defined declaratively in reasoning/query-planner.ts so AI_MAX_STEPS can be checked
+ * before any tool actually runs (spec §9: "Nếu plan vượt quá giới hạn → dừng") — this is now
+ * just a thin per-call lookup, not a second copy of the step lists. */
+function planFor(useCase: ReasoningUseCase): string[] {
+  return planSteps(useCase);
+}
+
+/** Phase 5.5 — tags the use case's ReasoningType/QueryComplexity, runs the mandatory
+ * Verification Engine over the evidence collected while building `answer`, and swaps in a safe
+ * fallback if verification fails outright (spec §14: never return an invalid answer). Every
+ * `case` branch below ends by calling this instead of constructing its own `{ answer, debug }`
+ * literal, so the verification/classification step can never accidentally be skipped for a new
+ * use case. */
+function finalize(
+  useCase: ReasoningUseCase,
+  plan: string[],
+  toolsUsed: string[],
+  calculationsUsed: string[],
+  evidence: ReasoningEvidence[],
+  answer: SemanticAnswer,
+): ReasoningResult {
+  const complexity = classifyComplexity(useCase, true);
+  const reasoningType = reasoningTypeOf(useCase);
+  const verification = verifyReasoning({ answer, evidence, hasData: toolsUsed.length > 0 });
+  const verificationStatus = statusFromVerification(verification);
+  const finalAnswer = verification.valid ? answer : safeFallbackAnswer(verification.errors.join('; '));
+
+  return {
+    answer: finalAnswer,
+    debug: { useCase, plan, toolsUsed, calculationsUsed, reasoningType, complexity, verificationStatus, evidenceSummary: summarizeEvidence(evidence) },
+  };
+}
 
 export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
   const { useCase, security, anchorToday, navigationActions, config } = input;
-  const plan = PLANS[useCase];
+  const plan = planFor(useCase);
 
   if (plan.length > config.maxSteps) {
     return {
@@ -145,7 +215,16 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         metrics: [],
         records: [],
       },
-      debug: { useCase, plan, toolsUsed: [], calculationsUsed: [] },
+      debug: {
+        useCase,
+        plan,
+        toolsUsed: [],
+        calculationsUsed: [],
+        reasoningType: reasoningTypeOf(useCase),
+        complexity: classifyComplexity(useCase, true),
+        verificationStatus: 'FAILED',
+        evidenceSummary: [],
+      },
     };
   }
 
@@ -176,17 +255,14 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         { label: 'Tiền ra', value: formatShortVnd(net.outgoing) },
         { label: 'Net cashflow', value: formatShortVnd(net.net) },
       ];
-      return {
-        answer: {
-          title: reasoning.title,
-          summary: reasoning.summary,
-          metrics,
-          records: txns.slice(0, 10),
-          insights: reasoning.insights,
-          action: buildAction('OPEN_DASHBOARD', navigationActions),
-        },
-        debug: { useCase, plan, toolsUsed, calculationsUsed },
-      };
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, [], {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics,
+        records: txns.slice(0, 10),
+        insights: reasoning.insights,
+        action: buildAction('OPEN_DASHBOARD', navigationActions),
+      });
     }
 
     case 'LIQUIDITY_ANALYSIS': {
@@ -225,17 +301,18 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         { label: 'Trả nợ vay (30 ngày)', value: formatShortVnd(loanTotal) },
         { label: 'Dự kiến còn', value: formatShortVnd(gapResult.gap) },
       ];
-      return {
-        answer: {
-          title: reasoning.title,
-          summary: reasoning.summary,
-          metrics,
-          records: [],
-          insights: reasoning.insights,
-          action: buildAction('OPEN_DASHBOARD', navigationActions),
-        },
-        debug: { useCase, plan, toolsUsed, calculationsUsed },
-      };
+      const evidence: ReasoningEvidence[] = [
+        calculatedEvidence('LIQUIDITY_GAP', 'CashPosition', 'current', 'totalVnd', position.totalVnd),
+        calculatedEvidence('LIQUIDITY_GAP', 'CashPosition', 'current', 'gap', gapResult.gap),
+      ];
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, evidence, {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics,
+        records: [],
+        insights: reasoning.insights,
+        action: buildAction('OPEN_DASHBOARD', navigationActions),
+      });
     }
 
     case 'IDLE_CASH_ANALYSIS': {
@@ -263,18 +340,15 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         { label: 'Dự kiến chi (30 ngày)', value: formatShortVnd(payablesTotal) },
         { label: 'Ước tính nhàn rỗi', value: formatShortVnd(buffer.idleCash) },
       ];
-      return {
-        answer: {
-          title: reasoning.title,
-          summary: reasoning.summary,
-          metrics,
-          records: [],
-          insights: reasoning.insights,
-          recommendation: reasoning.recommendation,
-          action: buildAction('OPEN_PRODUCT', navigationActions),
-        },
-        debug: { useCase, plan, toolsUsed, calculationsUsed },
-      };
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, [], {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics,
+        records: [],
+        insights: reasoning.insights,
+        recommendation: reasoning.recommendation,
+        action: buildAction('OPEN_PRODUCT', navigationActions),
+      });
     }
 
     case 'PAYMENT_PRIORITIZATION': {
@@ -291,17 +365,14 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         buildRequest('PAYMENT_PRIORITIZATION', 'Xếp hạng ưu tiên thanh toán 30 ngày tới', { count: ranked.length }),
       );
 
-      return {
-        answer: {
-          title: reasoning.title,
-          summary: reasoning.summary,
-          metrics: [{ label: 'Số khoản phải trả', value: String(ranked.length) }],
-          records: priorityRecords(ranked),
-          insights: formatPriorityInsights(ranked),
-          action: buildAction('OPEN_PAYMENT', navigationActions),
-        },
-        debug: { useCase, plan, toolsUsed, calculationsUsed },
-      };
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, [], {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics: [{ label: 'Số khoản phải trả', value: String(ranked.length) }],
+        records: priorityRecords(ranked),
+        insights: formatPriorityInsights(ranked),
+        action: buildAction('OPEN_PAYMENT', navigationActions),
+      });
     }
 
     case 'APPROVAL_PRIORITIZATION': {
@@ -325,17 +396,14 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         buildRequest('APPROVAL_PRIORITIZATION', 'Xếp hạng ưu tiên phê duyệt', { count: ranked.length }),
       );
 
-      return {
-        answer: {
-          title: reasoning.title,
-          summary: reasoning.summary,
-          metrics: [{ label: 'Số giao dịch chờ duyệt', value: String(ranked.length) }],
-          records: priorityRecords(ranked),
-          insights: formatPriorityInsights(ranked),
-          action: buildAction('OPEN_APPROVAL', navigationActions),
-        },
-        debug: { useCase, plan, toolsUsed, calculationsUsed },
-      };
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, [], {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics: [{ label: 'Số giao dịch chờ duyệt', value: String(ranked.length) }],
+        records: priorityRecords(ranked),
+        insights: formatPriorityInsights(ranked),
+        action: buildAction('OPEN_APPROVAL', navigationActions),
+      });
     }
 
     case 'PRODUCT_RECOMMENDATION_REASONING': {
@@ -369,18 +437,15 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         }),
       );
 
-      return {
-        answer: {
-          title: reasoning.title,
-          summary: reasoning.summary,
-          metrics: buffer.hasIdle ? [{ label: 'Ước tính nhàn rỗi', value: formatShortVnd(buffer.idleCash) }] : [],
-          records: cashRelevant,
-          insights: reasoning.insights,
-          recommendation: reasoning.recommendation,
-          action: buildAction('OPEN_PRODUCT', navigationActions),
-        },
-        debug: { useCase, plan, toolsUsed, calculationsUsed },
-      };
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, [], {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics: buffer.hasIdle ? [{ label: 'Ước tính nhàn rỗi', value: formatShortVnd(buffer.idleCash) }] : [],
+        records: cashRelevant,
+        insights: reasoning.insights,
+        recommendation: reasoning.recommendation,
+        action: buildAction('OPEN_PRODUCT', navigationActions),
+      });
     }
 
     // ---- Trade Finance (Phase 6) ---------------------------------------------------------
@@ -412,21 +477,26 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         .filter((a): a is NonNullable<typeof a> => !!a);
       const lcViewAll = buildAction('OPEN_LC', navigationActions);
 
-      return {
-        answer: {
-          title: reasoning.title,
-          summary: reasoning.summary,
-          metrics: [
-            { label: 'Số LC đang theo dõi', value: String(scored.length) },
-            { label: 'Mức rủi ro cao', value: String(highCount) },
-          ],
-          records: scored,
-          insights: reasoning.insights,
-          action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
-          actions: lcViewAll ? [...lcActions, { ...lcViewAll, label: 'Xem tất cả LC' }] : lcActions,
-        },
-        debug: { useCase, plan, toolsUsed, calculationsUsed },
-      };
+      const evidence = pluckEvidence('letter-of-credits.json', 'LetterOfCredit', 'lcNumber', lcs, [
+        'expiryDate',
+        'outstandingAmount',
+        'status',
+        'discrepancies',
+        'documents',
+      ]);
+
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, evidence, {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics: [
+          { label: 'Số LC đang theo dõi', value: String(scored.length) },
+          { label: 'Mức rủi ro cao', value: String(highCount) },
+        ],
+        records: scored,
+        insights: reasoning.insights,
+        action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+        actions: lcViewAll ? [...lcActions, { ...lcViewAll, label: 'Xem tất cả LC' }] : lcActions,
+      });
     }
 
     case 'GUARANTEE_RISK_PRIORITIZATION': {
@@ -456,21 +526,26 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         .filter((a): a is NonNullable<typeof a> => !!a);
       const bgViewAll = buildAction('OPEN_GUARANTEE', navigationActions);
 
-      return {
-        answer: {
-          title: reasoning.title,
-          summary: reasoning.summary,
-          metrics: [
-            { label: 'Số bảo lãnh đang theo dõi', value: String(scored.length) },
-            { label: 'Mức rủi ro cao', value: String(highCount) },
-          ],
-          records: scored,
-          insights: reasoning.insights,
-          action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
-          actions: bgViewAll ? [...bgActions, { ...bgViewAll, label: 'Xem tất cả bảo lãnh' }] : bgActions,
-        },
-        debug: { useCase, plan, toolsUsed, calculationsUsed },
-      };
+      const evidence = pluckEvidence('bank-guarantees.json', 'BankGuarantee', 'bgNumber', guarantees, [
+        'expiryDate',
+        'outstandingAmount',
+        'status',
+        'claims',
+        'extensionRequested',
+      ]);
+
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, evidence, {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics: [
+          { label: 'Số bảo lãnh đang theo dõi', value: String(scored.length) },
+          { label: 'Mức rủi ro cao', value: String(highCount) },
+        ],
+        records: scored,
+        insights: reasoning.insights,
+        action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+        actions: bgViewAll ? [...bgActions, { ...bgViewAll, label: 'Xem tất cả bảo lãnh' }] : bgActions,
+      });
     }
 
     case 'TRADE_FINANCE_EXPOSURE': {
@@ -489,31 +564,35 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
       );
 
       const metrics: MetricItem[] = total.map((t) => ({ label: `Tổng exposure (${t.currency})`, value: formatCcy(t.amount, t.currency) }));
-      return {
-        answer: {
-          title: reasoning.title,
-          summary: reasoning.summary,
-          metrics,
-          records: [
-            ...exposure.lc.map((e) => ({ ...e, loại: 'LC' })),
-            ...exposure.guarantee.map((e) => ({ ...e, loại: 'Bảo lãnh' })),
-            ...exposure.collection.map((e) => ({ ...e, loại: 'Nhờ thu' })),
-          ],
-          insights: reasoning.insights,
-          action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
-        },
-        debug: { useCase, plan, toolsUsed, calculationsUsed },
-      };
+      const evidence: ReasoningEvidence[] = [
+        ...exposure.lc.map((e) => calculatedEvidence('SUM', 'TradeFinanceExposure', 'LC', e.currency, e.amount)),
+        ...exposure.guarantee.map((e) => calculatedEvidence('SUM', 'TradeFinanceExposure', 'Guarantee', e.currency, e.amount)),
+        ...exposure.collection.map((e) => calculatedEvidence('SUM', 'TradeFinanceExposure', 'Collection', e.currency, e.amount)),
+      ];
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, evidence, {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics,
+        records: [
+          ...exposure.lc.map((e) => ({ ...e, loại: 'LC' })),
+          ...exposure.guarantee.map((e) => ({ ...e, loại: 'Bảo lãnh' })),
+          ...exposure.collection.map((e) => ({ ...e, loại: 'Nhờ thu' })),
+        ],
+        insights: reasoning.insights,
+        action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+      });
     }
 
     case 'TRADE_FINANCE_LIMIT_ANALYSIS': {
       const limit = getTradeFinanceLimits.execute(security, {});
       toolsUsed.push(getTradeFinanceLimits.name);
       if (!limit) {
-        return {
-          answer: { title: 'Hạn mức Trade Finance', summary: 'Hiện chưa thiết lập hạn mức Trade Finance.', metrics: [], records: [] },
-          debug: { useCase, plan, toolsUsed, calculationsUsed },
-        };
+        return finalize(useCase, plan, toolsUsed, calculationsUsed, [], {
+          title: 'Hạn mức Trade Finance',
+          summary: 'Hiện chưa thiết lập hạn mức Trade Finance.',
+          metrics: [],
+          records: [],
+        });
       }
       const utilization = limit.totalLimit > 0 ? Math.round((limit.usedAmount / limit.totalLimit) * 100) : 0;
       calculationsUsed.push('LIMIT_UTILIZATION');
@@ -527,23 +606,20 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         }),
       );
 
-      return {
-        answer: {
-          title: reasoning.title,
-          summary: reasoning.summary,
-          metrics: [
-            { label: 'Tổng hạn mức', value: formatCcy(limit.totalLimit, limit.currency) },
-            { label: 'Đã sử dụng', value: formatCcy(limit.usedAmount, limit.currency) },
-            { label: 'Còn khả dụng', value: formatCcy(limit.availableAmount, limit.currency) },
-            { label: 'Tỷ lệ sử dụng', value: `${utilization}%` },
-          ],
-          records: [limit],
-          insights: reasoning.insights,
-          recommendation: reasoning.recommendation,
-          action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
-        },
-        debug: { useCase, plan, toolsUsed, calculationsUsed },
-      };
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, [], {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics: [
+          { label: 'Tổng hạn mức', value: formatCcy(limit.totalLimit, limit.currency) },
+          { label: 'Đã sử dụng', value: formatCcy(limit.usedAmount, limit.currency) },
+          { label: 'Còn khả dụng', value: formatCcy(limit.availableAmount, limit.currency) },
+          { label: 'Tỷ lệ sử dụng', value: `${utilization}%` },
+        ],
+        records: [limit],
+        insights: reasoning.insights,
+        recommendation: reasoning.recommendation,
+        action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+      });
     }
 
     case 'TRADE_FINANCE_OVERVIEW': {
@@ -578,17 +654,14 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         { label: 'Nhờ thu đang xử lý', value: String(openCollections) },
         ...total.map((t) => ({ label: `Tổng exposure (${t.currency})`, value: formatCcy(t.amount, t.currency) })),
       ];
-      return {
-        answer: {
-          title: reasoning.title,
-          summary: reasoning.summary,
-          metrics,
-          records: [],
-          insights: reasoning.insights,
-          action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
-        },
-        debug: { useCase, plan, toolsUsed, calculationsUsed },
-      };
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, [], {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics,
+        records: [],
+        insights: reasoning.insights,
+        action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+      });
     }
 
     case 'TRADE_FINANCE_ATTENTION': {
@@ -626,21 +699,152 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
         .filter((a): a is NonNullable<typeof a> => !!a);
       const attentionViewAll = buildAction('OPEN_TRADE_FINANCE', navigationActions);
 
-      return {
-        answer: {
-          title: reasoning.title,
-          summary: reasoning.summary,
-          metrics: [
-            { label: 'Việc cần chú ý', value: String(attentionItems.length) },
-            { label: 'Mức ưu tiên cao', value: String(highCount) },
-          ],
-          records: attentionItems,
-          insights: reasoning.insights,
-          action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
-          actions: attentionViewAll ? [...attentionActions, { ...attentionViewAll, label: 'Xem Trade Finance Dashboard' }] : attentionActions,
-        },
-        debug: { useCase, plan, toolsUsed, calculationsUsed },
+      const evidence = attentionItems.map((item) => calculatedEvidence('RISK_SCORE', item.loại, item.mã, 'score', item.score));
+
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, evidence, {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics: [
+          { label: 'Việc cần chú ý', value: String(attentionItems.length) },
+          { label: 'Mức ưu tiên cao', value: String(highCount) },
+        ],
+        records: attentionItems,
+        insights: reasoning.insights,
+        action: buildAction('OPEN_TRADE_FINANCE', navigationActions),
+        actions: attentionViewAll ? [...attentionActions, { ...attentionViewAll, label: 'Xem Trade Finance Dashboard' }] : attentionActions,
+      });
+    }
+
+    // ---- Phase 5.5 -------------------------------------------------------------------------
+
+    case 'CASHFLOW_DIAGNOSTIC': {
+      const currentTxns = getTransactions.execute(security, { range: thisMonthRange(anchorToday) });
+      const previousTxns = getTransactions.execute(security, { range: previousMonthRange(anchorToday) });
+      toolsUsed.push(getTransactions.name, getTransactions.name);
+
+      const currentNet = calculateNetCashflow(currentTxns);
+      const previousNet = calculateNetCashflow(previousTxns);
+      calculationsUsed.push('NET_CASHFLOW', 'PERCENTAGE_CHANGE');
+
+      const variance = currentNet.net - previousNet.net;
+      const variancePct = previousNet.net !== 0 ? Math.round((Math.abs(variance) / Math.abs(previousNet.net)) * 100) : 0;
+      const decreased = variance < 0;
+      const unchanged = Math.abs(variance) < 1;
+
+      const currentOutgoing = groupSum(
+        currentTxns.filter((t) => t.type === 'DEBIT'),
+        (t) => t.category,
+      );
+      const previousOutgoing = groupSum(
+        previousTxns.filter((t) => t.type === 'DEBIT'),
+        (t) => t.category,
+      );
+      const currentIncoming = groupSum(
+        currentTxns.filter((t) => t.type === 'CREDIT'),
+        (t) => t.category,
+      );
+      const previousIncoming = groupSum(
+        previousTxns.filter((t) => t.type === 'CREDIT'),
+        (t) => t.category,
+      );
+
+      const topDrivers = decreased
+        ? [
+            ...topDeltas(currentOutgoing, previousOutgoing, 2)
+              .filter((d) => d.delta > 0)
+              .map((d) => `Chi cho "${d.label}" tăng ${formatShortVnd(d.delta)} so với kỳ trước`),
+            ...topDeltas(currentIncoming, previousIncoming, 2)
+              .filter((d) => d.delta < 0)
+              .map((d) => `Thu từ "${d.label}" giảm ${formatShortVnd(Math.abs(d.delta))} so với kỳ trước`),
+          ].slice(0, 3)
+        : topDeltas(currentIncoming, previousIncoming, 2)
+            .filter((d) => d.delta > 0)
+            .map((d) => `Thu từ "${d.label}" tăng ${formatShortVnd(d.delta)} so với kỳ trước`)
+            .slice(0, 3);
+
+      const reasoning = await provider.reason(
+        buildRequest('CASHFLOW_DIAGNOSTIC', 'Xác định nguyên nhân dòng tiền thay đổi so với kỳ trước', {
+          decreased,
+          unchanged,
+          variance: formatShortVnd(Math.abs(variance)),
+          variancePct: `${variancePct}%`,
+          topDrivers,
+        }),
+      );
+
+      const metrics: MetricItem[] = [
+        { label: 'Net cashflow kỳ này', value: formatShortVnd(currentNet.net) },
+        { label: 'Net cashflow kỳ trước', value: formatShortVnd(previousNet.net) },
+        { label: 'Chênh lệch', value: `${decreased ? '-' : '+'}${formatShortVnd(Math.abs(variance))} (${variancePct}%)` },
+      ];
+      const evidence: ReasoningEvidence[] = [
+        calculatedEvidence('NET_CASHFLOW', 'CashflowPeriod', 'current', 'net', currentNet.net),
+        calculatedEvidence('NET_CASHFLOW', 'CashflowPeriod', 'previous', 'net', previousNet.net),
+        calculatedEvidence('PERCENTAGE_CHANGE', 'CashflowPeriod', 'variance', 'variance', variance),
+      ];
+
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, evidence, {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics,
+        records: [],
+        insights: reasoning.insights,
+        action: buildAction('OPEN_DASHBOARD', navigationActions),
+      });
+    }
+
+    case 'DAILY_PRIORITY': {
+      const range = next30DaysRange(anchorToday);
+      const tasks = getTasks.execute(security, {});
+      const pendingApprovals = getPendingApprovals.execute(security, {});
+      const payables = getPayables.execute(security, { range });
+      const lcs = getLcDeadlines.execute(security, {});
+      const guarantees = getGuaranteeDeadlines.execute(security, {});
+      const collections = getCollectionDeadlines.execute(security, {});
+      toolsUsed.push(getTasks.name, getPendingApprovals.name, getPayables.name, getLcDeadlines.name, getGuaranteeDeadlines.name, getCollectionDeadlines.name);
+
+      const ranked = crossDomainPriorities({ tasks, pendingApprovals, payables, lcs, guarantees, collections, anchorToday });
+      calculationsUsed.push('CROSS_DOMAIN_PRIORITY');
+      const top3 = ranked.slice(0, 3);
+
+      const reasoning = await provider.reason(
+        buildRequest('DAILY_PRIORITY', 'Xác định việc quan trọng nhất cần xử lý hôm nay trên toàn bộ nghiệp vụ', {
+          count: ranked.length,
+          top3Labels: top3.map((t) => t.label),
+        }),
+      );
+
+      const navByEntityType: Record<string, string> = {
+        LetterOfCredit: 'OPEN_LC_DETAIL',
+        BankGuarantee: 'OPEN_GUARANTEE_DETAIL',
+        Collection: 'OPEN_COLLECTION_DETAIL',
+        Approval: 'OPEN_APPROVAL',
+        Task: 'OPEN_TASK',
+        Payable: 'OPEN_PAYMENT',
       };
+      const entityScopedTypes = new Set(['LetterOfCredit', 'BankGuarantee', 'Collection']);
+      const priorityActions = top3
+        .map((item) => {
+          const navId = navByEntityType[item.entityType];
+          if (!navId) return undefined;
+          const a = buildAction(navId, navigationActions, entityScopedTypes.has(item.entityType) ? item.entityId : undefined);
+          return a ? { ...a, label: `Xem ${item.label}` } : undefined;
+        })
+        .filter((a): a is NonNullable<typeof a> => !!a);
+
+      const evidence = pluckEvidence('cross-domain-priority', 'PriorityItem', 'entityId', top3, ['priorityScore', 'priority', 'reasons']);
+
+      return finalize(useCase, plan, toolsUsed, calculationsUsed, evidence, {
+        title: reasoning.title,
+        summary: reasoning.summary,
+        metrics: [
+          { label: 'Số việc cần chú ý', value: String(ranked.length) },
+          { label: 'Mức ưu tiên cao/khẩn cấp', value: String(ranked.filter((r) => r.priority === 'HIGH' || r.priority === 'CRITICAL').length) },
+        ],
+        records: top3.map((item, i) => ({ rank: i + 1, ...item })),
+        insights: reasoning.insights,
+        actions: priorityActions,
+      });
     }
   }
 }

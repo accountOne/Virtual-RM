@@ -1,0 +1,21 @@
+{
+  "description": "Phase 5.5 Risk Engine weights — deterministic, config-driven per spec §10. Editing this file changes risk scoring for LC/Guarantee/Collection/cross-domain priority without touching code.",
+  "weights": {
+    "expiryProximity": 0.30,
+    "missingDocuments": 0.25,
+    "discrepancy": 0.20,
+    "outstandingAmount": 0.15,
+    "pendingApproval": 0.10
+  },
+  "bands": [
+    { "level": "LOW", "min": 0, "max": 29 },
+    { "level": "MEDIUM", "min": 30, "max": 59 },
+    { "level": "HIGH", "min": 60, "max": 79 },
+    { "level": "CRITICAL", "min": 80, "max": 100 }
+  ],
+  "thresholds": {
+    "expiryUrgentDays": 7,
+    "expiryWarningDays": 30,
+    "largeAmountVnd": 1500000000
+  }
+}

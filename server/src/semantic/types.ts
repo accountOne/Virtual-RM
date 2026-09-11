@@ -89,9 +89,25 @@ export interface SemanticQueryResult {
     /** Phase 5: true when this answer went through the Reasoning Engine rather than the
      * plain deterministic intent handler. */
     reasoningRequired?: boolean;
-    /** Debug-only (SEMANTIC_DEBUG=true) — structured reasoning metadata per spec §23.
-     * Never the model's chain-of-thought, only which tools/calculations ran. */
-    reasoning?: { useCase: string; plan: string[]; toolsUsed: string[]; calculationsUsed: string[] };
+    /** Phase 5.5 (spec §25) — always present when reasoningRequired is true, never gated
+     * behind SEMANTIC_DEBUG: which kind of reasoning ran, how complex the question was judged
+     * to be, and whether the mandatory Verification Engine passed. This is metadata about the
+     * *answer's reliability*, not internal reasoning — safe to show a real UI, unlike the
+     * plan/toolsUsed/evidenceSummary fields below. */
+    reasoningMeta?: {
+      type: 'LOOKUP' | 'AGGREGATION' | 'COMPARISON' | 'DIAGNOSTIC' | 'ADVISORY';
+      complexity: 'SIMPLE' | 'MODERATE' | 'COMPLEX';
+      verificationStatus: 'VERIFIED' | 'WARNING' | 'FAILED';
+    };
+    /** Debug-only (SEMANTIC_DEBUG=true) — structured reasoning metadata per spec §23/§24.
+     * Never the model's chain-of-thought, only which tools/calculations/evidence went in. */
+    reasoning?: {
+      useCase: string;
+      plan: string[];
+      toolsUsed: string[];
+      calculationsUsed: string[];
+      evidenceSummary?: { entityType: string; entityId: string; field: string }[];
+    };
   };
   answer: SemanticAnswer;
 }

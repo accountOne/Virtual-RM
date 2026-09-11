@@ -151,7 +151,24 @@ export const semanticController = {
         intent: routing.useCase,
         confidence: resolvedIntent ? baseConfidence : 1,
         reasoningRequired: true,
-        ...(debug ? { reasoning: reasoning.debug } : {}),
+        // Phase 5.5 — always present (not debug-gated): the answer's reasoning
+        // type/complexity/verification status is reliability metadata, never chain-of-thought.
+        reasoningMeta: {
+          type: reasoning.debug.reasoningType,
+          complexity: reasoning.debug.complexity,
+          verificationStatus: reasoning.debug.verificationStatus,
+        },
+        ...(debug
+          ? {
+              reasoning: {
+                useCase: reasoning.debug.useCase,
+                plan: reasoning.debug.plan,
+                toolsUsed: reasoning.debug.toolsUsed,
+                calculationsUsed: reasoning.debug.calculationsUsed,
+                evidenceSummary: reasoning.debug.evidenceSummary,
+              },
+            }
+          : {}),
       },
       answer: reasoning.answer,
     };

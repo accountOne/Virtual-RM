@@ -198,4 +198,38 @@ const TEMPLATES: Record<string, Template> = {
       insights: [],
     };
   },
+
+  // ---- Phase 5.5 ------------------------------------------------------------------------
+  CASHFLOW_DIAGNOSTIC: (f) => {
+    const decreased = f.decreased as boolean;
+    const unchanged = f.unchanged as boolean;
+    const variance = f.variance as string;
+    const variancePct = f.variancePct as string;
+    const topDrivers = f.topDrivers as string[];
+    return {
+      title: unchanged ? 'Dòng tiền không đổi đáng kể' : decreased ? 'Nguyên nhân dòng tiền giảm' : 'Nguyên nhân dòng tiền tăng',
+      summary: unchanged
+        ? 'Dòng tiền kỳ này gần như không đổi so với kỳ trước.'
+        : `Dòng tiền kỳ này ${decreased ? 'giảm' : 'tăng'} ${variance} (${variancePct}) so với kỳ trước.`,
+      // Spec §5 DIAGNOSTIC: never an unsupported causal claim ("Chắc chắn vì...") — always
+      // phrased as an observation over the available data.
+      insights:
+        topDrivers.length > 0
+          ? [`Nguyên nhân chính theo dữ liệu hiện có là: ${topDrivers.join('; ')}.`]
+          : ['Chưa đủ dữ liệu giao dịch để xác định nguyên nhân cụ thể.'],
+    };
+  },
+
+  DAILY_PRIORITY: (f) => {
+    const count = f.count as number;
+    const top3Labels = f.top3Labels as string[];
+    return {
+      title: 'Việc quan trọng nhất hôm nay',
+      summary:
+        count === 0
+          ? 'Hiện không có việc gì cần ưu tiên xử lý đặc biệt hôm nay.'
+          : `Có ${count} việc đang cần chú ý trên toàn bộ nghiệp vụ. 3 việc quan trọng nhất: ${top3Labels.join('; ')}.`,
+      insights: [],
+    };
+  },
 };

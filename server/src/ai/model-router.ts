@@ -13,7 +13,9 @@ export type ReasoningUseCase =
   | 'TRADE_FINANCE_EXPOSURE'
   | 'TRADE_FINANCE_LIMIT_ANALYSIS'
   | 'TRADE_FINANCE_OVERVIEW'
-  | 'TRADE_FINANCE_ATTENTION';
+  | 'TRADE_FINANCE_ATTENTION'
+  | 'CASHFLOW_DIAGNOSTIC'
+  | 'DAILY_PRIORITY';
 
 export interface RoutingDecision {
   reasoningRequired: boolean;
@@ -84,12 +86,18 @@ export function routeQuery(rawMessage: string, resolvedIntent: string | undefine
   // calls out — risk *prioritization* (deadline + documents + discrepancy + amount combined),
   // not just "which LC expires soonest". Phrases require "lc"/"bảo lãnh" plus a risk word, or
   // an explicit "trade finance" mention, so none of these shadow the plain lookup intents.
-  if (hasAny(normalized, ['lc nào rủi ro', 'rủi ro lc', 'lc nào cần chú ý', 'lc nào đáng lo ngại', 'ưu tiên xử lý lc'])) {
+  if (
+    hasAny(normalized, [
+      'lc nào rủi ro', 'lc nào có rủi ro', 'rủi ro lc', 'lc rủi ro cao nhất', 'lc nào rủi ro cao nhất',
+      'lc nào cần chú ý', 'lc nào đáng lo ngại', 'ưu tiên xử lý lc',
+    ])
+  ) {
     return { reasoningRequired: true, useCase: 'LC_RISK_PRIORITIZATION' };
   }
   if (
     hasAny(normalized, [
-      'bảo lãnh nào rủi ro', 'rủi ro bảo lãnh', 'bảo lãnh nào cần chú ý', 'bảo lãnh nào đáng lo ngại', 'ưu tiên xử lý bảo lãnh',
+      'bảo lãnh nào rủi ro', 'bảo lãnh nào có rủi ro', 'rủi ro bảo lãnh', 'bảo lãnh rủi ro cao nhất', 'bảo lãnh nào rủi ro cao nhất',
+      'bảo lãnh nào cần chú ý', 'bảo lãnh nào đáng lo ngại', 'ưu tiên xử lý bảo lãnh',
     ])
   ) {
     return { reasoningRequired: true, useCase: 'GUARANTEE_RISK_PRIORITIZATION' };
@@ -109,6 +117,24 @@ export function routeQuery(rawMessage: string, resolvedIntent: string | undefine
   }
   if (hasAny(normalized, ['trade finance cần chú ý', 'trade finance hôm nay có gì', 'việc trade finance cần làm', 'trade finance cần xử lý gì'])) {
     return { reasoningRequired: true, useCase: 'TRADE_FINANCE_ATTENTION' };
+  }
+
+  // ---- Rule 1c: Phase 5.5 — DIAGNOSTIC and cross-domain ADVISORY, no dedicated intent -----
+  if (
+    hasAny(normalized, [
+      'tại sao dòng tiền', 'vì sao dòng tiền', 'tại sao dòng tiền giảm', 'tại sao dòng tiền tăng',
+      'nguyên nhân dòng tiền', 'lý do dòng tiền',
+    ])
+  ) {
+    return { reasoningRequired: true, useCase: 'CASHFLOW_DIAGNOSTIC' };
+  }
+  if (
+    hasAny(normalized, [
+      'việc gì quan trọng nhất hôm nay', 'việc quan trọng nhất hôm nay', 'nên xử lý việc gì', 'nên xử lý gì hôm nay',
+      'ưu tiên hôm nay', 'ưu tiên xử lý hôm nay', 'việc cần làm quan trọng nhất', 'việc gì cần làm trước',
+    ])
+  ) {
+    return { reasoningRequired: true, useCase: 'DAILY_PRIORITY' };
   }
 
   // ---- Rule 2: existing intent, refine simple vs. reasoning by keyword -------------------
