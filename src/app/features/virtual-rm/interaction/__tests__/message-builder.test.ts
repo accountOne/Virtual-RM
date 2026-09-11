@@ -99,6 +99,60 @@ describe('rm-message-builder — buildRmMessages', () => {
       'TEXT,METRIC,INSIGHT,RECOMMENDATION,ACTION,QUICK_REPLY',
     );
   });
+
+  test('records shaped like LC rows (lcNumber/amount/currency/expiryDate) produce ONE RECORD_LIST card instead of separate bubbles', () => {
+    const messages = buildRmMessages(
+      baseAnswer({
+        title: 'LC sắp hết hạn',
+        summary: '1 thư tín dụng sắp hết hạn.',
+        metrics: [{ label: 'Số LC sắp hết hạn', value: '1' }],
+        records: [
+          { lcNumber: 'LC-2026-001', type: 'IMPORT', subType: 'SIGHT', amount: 1_800_000_000, currency: 'VND', expiryDate: '2026-09-20' },
+        ],
+        action: { label: 'Xem danh sách LC', type: 'NAVIGATE', target: 'OPEN_LC' },
+        actions: [
+          { label: 'Xem LC-2026-001', type: 'NAVIGATE', target: 'OPEN_LC_DETAIL', entityId: 'LC-2026-001' },
+          { label: 'Xem tất cả LC', type: 'NAVIGATE', target: 'OPEN_LC' },
+        ],
+      }),
+    );
+    assertEqual(messages.length, 1, 'expected exactly one RECORD_LIST message (no separate TEXT/METRIC/ACTION bubbles)');
+    const card = messages[0];
+    assertEqual(card.type, 'RECORD_LIST');
+    assertEqual(card.title, 'LC sắp hết hạn');
+    assertEqual(card.badgeCount, '1 LC');
+    assertEqual(card.records?.length, 1);
+    assertEqual(card.records?.[0].title, 'LC-2026-001');
+    assertEqual(card.records?.[0].subtitle, 'Import LC · Trả ngay');
+    assertEqual(card.records?.[0].amount, '1.800.000.000 đ');
+    assertEqual(card.records?.[0].badge, 'Hết hạn: 20/09/2026');
+    assertEqual(card.records?.[0].action?.route, '/trade-finance/lc/LC-2026-001');
+    assertEqual(card.actions?.length, 2, 'expected both actions[] entries carried onto the card');
+  });
+
+  test('records with no recognizable id field (lcNumber/guaranteeNumber/collectionNumber) fall back to the per-field bubble layout', () => {
+    const messages = buildRmMessages(
+      baseAnswer({
+        summary: 'Có 2 giao dịch lớn nhất tuần này.',
+        records: [{ amount: 100 }, { amount: 200 }],
+      }),
+    );
+    assert(
+      !messages.some((m) => m.type === 'RECORD_LIST'),
+      'unrecognized record shapes must not produce a RECORD_LIST card',
+    );
+    assertEqual(messages[0].type, 'TEXT');
+  });
+
+  test('a RECORD_LIST card still gets a trailing QUICK_REPLY bubble when suggestedQuestions are present', () => {
+    const messages = buildRmMessages(
+      baseAnswer({
+        records: [{ lcNumber: 'LC-2026-001', amount: 1, currency: 'VND' }],
+        suggestedQuestions: ['Q1', 'Q2'],
+      }),
+    );
+    assertEqual(messages.map((m) => m.type).join(','), 'RECORD_LIST,QUICK_REPLY');
+  });
 });
 
 function urgentItem(overrides: Partial<PriorityTask>): PriorityTask {
@@ -146,16 +200,16 @@ describe('rm-message-builder — buildProactiveGreeting', () => {
     assertEqual(insight!.content, 'Dòng tiền ổn định');
   });
 
-  test('no urgent items -> one reassuring TEXT bubble, no ALERT bubbles', () => {
+  test('no urgent items -> one reassuring TEXT bubble, no RECORD_LIST card', () => {
     const messages = buildProactiveGreeting(baseDashboard({ urgentItems: [] }));
-    assertEqual(messages.filter((m) => m.type === 'ALERT').length, 0);
+    assertEqual(messages.filter((m) => m.type === 'RECORD_LIST').length, 0);
     assert(
       messages.some((m) => m.type === 'TEXT' && m.content?.includes('ổn')),
       'expected a reassuring "everything is fine" bubble',
     );
   });
 
-  test('urgent items map to ALERT bubbles with correctly mapped severity', () => {
+  test('urgent items become ONE RECORD_LIST card ("Việc cần lưu ý"), rows capped at 5', () => {
     const messages = buildProactiveGreeting(
       baseDashboard({
         urgentItems: [
@@ -163,35 +217,24 @@ describe('rm-message-builder — buildProactiveGreeting', () => {
           urgentItem({ id: 'b', priority: 'MEDIUM' }),
           urgentItem({ id: 'c', priority: 'HIGH' }),
           urgentItem({ id: 'd', priority: 'URGENT' }),
+          urgentItem({ id: 'e', priority: 'LOW' }),
+          urgentItem({ id: 'f', priority: 'LOW' }),
         ],
       }),
     );
-    const alerts = messages.filter((m) => m.type === 'ALERT');
-    // capped at 3, even though 4 were provided
-    assertEqual(alerts.length, 3);
-    assertEqual(alerts[0].severity, 'LOW');
-    assertEqual(alerts[1].severity, 'MEDIUM');
-    assertEqual(alerts[2].severity, 'HIGH');
+    const lists = messages.filter((m) => m.type === 'RECORD_LIST');
+    assertEqual(lists.length, 1, 'expected exactly one urgent-items card');
+    const card = lists[0];
+    assertEqual(card.title, '⚠️ Việc cần lưu ý');
+    // capped at 5, even though 6 were provided
+    assertEqual(card.records?.length, 5);
+    assertEqual(card.records?.[0].badgeTone, 'LOW');
+    assertEqual(card.records?.[1].badgeTone, 'MEDIUM');
+    assertEqual(card.records?.[2].badgeTone, 'HIGH');
+    assertEqual(card.records?.[3].badgeTone, 'CRITICAL');
   });
 
-  test('the urgent-items intro bubble reports the true total, not the capped count shown', () => {
-    const messages = buildProactiveGreeting(
-      baseDashboard({
-        urgentItems: [
-          urgentItem({ id: 'a' }),
-          urgentItem({ id: 'b' }),
-          urgentItem({ id: 'c' }),
-          urgentItem({ id: 'd' }),
-          urgentItem({ id: 'e' }),
-        ],
-      }),
-    );
-    const intro = messages.find((m) => m.type === 'TEXT' && m.content?.includes('lưu ý'));
-    assert(!!intro, 'expected an intro bubble');
-    assert(intro!.content!.includes('5'), 'intro must mention the true total (5), not the capped 3');
-  });
-
-  test('an urgent item with a navigation target carries a matching NAVIGATE action', () => {
+  test('an urgent item with a navigation target carries a matching NAVIGATE action on its row', () => {
     const messages = buildProactiveGreeting(
       baseDashboard({
         urgentItems: [
@@ -202,16 +245,27 @@ describe('rm-message-builder — buildProactiveGreeting', () => {
         ],
       }),
     );
-    const alert = messages.find((m) => m.type === 'ALERT');
-    assert(!!alert, 'expected one ALERT message');
-    assertEqual(alert!.actions?.[0].route, '/payments/approval');
-    assertEqual(alert!.actions?.[0].entityId, 'AP-1');
+    const card = messages.find((m) => m.type === 'RECORD_LIST');
+    assert(!!card, 'expected the urgent-items card');
+    assertEqual(card!.records?.[0].action?.route, '/payments/approval');
+    assertEqual(card!.records?.[0].action?.entityId, 'AP-1');
   });
 
-  test('an urgent item without a navigation target carries no actions', () => {
+  test('an urgent item without a navigation target carries no row action', () => {
     const messages = buildProactiveGreeting(baseDashboard({ urgentItems: [urgentItem({ id: 'a' })] }));
-    const alert = messages.find((m) => m.type === 'ALERT');
-    assert(!!alert, 'expected one ALERT message');
-    assertEqual(alert!.actions, undefined);
+    const card = messages.find((m) => m.type === 'RECORD_LIST');
+    assert(!!card, 'expected the urgent-items card');
+    assertEqual(card!.records?.[0].action, undefined);
+  });
+
+  test('the greeting always ends with a category-shortcuts ACTION message (LC/Bảo lãnh/Thanh toán/Dòng tiền)', () => {
+    const messages = buildProactiveGreeting(baseDashboard());
+    const last = messages[messages.length - 1];
+    assertEqual(last.type, 'ACTION');
+    assertEqual(last.actions?.map((a) => a.label).join(','), 'LC,Bảo lãnh,Thanh toán,Dòng tiền');
+    assert(
+      last.actions!.every((a) => !!a.icon),
+      'every category-shortcut action must carry an icon (renders as a pill chip)',
+    );
   });
 });

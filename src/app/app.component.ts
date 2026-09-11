@@ -8,32 +8,21 @@ import { HeaderComponent } from './shared/components/header/header.component';
 import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
 import { ToastContainerComponent } from './shared/components/toast-container/toast-container.component';
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
-import { RmWidgetComponent } from './features/virtual-rm/components/rm-widget/rm-widget.component';
 import { RmChatSessionService } from './features/virtual-rm/interaction/rm-chat-session.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterOutlet,
-    HeaderComponent,
-    SidebarComponent,
-    ToastContainerComponent,
-    ConfirmDialogComponent,
-    RmWidgetComponent,
-  ],
+  imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent, ToastContainerComponent, ConfirmDialogComponent],
   templateUrl: './app.component.html',
 })
 export class AppComponent {
   readonly auth = inject(AuthService);
   private readonly rmData = inject(RmDataService);
   private readonly dailyDashboard = inject(DailyDashboardService);
-  // Eagerly instantiate the chat session singleton here (app root), not lazily from
-  // RmChatComponent — RmWidgetComponent mounts RmChatComponent TWICE at once (desktop panel +
-  // mobile sheet), and the session also needs to auto-open the widget itself once the Daily
-  // Dashboard loads (see the service's doc comment), which must work even before either chat
-  // view has ever been rendered.
+  // Eagerly instantiate the chat session singleton here (app root) so the proactive greeting
+  // is already built by the time the customer navigates to the full-screen /virtual-rm/chat
+  // page — see rm-chat-session.service.ts's doc comment.
   private readonly chatSession = inject(RmChatSessionService);
   readonly mobileMenuOpen = signal(false);
 

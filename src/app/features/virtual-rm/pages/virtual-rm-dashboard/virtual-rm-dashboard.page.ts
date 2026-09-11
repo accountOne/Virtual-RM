@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
-import { ChatUiService } from '../../../../core/services/chat-ui.service';
+import { RouterLink } from '@angular/router';
 import { DailyDashboardService } from '../../../../core/services/daily-dashboard.service';
 import { RmDataService } from '../../../../core/services/rm-data.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -22,6 +22,7 @@ import { UrgentItemsCardComponent } from '../../components/urgent-items/urgent-i
   standalone: true,
   imports: [
     CommonModule,
+    RouterLink,
     LoadingSpinnerComponent,
     DailyGreetingCardComponent,
     PendingApprovalsCardComponent,
@@ -50,7 +51,7 @@ import { UrgentItemsCardComponent } from '../../components/urgent-items/urgent-i
         <app-recommendations-list [recommendations]="rmData.recommendations()" />
 
         <div class="flex justify-center pt-2">
-          <button class="btn-primary" (click)="chatUi.openChat()">💬 Hỏi Virtual RM</button>
+          <a routerLink="/virtual-rm/chat" class="btn-primary">💬 Hỏi Virtual RM</a>
         </div>
       </ng-container>
     </div>
@@ -59,7 +60,6 @@ import { UrgentItemsCardComponent } from '../../components/urgent-items/urgent-i
 export class VirtualRmDashboardPageComponent implements OnInit {
   readonly rmData = inject(RmDataService);
   readonly dailyDashboard = inject(DailyDashboardService);
-  readonly chatUi = inject(ChatUiService);
   private readonly toast = inject(ToastService);
 
   ngOnInit(): void {

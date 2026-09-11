@@ -14,10 +14,12 @@ import { RmTimingService } from '../../interaction/rm-timing.service';
   imports: [CommonModule],
   template: `
     <div class="flex">
-      <div class="bg-ink-50 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm text-ink-400 flex items-center gap-1.5">
+      <div class="bg-ink-50 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm text-ink-500 flex items-center gap-2">
         <span>{{ label }}</span>
-        <span class="inline-flex gap-0.5" [class.animate-pulse]="!reducedMotion">
-          <span>●</span><span>●</span><span>●</span>
+        <span class="inline-flex gap-1 items-center" [class.animate-pulse]="!reducedMotion">
+          <span class="w-1.5 h-1.5 rounded-full bg-rose-300"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-brand-400"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-brand-600"></span>
         </span>
       </div>
     </div>

@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { ChatUiService } from '../../core/services/chat-ui.service';
 import { RmDataService } from '../../core/services/rm-data.service';
 
 interface DemoStep {
@@ -56,7 +55,6 @@ interface DemoStep {
 export class DemoPageComponent {
   readonly rmData = inject(RmDataService);
   private readonly router = inject(Router);
-  private readonly chatUi = inject(ChatUiService);
 
   readonly visited = signal<Set<number>>(new Set());
 
@@ -94,12 +92,12 @@ export class DemoPageComponent {
     {
       title: '8-9. Hỏi RM: "Hôm qua chi bao nhiêu?"',
       detail: 'Khách hàng mở chat và đặt câu hỏi, RM trả lời dựa trên dữ liệu giao dịch thực tế.',
-      action: { label: 'Mở Chat RM', run: () => this.chatUi.openChat() },
+      action: { label: 'Mở Chat RM', run: () => this.router.navigateByUrl('/virtual-rm/chat') },
     },
     {
       title: '10-11. Hỏi RM: "Tôi còn việc gì cần xử lý?"',
       detail: 'RM liệt kê các việc cần xử lý còn mở (duyệt giao dịch, bổ sung hồ sơ, ký hợp đồng...).',
-      action: { label: 'Mở Chat RM', run: () => this.chatUi.openChat() },
+      action: { label: 'Mở Chat RM', run: () => this.router.navigateByUrl('/virtual-rm/chat') },
     },
     {
       title: '12. Mở hồ sơ doanh nghiệp',

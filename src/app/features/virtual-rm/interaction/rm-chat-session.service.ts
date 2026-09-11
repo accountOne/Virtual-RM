@@ -1,5 +1,4 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { ChatUiService } from '../../../core/services/chat-ui.service';
 import { DailyDashboardService } from '../../../core/services/daily-dashboard.service';
 import { RmDataService } from '../../../core/services/rm-data.service';
 import { RmContextService } from './rm-context.service';
@@ -21,27 +20,20 @@ function localId(prefix: string): string {
 }
 
 /**
- * Bug fix (post-Phase-5.6 feedback) — `rm-widget.component.ts` renders `RmChatComponent` TWICE
- * at once (desktop `<aside>` panel + mobile bottom sheet, both via the same
- * `*ngTemplateOutlet`, one always CSS-hidden depending on viewport). When conversation state
- * lived on the component itself, that meant two fully independent `messages` signals racing to
- * build the same proactive greeting and both persisting to the same `localStorage` key —
- * confirmed live via Playwright: the two instances ended up with 7 vs. 1 messages after the
- * exact same reveal sequence, because each instance's `RmStreamService` reveal loop runs on its
- * own timers and whichever happened to be slower kept overwriting/being overwritten by the
- * faster one's localStorage writes. That split-brain state is what made CTA clicks and the
- * typing indicator feel inconsistent — the customer could be looking at one instance while an
- * action fired against (or a click landed on) the other.
- *
- * This singleton is now the ONE source of truth both `RmChatComponent` instances render from —
- * there is exactly one conversation, one proactive greeting, one `submit()` in flight,
- * regardless of how many places display it.
+ * Conversation state singleton for the full-screen Virtual RM chat page
+ * (`virtual-rm-chat.page.ts`). Originally split out because the old popup widget mounted the
+ * chat view TWICE at once (desktop panel + mobile sheet) and component-local state raced across
+ * the two instances — confirmed live via Playwright: they ended up with 7 vs. 1 messages after
+ * the same reveal sequence. The widget is gone now (UI redesign — see
+ * virtual-rm-chat.page.ts), but the singleton stays: it's still the right place for the
+ * proactive greeting to start building the moment the Daily Dashboard loads, independent of
+ * whether the customer has navigated to the chat page yet (see `app.component.ts`, which
+ * injects this eagerly at app root).
  */
 @Injectable({ providedIn: 'root' })
 export class RmChatSessionService {
   private readonly rmData = inject(RmDataService);
   private readonly dailyDashboard = inject(DailyDashboardService);
-  private readonly chatUi = inject(ChatUiService);
   private readonly context = inject(RmContextService);
   private readonly rmState = inject(RmStateService);
   private readonly timing = inject(RmTimingService);
@@ -62,14 +54,14 @@ export class RmChatSessionService {
       return;
     }
     if (this.dailyDashboard.loaded()) {
-      void this.startProactiveGreeting({ autoOpen: true });
+      void this.startProactiveGreeting();
     } else {
       this.messages.set([this.fallbackGreetingMessage()]);
       this.awaitingProactiveUpgrade = true;
       effect(() => {
         if (this.awaitingProactiveUpgrade && this.dailyDashboard.loaded()) {
           this.awaitingProactiveUpgrade = false;
-          void this.startProactiveGreeting({ autoOpen: true });
+          void this.startProactiveGreeting();
         }
       });
     }
@@ -83,14 +75,12 @@ export class RmChatSessionService {
     return { id: localId('greet'), from: 'RM', type: 'TEXT', content, timestamp: Date.now() };
   }
 
-  /** Phase 5.6 Proactive RM (Flow 6), now auto-popping the widget open (spec/feedback: "sau
-   * login thì RM bật lên chào... theo dạng typing và nổi bubble dạng popup") instead of waiting
-   * for the customer to click in — `autoOpen` is false only for the manual "Bắt đầu cuộc trò
-   * chuyện mới" reset, which shouldn't re-pop a widget the customer already has open. */
-  private async startProactiveGreeting(opts: { autoOpen: boolean }): Promise<void> {
+  /** Phase 5.6 Proactive RM (Flow 6) — builds the multi-bubble greeting from real Daily
+   * Dashboard data as soon as it's available, so it's already sitting there the moment the
+   * customer opens the full-screen chat page, rather than being built on demand. */
+  private async startProactiveGreeting(): Promise<void> {
     if (this.greetingStarted) return;
     this.greetingStarted = true;
-    if (opts.autoOpen) this.chatUi.openChat();
     const dashboard = this.dailyDashboard.dashboard();
     if (!dashboard) {
       this.messages.set([this.fallbackGreetingMessage()]);
@@ -143,7 +133,7 @@ export class RmChatSessionService {
     this.awaitingProactiveUpgrade = false;
     this.greetingStarted = false;
     if (this.dailyDashboard.loaded()) {
-      void this.startProactiveGreeting({ autoOpen: false });
+      void this.startProactiveGreeting();
     } else {
       this.messages.set([this.fallbackGreetingMessage()]);
       persistMessages(this.messages());

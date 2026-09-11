@@ -31,6 +31,15 @@ export const routes: Routes = [
     title: 'Virtual RM — MSB Business Banking',
   },
   {
+    // Full-screen chat (UI redesign) — replaces the old popup/bottom-sheet widget entirely,
+    // see rm-chat-session.service.ts and virtual-rm-chat.page.ts's doc comments.
+    path: 'virtual-rm/chat',
+    loadComponent: () =>
+      import('./features/virtual-rm/pages/virtual-rm-chat/virtual-rm-chat.page').then((m) => m.VirtualRmChatPageComponent),
+    canActivate: [authGuard],
+    title: 'Virtual RM — MSB Business Banking',
+  },
+  {
     path: 'accounts',
     loadComponent: () => import('./features/accounts/accounts.page').then((m) => m.AccountsPageComponent),
     canActivate: [authGuard],
