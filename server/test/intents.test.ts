@@ -206,6 +206,27 @@ describe('intent detection (50+ required)', () => {
     const r: any = answerQuery('thư tín dụng xuất khẩu', sec, {});
     assertEqual(r.semantic.intent, 'LC_LIST');
   });
+  // "LC"/"BG" are exactly as unambiguous to a real user as "bảo lãnh"/"tài khoản", but score
+  // weakly under the single-word-vs-phrase heuristic simply because they're one un-spaced
+  // token, not a multi-syllable Vietnamese compound — this used to fall to CLARIFICATION_NEEDED
+  // (reported live). The bare-ticker fallback in semantic-engine.ts fixes it, narrowly: only
+  // when the ticker is the *sole* match, so "LC nào sắp hết hạn?" above is untouched.
+  test('LC_LIST <- bare "LC" (no other signal)', () => {
+    const r: any = answerQuery('LC', sec, {});
+    assertEqual(r.semantic.intent, 'LC_LIST');
+  });
+  test('LC_LIST <- "danh sách LC"', () => {
+    const r: any = answerQuery('danh sách LC', sec, {});
+    assertEqual(r.semantic.intent, 'LC_LIST');
+  });
+  test('LC_LIST <- bare "L/C"', () => {
+    const r: any = answerQuery('L/C', sec, {});
+    assertEqual(r.semantic.intent, 'LC_LIST');
+  });
+  test('GUARANTEE_LIST <- bare "BG"', () => {
+    const r: any = answerQuery('BG', sec, {});
+    assertEqual(r.semantic.intent, 'GUARANTEE_LIST');
+  });
   test('GUARANTEE_LIST <- "Công ty có bao nhiêu bảo lãnh ngân hàng?"', () => {
     const r: any = answerQuery('Công ty có bao nhiêu bảo lãnh ngân hàng?', sec, {});
     assertEqual(r.semantic.intent, 'GUARANTEE_LIST');

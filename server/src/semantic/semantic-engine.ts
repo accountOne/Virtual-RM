@@ -11,7 +11,7 @@ import {
   transactionsRepository,
 } from '../repositories';
 import { getAnchorDates } from '../services/transactions.service';
-import { normalize } from './normalizer';
+import { normalize, stripDiacritics } from './normalizer';
 import { resolveDatePeriod, setAnchorDate } from './date-resolver';
 import { parseAmountFilter } from './amount-parser';
 import { resolveStatus } from './status-resolver';
@@ -111,6 +111,23 @@ export interface AnswerQueryOptions {
   debug?: boolean;
 }
 
+/**
+ * Trade-finance shorthand codes ("LC", "L/C", "BG") are exactly as unambiguous to a real
+ * user as a full Vietnamese phrase ("bảo lãnh", "tài khoản", ...), but score weakly under
+ * intent-detector.ts's single-word-vs-phrase heuristic simply because they're one un-spaced
+ * token rather than a multi-syllable Vietnamese compound (which the scorer treats as a
+ * "phrase" purely because it contains a space) — "LC" alone, or "danh sách LC", used to fall
+ * through to CLARIFICATION_NEEDED. Scoped deliberately narrow: only applied when the ticker
+ * is the *sole* thing that matched anything at all, so a richer question ("LC nào sắp hết
+ * hạn?") keeps resolving via its own, more specific intent exactly as before — this never
+ * overrides a real sibling match, it only rescues an otherwise-empty one.
+ */
+const BARE_TICKER_INTENT: Record<string, string> = {
+  lc: 'LC_LIST',
+  'l/c': 'LC_LIST',
+  bg: 'GUARANTEE_LIST',
+};
+
 export function answerQuery(
   rawQuestion: string,
   security: SecurityContext,
@@ -134,18 +151,24 @@ export function answerQuery(
     entities,
   });
 
-  const top = ranked[0];
-  const confidence = top ? confidenceFromScore(top.score) : 0;
+  let top = ranked[0];
+  let confidence = top ? confidenceFromScore(top.score) : 0;
 
   if (!top || top.score === 0) {
     return clarification(0, 'Tôi chưa hiểu rõ câu hỏi này. Anh/chị có thể thử một trong các câu hỏi gợi ý bên dưới không?');
   }
 
   if (confidence < p.semanticRules.confidenceThreshold) {
-    return clarification(
-      confidence,
-      `Anh/chị muốn hỏi về "${p.domains.find((d) => d.id === top.intent.domain)?.name ?? top.intent.domain}"? Anh/chị có thể hỏi cụ thể hơn được không?`,
-    );
+    const ticker = top.matchedTerms.length === 1 ? BARE_TICKER_INTENT[stripDiacritics(top.matchedTerms[0].toLowerCase())] : undefined;
+    const fallbackIntent = ticker ? p.intents.find((i) => i.id === ticker) : undefined;
+    if (!fallbackIntent) {
+      return clarification(
+        confidence,
+        `Anh/chị muốn hỏi về "${p.domains.find((d) => d.id === top.intent.domain)?.name ?? top.intent.domain}"? Anh/chị có thể hỏi cụ thể hơn được không?`,
+      );
+    }
+    top = { intent: fallbackIntent, score: 100, matchedTerms: top.matchedTerms };
+    confidence = 1;
   }
 
   const query = buildQuery({
