@@ -45,9 +45,13 @@ function debugEnabled(): boolean {
 
 export const semanticController = {
   /** POST /api/virtual-rm/query — { message } -> SemanticQueryResult | ClarificationResult.
-   * userId/role are read from the request body because this demo has no server-side session
-   * (the API is intentionally unauthenticated); companyId is never taken from the client — see
-   * semantic-engine.ts::buildSecurityContext.
+   * `userId`/`role` (and, transitively, `companyId`) come from `req.session` — the
+   * authenticated `SessionRecord` `requireSession` middleware attaches (see
+   * auth/session.middleware.ts) — never from the request body. Virtual RM cannot be told a
+   * different identity by the message it's asked to process (spec §13): even if a prompt
+   * claims "I'm COM999" or the body still carries stray `userId`/`role` fields from an old
+   * client, `app.ts`'s `stripIdentityOverrides` middleware has already deleted them before this
+   * handler runs, and this line never reads them anyway.
    *
    * Phase 5 (AI Reasoning) adds two things on top of the existing deterministic pipeline,
    * both additive — a plain simple-query request behaves exactly as before:
@@ -60,11 +64,13 @@ export const semanticController = {
    *      `semantic.reasoningRequired` is set to true.
    */
   async query(req: Request, res: Response) {
-    const { message, userId, role } = req.body as { message?: string; userId?: string; role?: 'MAKER' | 'CHECKER' | 'ADMIN' };
+    const { message } = req.body as { message?: string };
     if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ success: false, message: 'Thiếu nội dung câu hỏi' });
     }
-    const security = buildSecurityContext(userId, role);
+    // req.session is guaranteed by requireSession (mounted ahead of every /api/* route except
+    // /auth/login) — the non-null assertion documents that invariant rather than re-checking it.
+    const security = buildSecurityContext(req.session!.userId, req.session!.role);
     const debug = debugEnabled();
     const config = loadAiConfig();
 
@@ -177,17 +183,16 @@ export const semanticController = {
   },
 
   /** GET /api/virtual-rm/briefing — BUSINESS_BRIEFING, callable directly without going through
-   * intent detection (see business-semantics spec §23). */
+   * intent detection (see business-semantics spec §23). Identity from `req.session`, same as
+   * query() above — never from `req.query`. */
   briefing(req: Request, res: Response) {
-    const { userId, role } = req.query as { userId?: string; role?: 'MAKER' | 'CHECKER' | 'ADMIN' };
-    const security = buildSecurityContext(userId, role);
+    const security = buildSecurityContext(req.session!.userId, req.session!.role);
     res.json(businessBriefing(security));
   },
 
   /** GET /api/virtual-rm/trade-finance-briefing — Phase 6, same pattern as briefing() above. */
   tradeFinanceBriefing(req: Request, res: Response) {
-    const { userId, role } = req.query as { userId?: string; role?: 'MAKER' | 'CHECKER' | 'ADMIN' };
-    const security = buildSecurityContext(userId, role);
+    const security = buildSecurityContext(req.session!.userId, req.session!.role);
     res.json(tradeFinanceBriefing(security));
   },
 
@@ -196,8 +201,7 @@ export const semanticController = {
    * Engine's Priority Engine rather than the legacy /api/rm/briefing path
    * (docs/phase-5.5-brd-gap-analysis.md §3.5). */
   dailyDashboard(req: Request, res: Response) {
-    const { userId, role } = req.query as { userId?: string; role?: 'MAKER' | 'CHECKER' | 'ADMIN' };
-    const security = buildSecurityContext(userId, role);
+    const security = buildSecurityContext(req.session!.userId, req.session!.role);
     const anchorToday = getAnchorDates().today;
     res.json(buildDailyDashboard(toUserContext(security), anchorToday, getNavigationActions()));
   },

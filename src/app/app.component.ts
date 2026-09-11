@@ -10,6 +10,7 @@ import { ToastContainerComponent } from './shared/components/toast-container/toa
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
 import { RmChatLauncherComponent } from './features/virtual-rm/components/rm-chat-launcher/rm-chat-launcher.component';
 import { RmChatSessionService } from './features/virtual-rm/interaction/rm-chat-session.service';
+import { SessionTimeoutService } from './core/services/session-timeout.service';
 
 @Component({
   selector: 'app-root',
@@ -33,6 +34,9 @@ export class AppComponent {
   // is already built by the time the customer navigates to the full-screen /virtual-rm/chat
   // page — see rm-chat-session.service.ts's doc comment.
   private readonly chatSession = inject(RmChatSessionService);
+  // Login & Session Security upgrade — eagerly instantiated so the idle-timeout warning polls
+  // and fires regardless of which page/route the customer is currently on.
+  private readonly sessionTimeout = inject(SessionTimeoutService);
   readonly mobileMenuOpen = signal(false);
 
   constructor() {

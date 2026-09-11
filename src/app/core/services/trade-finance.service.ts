@@ -10,7 +10,6 @@ import {
   LetterOfCredit,
   TradeFinanceSummary,
 } from '../models';
-import { AuthService } from './auth.service';
 
 /** Phase 7 — dedicated Trade Finance Business Banking screens read from these real REST
  * endpoints (server/src/controllers/trade-finance.controller.ts), separate from the Virtual
@@ -19,7 +18,6 @@ import { AuthService } from './auth.service';
 @Injectable({ providedIn: 'root' })
 export class TradeFinanceService {
   private readonly http = inject(HttpClient);
-  private readonly auth = inject(AuthService);
 
   readonly lcs = signal<LetterOfCredit[]>([]);
   readonly guarantees = signal<BankGuarantee[]>([]);
@@ -85,12 +83,12 @@ export class TradeFinanceService {
   }
 
   /** BRD §26: LC issuance is Maker-initiated — the server rejects a Checker's request with a
-   * 403 (server-side, never inferred from the UI alone); the role sent here is only ever what
-   * AuthService.currentUser() already holds, itself set at login, never client-overridable in a
-   * way that would grant a Checker access it lacks. */
+   * 403, checking the role on the caller's authenticated session (see
+   * server/src/controllers/trade-finance.controller.ts::createLc), never a value the client
+   * sends — Login & Session Security upgrade removed the `role` field this request used to
+   * carry in its body precisely because a client-supplied role can't be trusted for that check. */
   async createLc(payload: CreateLcRequest): Promise<LetterOfCredit> {
-    const role = this.auth.currentUser()?.role;
-    const created = await firstValueFrom(this.http.post<LetterOfCredit>('/api/trade-finance/lc', { ...payload, role }));
+    const created = await firstValueFrom(this.http.post<LetterOfCredit>('/api/trade-finance/lc', payload));
     await this.loadAll();
     return created;
   }

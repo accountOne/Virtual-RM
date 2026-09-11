@@ -12,7 +12,6 @@ import {
   Task,
   Transaction,
 } from '../models';
-import { AuthService } from './auth.service';
 
 /** Mirrors business-semantics/navigation-actions.json's route field — the semantic engine
  * returns a navigation action id (e.g. "OPEN_APPROVAL"), the frontend owns turning that into
@@ -107,7 +106,6 @@ export interface SemanticQueryApiResult {
 @Injectable({ providedIn: 'root' })
 export class RmDataService {
   private readonly http = inject(HttpClient);
-  private readonly auth = inject(AuthService);
 
   readonly customer = signal<Customer | null>(null);
   readonly accounts = signal<Account[]>([]);
@@ -202,13 +200,15 @@ export class RmDataService {
     return this.query(question);
   }
 
+  /** Login & Session Security upgrade: `userId`/`role` used to be sent here from the client —
+   * removed, since Virtual RM must run inside the caller's authenticated session, never an
+   * identity the frontend asserts (server/src/controllers/semantic.controller.ts::query now
+   * reads `req.session!.userId`/`req.session!.role`; `stripIdentityOverrides` would delete
+   * these fields anyway if a client still sent them). */
   private async query(question: string): Promise<SemanticQueryApiResult> {
-    const user = this.auth.currentUser();
     return firstValueFrom(
       this.http.post<SemanticQueryApiResult>('/api/virtual-rm/query', {
         message: question,
-        userId: user?.username,
-        role: user?.role,
       }),
     );
   }

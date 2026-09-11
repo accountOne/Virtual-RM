@@ -15,12 +15,14 @@ export const tradeFinanceController = {
     res.json(item);
   },
   /** Phase 5.5 BRD alignment §26/§14: LC issuance is a Maker-initiated request — a Checker
-   * must never be able to create one, enforced here server-side (never inferred from natural
-   * language or trusted from the UI alone, per the BRD's own explicit requirement). `role` is
-   * read from the request body only to check it, never used to widen access. */
+   * must never be able to create one. `requireRole('MAKER', 'ADMIN')` (routes/index.ts) already
+   * blocks a Checker's session before this handler ever runs; `canCreateLc(req.session!.role)`
+   * here is deliberate defense-in-depth, not the only gate. Login & Session Security upgrade:
+   * role now comes from `req.session` (the authenticated session), never `req.body` — a client
+   * cannot claim a different role by sending one in the request (and `stripIdentityOverrides`
+   * has already deleted any `role` field the body had, before this handler runs). */
   createLc(req: Request, res: Response) {
-    const { role } = req.body as { role?: 'MAKER' | 'CHECKER' | 'ADMIN' };
-    if (!canCreateLc(role)) {
+    if (!canCreateLc(req.session!.role)) {
       return res.status(403).json({ message: 'Anh/chị đang sử dụng vai trò Checker. Vui lòng yêu cầu Maker khởi tạo đề nghị phát hành LC.' });
     }
     res.status(201).json(tradeFinanceService.createLc(req.body));

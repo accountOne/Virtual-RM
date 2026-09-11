@@ -10,14 +10,31 @@ import { rmController } from '../controllers/rm.controller';
 import { adminController } from '../controllers/admin.controller';
 import { semanticController } from '../controllers/semantic.controller';
 import { tradeFinanceController } from '../controllers/trade-finance.controller';
+import { authController } from '../controllers/auth.controller';
+import { requireRole } from '../auth/session.middleware';
+import { loginRateLimiter, transactionRateLimiter, virtualRmRateLimiter } from '../auth/rate-limit';
 
 export const apiRouter = Router();
+
+// ---- Auth (Login & Session Security upgrade — see docs/security/) -----------------------
+// POST /auth/login is the one route reachable without an existing session (app.ts exempts it
+// from requireSession/requireCsrf); everything else here runs after those two middlewares.
+apiRouter.post('/auth/login', loginRateLimiter, authController.login);
+apiRouter.post('/auth/logout', authController.logout);
+apiRouter.get('/auth/me', authController.me);
+apiRouter.post('/auth/keepalive', authController.keepalive);
+apiRouter.get('/auth/sessions', authController.sessions);
+apiRouter.post('/auth/sessions/:id/revoke', authController.revoke);
+apiRouter.post('/auth/sessions/revoke-all', authController.revokeAll);
 
 apiRouter.get('/customer', customerController.get);
 apiRouter.get('/accounts', accountsController.list);
 apiRouter.get('/transactions', transactionsController.list);
-apiRouter.post('/transactions/:id/approve', transactionsController.approve);
-apiRouter.post('/transactions/:id/reject', transactionsController.reject);
+// Level 5 (spec §15) — approve/reject a payment is an authorization action, restricted to
+// CHECKER/ADMIN server-side (previously enforced only by hiding the UI button — see
+// docs/security/security-gap-analysis.md §1.2).
+apiRouter.post('/transactions/:id/approve', transactionRateLimiter, requireRole('CHECKER', 'ADMIN'), transactionsController.approve);
+apiRouter.post('/transactions/:id/reject', transactionRateLimiter, requireRole('CHECKER', 'ADMIN'), transactionsController.reject);
 apiRouter.get('/tasks', tasksController.list);
 apiRouter.post('/tasks/:id/complete', tasksController.complete);
 apiRouter.get('/alerts', alertsController.list);
@@ -28,7 +45,7 @@ apiRouter.post('/rm/query', rmController.query);
 
 // Business Banking Semantic Pack — see /business-semantics and docs/semantic-engine.md.
 // Deterministic, local NLU for the Virtual RM chat; does not replace /rm/query above.
-apiRouter.post('/virtual-rm/query', semanticController.query);
+apiRouter.post('/virtual-rm/query', virtualRmRateLimiter, semanticController.query);
 apiRouter.get('/virtual-rm/briefing', semanticController.briefing);
 apiRouter.get('/virtual-rm/trade-finance-briefing', semanticController.tradeFinanceBriefing);
 
@@ -40,20 +57,23 @@ apiRouter.get('/virtual-rm/daily-dashboard', semanticController.dailyDashboard);
 apiRouter.get('/trade-finance/summary', tradeFinanceController.summary);
 apiRouter.get('/trade-finance/lc', tradeFinanceController.listLc);
 apiRouter.get('/trade-finance/lc/:id', tradeFinanceController.getLc);
-apiRouter.post('/trade-finance/lc', tradeFinanceController.createLc);
+// Level 4 (spec §15) — creating an LC/BG/Collection request is a SUBMIT action: MAKER/ADMIN
+// only (a CHECKER's job is to approve requests, not raise them — spec §12's role table).
+apiRouter.post('/trade-finance/lc', transactionRateLimiter, requireRole('MAKER', 'ADMIN'), tradeFinanceController.createLc);
 apiRouter.get('/trade-finance/guarantees', tradeFinanceController.listGuarantees);
 apiRouter.get('/trade-finance/guarantees/:id', tradeFinanceController.getGuarantee);
-apiRouter.post('/trade-finance/guarantees', tradeFinanceController.createGuarantee);
+apiRouter.post('/trade-finance/guarantees', transactionRateLimiter, requireRole('MAKER', 'ADMIN'), tradeFinanceController.createGuarantee);
 apiRouter.get('/trade-finance/collections', tradeFinanceController.listCollections);
 apiRouter.get('/trade-finance/collections/:id', tradeFinanceController.getCollection);
-apiRouter.post('/trade-finance/collections', tradeFinanceController.createCollection);
+apiRouter.post('/trade-finance/collections', transactionRateLimiter, requireRole('MAKER', 'ADMIN'), tradeFinanceController.createCollection);
 
-apiRouter.put('/admin/customer', adminController.updateCustomer);
-apiRouter.put('/admin/accounts', adminController.replaceAccounts);
-apiRouter.put('/admin/accounts/:id', adminController.updateAccount);
-apiRouter.put('/admin/transactions/:id', adminController.updateTransaction);
-apiRouter.put('/admin/tasks/:id', adminController.updateTask);
-apiRouter.put('/admin/alerts/:id', adminController.updateAlert);
-apiRouter.put('/admin/products/:id', adminController.updateProduct);
-apiRouter.put('/admin/recommendations/:id', adminController.updateRecommendation);
-apiRouter.post('/admin/reset', adminController.reset);
+// Admin Demo Data Editor — ADMIN only, server-side (previously unauthenticated entirely).
+apiRouter.put('/admin/customer', requireRole('ADMIN'), adminController.updateCustomer);
+apiRouter.put('/admin/accounts', requireRole('ADMIN'), adminController.replaceAccounts);
+apiRouter.put('/admin/accounts/:id', requireRole('ADMIN'), adminController.updateAccount);
+apiRouter.put('/admin/transactions/:id', requireRole('ADMIN'), adminController.updateTransaction);
+apiRouter.put('/admin/tasks/:id', requireRole('ADMIN'), adminController.updateTask);
+apiRouter.put('/admin/alerts/:id', requireRole('ADMIN'), adminController.updateAlert);
+apiRouter.put('/admin/products/:id', requireRole('ADMIN'), adminController.updateProduct);
+apiRouter.put('/admin/recommendations/:id', requireRole('ADMIN'), adminController.updateRecommendation);
+apiRouter.post('/admin/reset', requireRole('ADMIN'), adminController.reset);

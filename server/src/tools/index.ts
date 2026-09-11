@@ -57,6 +57,7 @@ import {
 import { DateRange } from '../semantic/types';
 import { isWithinRange } from '../semantic/date-resolver';
 import { UserContext } from '../ai/types';
+import { registerReadOnlyTool } from './tool-security';
 
 export interface Tool<Params, Result> {
   name: string;
@@ -424,3 +425,9 @@ export const toolRegistry: Record<string, Tool<any, any>> = {
   [getAlerts.name]: getAlerts,
   [getTasks.name]: getTasks,
 };
+
+// Login & Session Security upgrade (spec §14) — every tool above is a plain data read (see
+// this file's own header comment); registering each one here makes that an enforced, tested
+// invariant instead of an informal one. Driven from `toolRegistry` itself so this can never
+// silently drift out of sync with the actual tool list.
+Object.keys(toolRegistry).forEach(registerReadOnlyTool);

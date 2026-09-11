@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService, ROLE_LABEL } from '../../../core/services/auth.service';
 import { RmDataService } from '../../../core/services/rm-data.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { RmChatSessionService } from '../../../features/virtual-rm/interaction/rm-chat-session.service';
 
 interface SearchResult {
   icon: string;
@@ -167,6 +168,7 @@ export class HeaderComponent {
   readonly auth = inject(AuthService);
   readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly chatSession = inject(RmChatSessionService);
 
   @Output() menuToggle = new EventEmitter<void>();
 
@@ -246,6 +248,10 @@ export class HeaderComponent {
   logout(): void {
     this.profileOpen.set(false);
     this.auth.logout();
+    // Spec: "Virtual RM conversation context ... invalidated on logout/expiry" — the
+    // conversation singleton otherwise survives logout (it's providedIn: 'root'), which would
+    // leak the previous session's chat into whoever logs in next.
+    this.chatSession.resetChat();
     this.router.navigateByUrl('/login');
   }
 

@@ -96,7 +96,9 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
 
             <p *ngIf="error()" class="text-sm text-negative">{{ error() }}</p>
 
-            <button type="submit" class="btn-primary w-full" [disabled]="!username.trim() || !password">Đăng nhập</button>
+            <button type="submit" class="btn-primary w-full" [disabled]="!username.trim() || !password || submitting()">
+              {{ submitting() ? 'Đang đăng nhập...' : 'Đăng nhập' }}
+            </button>
           </form>
 
           <div class="mt-6 rounded-lg bg-ink-50 border border-ink-100 p-3.5">
@@ -134,6 +136,7 @@ export class LoginPageComponent {
   readonly demoAccounts = DEMO_ACCOUNTS;
   readonly error = signal('');
   readonly passwordVisible = signal(false);
+  readonly submitting = signal(false);
   readonly heroBg = 'radial-gradient(120% 140% at 0% 0%, #ff9f6e 0%, #ef4b2a 45%, #8a1e17 100%)';
 
   username = '';
@@ -145,13 +148,20 @@ export class LoginPageComponent {
     this.error.set('');
   }
 
-  submit(): void {
-    const ok = this.auth.login(this.username, this.password);
-    if (!ok) {
-      this.error.set('Tên đăng nhập hoặc mật khẩu không đúng.');
-      return;
+  async submit(): Promise<void> {
+    if (this.submitting()) return;
+    this.error.set('');
+    this.submitting.set(true);
+    try {
+      const result = await this.auth.login(this.username, this.password);
+      if (!result.ok) {
+        this.error.set(result.message);
+        return;
+      }
+      const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+      this.router.navigateByUrl(returnUrl || '/dashboard');
+    } finally {
+      this.submitting.set(false);
     }
-    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-    this.router.navigateByUrl(returnUrl || '/dashboard');
   }
 }

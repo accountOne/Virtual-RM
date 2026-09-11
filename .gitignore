@@ -46,3 +46,7 @@ Thumbs.db
 # Local environment / secrets — see .env.example for the documented variables.
 .env
 .env.local
+
+# Runtime security audit log (server/src/auth/audit-log.ts) — generated at runtime, not seed
+# data like the other server/data/*.json files.
+server/data/audit-log.jsonl
