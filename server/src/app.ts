@@ -12,10 +12,16 @@ const CLIENT_DIST = path.join(__dirname, '..', '..', 'dist', 'client', 'browser'
 function allowedOrigins(): string[] | boolean {
   const raw = process.env.ALLOWED_ORIGINS;
   if (!raw) {
-    // Demo default: the two local dev origins this repo's own `proxy.conf.json`/`ng serve`
-    // setup actually uses. A real deployment MUST set ALLOWED_ORIGINS explicitly — see
-    // docs/security/csrf-cors.md. Never falls back to `*` once credentials are involved.
-    return ['http://localhost:4200', 'http://127.0.0.1:4200'];
+    // Demo default when ALLOWED_ORIGINS isn't set on the deployment: the two local dev origins
+    // this repo's own `proxy.conf.json`/`ng serve` setup uses, plus this repo's own known
+    // GitHub Pages deployment target (`.github/workflows/deploy-pages.yml` +
+    // `environment.prod.ts`'s `apiUrl`, which is what points a GitHub Pages build at this exact
+    // backend in the first place). Setting ALLOWED_ORIGINS explicitly on the actual Render/
+    // Railway/Fly.io deployment remains the correct production practice — see
+    // docs/security/csrf-cors.md — this hardcoded entry is a fallback so the demo isn't broken
+    // by a missing env var, not a substitute for configuring it. Never falls back to `*` once
+    // credentials are involved.
+    return ['http://localhost:4200', 'http://127.0.0.1:4200', 'https://accountone.github.io'];
   }
   return raw.split(',').map((o) => o.trim()).filter(Boolean);
 }

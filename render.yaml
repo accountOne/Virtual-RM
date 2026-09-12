@@ -21,3 +21,14 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
+      # Login & Session Security upgrade — see docs/security/csrf-cors.md. Without this,
+      # server/src/app.ts falls back to a dev-only default (localhost:4200 + this repo's own
+      # known GitHub Pages origin as a safety net) — set it explicitly here so CORS is correct
+      # for whatever GitHub Pages URL actually serves the frontend, no code change needed if
+      # that ever moves to a custom domain.
+      - key: ALLOWED_ORIGINS
+        value: https://accountone.github.io
+      # This service is served over HTTPS by Render — unlike local dev (plain HTTP), a Secure
+      # cookie works correctly here and should be required.
+      - key: COOKIE_SECURE
+        value: "true"
