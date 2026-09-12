@@ -210,7 +210,7 @@ export class VirtualRmChatPageComponent {
       if (list.length < this.spokenCount) this.spokenCount = 0; // resetChat() started a new list
       for (let i = this.spokenCount; i < list.length; i++) {
         const msg = list[i];
-        if (msg.from === 'RM' && msg.content) this.voice.speak(msg.content);
+        if (msg.from === 'RM' && msg.content) void this.voice.speak(msg.content);
       }
       this.spokenCount = list.length;
     });
@@ -259,15 +259,15 @@ export class VirtualRmChatPageComponent {
     this.session.resetChat();
   }
 
-  /** Toggles voice-input capture. While listening, the interim (in-progress) transcript is
-   * reflected live into the draft input so the customer can see what's being recognized; the
-   * final transcript replaces it once the browser detects they've stopped talking. */
+  /** Toggles voice-input capture. While listening/transcribing, progress text (recording,
+   * transcribing) is reflected live into the draft input; the final transcript replaces it once
+   * the cloud (or, on fallback, the browser) returns a result. */
   toggleVoiceInput(): void {
     if (this.voice.listening()) {
       this.voice.stopListening();
       return;
     }
-    this.voice.startListening(
+    void this.voice.startListening(
       (interim) => (this.draft = interim),
       (final) => (this.draft = final),
     );

@@ -32,6 +32,7 @@ import './security/csrf.test';
 import './security/security-headers.test';
 import './security/virtual-rm-auth.test';
 import './security/audit-log.test';
+import './security/voice.test';
 import './security/session.test';
 
 import { runAll } from './test-runner';

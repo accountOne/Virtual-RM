@@ -11,6 +11,7 @@ import { adminController } from '../controllers/admin.controller';
 import { semanticController } from '../controllers/semantic.controller';
 import { tradeFinanceController } from '../controllers/trade-finance.controller';
 import { authController } from '../controllers/auth.controller';
+import { voiceController } from '../controllers/voice.controller';
 import { requireRole } from '../auth/session.middleware';
 import { loginRateLimiter, transactionRateLimiter, virtualRmRateLimiter } from '../auth/rate-limit';
 
@@ -42,6 +43,12 @@ apiRouter.get('/products', productsController.list);
 apiRouter.get('/recommendations', recommendationsController.list);
 apiRouter.get('/rm/briefing', rmController.briefing);
 apiRouter.post('/rm/query', rmController.query);
+
+// Voice chat (TTS + STT via OpenAI) — see server/src/voice/openai-voice-client.ts. Reuses the
+// Virtual RM query rate limiter: same "authenticated demo user chatting with the RM" traffic
+// shape, and these calls cost real money per request so they shouldn't go unlimited either.
+apiRouter.post('/voice/speak', virtualRmRateLimiter, voiceController.speak);
+apiRouter.post('/voice/transcribe', virtualRmRateLimiter, voiceController.transcribe);
 
 // Business Banking Semantic Pack — see /business-semantics and docs/semantic-engine.md.
 // Deterministic, local NLU for the Virtual RM chat; does not replace /rm/query above.

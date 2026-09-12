@@ -35,3 +35,9 @@ services:
       # the default COOKIE_SAME_SITE=lax (server/src/auth/session.middleware.ts) is the more
       # secure choice once cross-site isn't a requirement. See docs/security/csrf-cors.md for
       # the cross-site notes, kept for reference in case a split deployment is ever needed again.
+      # Voice chat (TTS + STT — see server/src/voice/openai-voice-client.ts). `sync: false` means
+      # Render prompts for this in its dashboard instead of reading a value from this committed
+      # file — never put a real key here. Without it set, voice chat falls back to the browser's
+      # own (more limited, no-cost) Web Speech API automatically; nothing breaks.
+      - key: OPENAI_API_KEY
+        sync: false
