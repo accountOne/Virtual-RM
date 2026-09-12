@@ -26,12 +26,25 @@ function readUserAgent(req: Request): string | undefined {
 }
 
 /** Shared shape for `me()`/`login()`/`keepalive()` — the one place the frontend is meant to
- * read userId/companyId/role/session-expiry from (spec §9). */
+ * read userId/companyId/role/session-expiry from (spec §9).
+ *
+ * `csrfToken` is included here (not just the non-HttpOnly cookie) because the cookie-reading
+ * approach (Angular's `withXsrfConfiguration`, which reads `document.cookie` on the frontend's
+ * OWN page) only works when the cookie's domain is the same as the page's — true for same-origin
+ * dev, but false for this app's documented cross-SITE split-deployment case (Angular on GitHub
+ * Pages, API on Render/Railway/Fly.io on an entirely different registrable domain): a cookie set
+ * by the API's domain is never visible to `document.cookie` on the GitHub Pages page, no matter
+ * what SameSite says — that's browser cookie-domain isolation, unrelated to SameSite. The
+ * frontend instead stores this value in memory (`AuthService`) and the auth interceptor attaches
+ * it as the `X-CSRF-Token` header directly — see src/app/core/interceptors/auth.interceptor.ts.
+ * Not a new exposure: this is the same value already carried in the non-HttpOnly `csrf_token`
+ * cookie (csrf.ts's own doc comment: "not a secret in the same sense the session cookie is"). */
 function sessionPayload(session: SessionRecord) {
   return {
     authenticated: true as const,
     user: { id: session.userId, displayName: session.displayName, role: session.role },
     company: { id: session.companyId },
+    csrfToken: session.csrfToken,
     session: {
       expiresAt: new Date(session.absoluteExpiresAt).toISOString(),
       idleExpiresAt: new Date(idleExpiresAt(session)).toISOString(),

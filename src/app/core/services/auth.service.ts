@@ -20,6 +20,7 @@ interface SessionApiResponse {
   authenticated: boolean;
   user?: { id: string; displayName: string; role: UserRole };
   company?: { id: string };
+  csrfToken?: string;
   session?: { expiresAt: string; idleExpiresAt: string };
 }
 
@@ -43,6 +44,14 @@ export class AuthService {
   readonly companyId = signal<string | null>(null);
   readonly sessionExpiresAt = signal<Date | null>(null);
   readonly sessionIdleExpiresAt = signal<Date | null>(null);
+  /** In-memory CSRF token, read by `auth.interceptor.ts` to attach `X-CSRF-Token` directly —
+   * NOT read from `document.cookie` (Angular's `withXsrfConfiguration`). That cookie-reading
+   * approach only works when the `csrf_token` cookie's domain matches the page's own domain —
+   * true for same-origin dev, but false for this app's cross-SITE split-deployment case
+   * (Angular on GitHub Pages, API on a different registrable domain like Render): a cookie set
+   * by the API's domain is never visible to `document.cookie` on the GitHub Pages page,
+   * regardless of SameSite. See `sessionPayload()` in the server's auth.controller.ts. */
+  private csrfToken: string | null = null;
   /** Flips true once the initial `GET /api/auth/me` bootstrap check has resolved, either way —
    * guards run after this, so a real, still-valid session survives a hard refresh instead of
    * bouncing to /login before the check completes. */
@@ -104,6 +113,12 @@ export class AuthService {
     this.clear();
   }
 
+  /** Read by `auth.interceptor.ts` to attach `X-CSRF-Token`. `null` before the first successful
+   * login/restoreSession, or after logout/clear. */
+  getCsrfToken(): string | null {
+    return this.csrfToken;
+  }
+
   isAuthenticated(): boolean {
     return this.currentUser() !== null;
   }
@@ -120,6 +135,7 @@ export class AuthService {
     }
     this.currentUser.set({ username: res.user.id, role: res.user.role, displayName: res.user.displayName });
     this.companyId.set(res.company?.id ?? null);
+    this.csrfToken = res.csrfToken ?? null;
     this.sessionExpiresAt.set(res.session ? new Date(res.session.expiresAt) : null);
     this.sessionIdleExpiresAt.set(res.session ? new Date(res.session.idleExpiresAt) : null);
   }
@@ -127,6 +143,7 @@ export class AuthService {
   private clear(): void {
     this.currentUser.set(null);
     this.companyId.set(null);
+    this.csrfToken = null;
     this.sessionExpiresAt.set(null);
     this.sessionIdleExpiresAt.set(null);
   }

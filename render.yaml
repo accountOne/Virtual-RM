@@ -29,6 +29,18 @@ services:
       - key: ALLOWED_ORIGINS
         value: https://accountone.github.io
       # This service is served over HTTPS by Render — unlike local dev (plain HTTP), a Secure
-      # cookie works correctly here and should be required.
+      # cookie works correctly here and should be required. Secure is also mandatory for
+      # SameSite=None below (browsers reject that combination without it).
       - key: COOKIE_SECURE
         value: "true"
+      # accountone.github.io and virtual-rm-api.onrender.com are different registrable domains —
+      # a genuinely cross-SITE deployment, not just cross-origin-same-site. SameSite=Lax (this
+      # app's local-dev default) is NEVER sent by the browser on cross-site fetch/XHR requests
+      # (only on top-level navigations), so every authenticated API call after login would
+      # silently lose its cookie and 401 — this was the actual cause of a blank dashboard after
+      # an otherwise-successful login. SameSite=None restores normal cookie behavior for this
+      # topology; CSRF protection still holds independently via the token itself (see
+      # docs/security/csrf-cors.md), which this app was already designed not to rely on
+      # SameSite alone for.
+      - key: COOKIE_SAME_SITE
+        value: none

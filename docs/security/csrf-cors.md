@@ -13,8 +13,10 @@ function validateCsrf(session: SessionRecord, headerToken: unknown): boolean {
 }
 ```
 
-- Cookie: `csrf_token`, **not** `HttpOnly` (deliberately — the frontend must be able to read it to
-  echo it back), `SameSite=Lax`.
+- Cookie: `csrf_token`, **not** `HttpOnly` (kept for defense-in-depth/same-site debugging even
+  though the frontend no longer reads it — see "Frontend wiring" below), `SameSite` matches
+  `COOKIE_SAME_SITE` (`lax` for same-site dev, `none` for a cross-site deployment — see CORS
+  section).
 - Header: `X-CSRF-Token`.
 - Enforced on every state-changing verb (`POST`/`PUT`/etc.) on every `/api/*` route except
   `/api/auth/login` (no session/token exists yet to hold one). `GET`/`HEAD`/`OPTIONS` are exempt
@@ -30,15 +32,46 @@ or a same-site subdomain someone doesn't fully trust can all narrow that protect
 token is a second, independent layer that doesn't depend on the browser's cookie-partitioning
 behavior at all.
 
-### Frontend wiring
+### Frontend wiring — why not Angular's built-in `withXsrfConfiguration`
 
-`src/app/app.config.ts` uses Angular's built-in
-`withXsrfConfiguration({ cookieName: 'csrf_token', headerName: 'x-csrf-token' })` — Angular reads
-the cookie and attaches the header automatically on every `HttpClient` request; nothing
-hand-written duplicates this logic. `src/app/core/interceptors/auth.interceptor.ts` additionally
-sets `withCredentials: true` on every `/api/*` request, so cookies (and therefore CSRF) work both
-in same-origin dev (ng serve's proxy) and the documented cross-origin split-deployment case
-(Angular served separately from the API).
+The first version of this used Angular's built-in `withXsrfConfiguration({ cookieName:
+'csrf_token', headerName: 'x-csrf-token' })`, which reads the token straight out of
+`document.cookie` on the frontend's own page. That works for same-origin dev, but breaks for this
+app's actual deployed topology: Angular on GitHub Pages, the API on Render — two entirely
+different **registrable domains** (not just different ports/subdomains of the same site). A
+cookie set by `virtual-rm-api.onrender.com`'s `Set-Cookie` response header is stored under that
+domain in the browser's cookie jar; `document.cookie` evaluated on a page served from
+`accountone.github.io` can **never** see it, no matter what `SameSite`/CORS says — that's
+browser-level cookie-domain isolation, a completely different mechanism from CORS or SameSite.
+`withXsrfConfiguration` found nothing to read and silently sent no header at all, so every
+state-changing request failed CSRF validation as soon as the app was actually used cross-site.
+
+The fix: the login/`me`/`keepalive` response **body** now includes `csrfToken` (not just the
+cookie) — `AuthService` stores it in memory, and `auth.interceptor.ts` attaches
+`X-CSRF-Token` from that in-memory value directly, for every non-GET/HEAD/OPTIONS `/api/*`
+request. This works identically in both topologies (same-origin dev, or the actual cross-site
+GitHub-Pages-to-Render deployment) since it never depends on `document.cookie` at all. Putting the
+token in the response body isn't a new exposure — it's the same value the (still-present,
+still-non-HttpOnly) `csrf_token` cookie already carried; see `csrf.ts`'s own doc comment on why
+that value was never treated as secret in the first place.
+
+`src/app/core/interceptors/auth.interceptor.ts` also sets `withCredentials: true` on every
+`/api/*` request, so the *session* cookie (a real secret, `HttpOnly`) rides along on requests to
+whatever domain the API actually lives on — independent of the CSRF-token mechanism above.
+
+### Why the session cookie needs `SameSite=None` for this deployment, not `Lax`
+
+`SameSite=Lax` (this app's same-site/local-dev default) is only sent by the browser on same-site
+requests, or on a cross-site **top-level navigation** using a safe method — never on a cross-site
+`fetch`/`XHR`. Since GitHub Pages and Render are different registrable domains, every API call
+after login is a cross-site `fetch`, and a `Lax` session cookie would silently never be attached —
+the actual cause of a real, observed bug: login succeeded (the cookie was *set* — SameSite doesn't
+gate that direction), but every subsequent authenticated request 401'd with no cookie attached,
+leaving the dashboard blank with no data. `COOKIE_SAME_SITE=none` (paired with the
+already-required `COOKIE_SECURE=true` — browsers reject `SameSite=None` without `Secure`) restores
+normal cookie behavior for a cross-site deployment; the CSRF token above is what still protects
+against forgery, exactly as designed — this app was never meant to rely on SameSite alone for
+that (see above).
 
 ## CORS — explicit allowlist, never a wildcard with credentials
 
