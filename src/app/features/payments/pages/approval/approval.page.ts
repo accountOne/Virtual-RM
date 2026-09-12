@@ -102,7 +102,7 @@ export class ApprovalPageComponent {
     this.busyId.set(id);
     try {
       await this.rmData.approveTransaction(id);
-      this.toast.success('Đã phê duyệt giao dịch.');
+      this.toast.success('Đã phê duyệt giao dịch (mô phỏng trên dữ liệu demo).');
     } finally {
       this.busyId.set(null);
     }
@@ -119,7 +119,7 @@ export class ApprovalPageComponent {
     this.busyId.set(id);
     try {
       await this.rmData.rejectTransaction(id);
-      this.toast.success('Đã từ chối giao dịch.');
+      this.toast.success('Đã từ chối giao dịch (mô phỏng trên dữ liệu demo).');
     } finally {
       this.busyId.set(null);
     }

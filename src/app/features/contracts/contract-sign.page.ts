@@ -44,6 +44,6 @@ export class ContractSignPageComponent {
     for (const t of tasks) {
       await this.rmData.completeTask(t.id);
     }
-    this.toast.success('Đã ký hợp đồng thành công.');
+    this.toast.success('Đã ký hợp đồng (mô phỏng trên dữ liệu demo).');
   }
 }

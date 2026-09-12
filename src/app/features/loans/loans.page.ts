@@ -45,6 +45,6 @@ export class LoansPageComponent {
     for (const t of tasks) {
       await this.rmData.completeTask(t.id);
     }
-    this.toast.success('Đã kích hoạt hạn mức tín dụng mới.');
+    this.toast.success('Đã kích hoạt hạn mức tín dụng mới (mô phỏng trên dữ liệu demo).');
   }
 }
