@@ -70,5 +70,8 @@ export async function runAll(): Promise<void> {
   }
 
   console.log(`\n${passed} passed, ${failed} failed, ${tests.length} total`);
-  if (failed > 0) process.exit(1);
+  // Always exit explicitly, pass or fail — the security suite (test/security/test-server.ts)
+  // keeps a real ephemeral http.Server listening for the whole run, which otherwise keeps the
+  // event loop (and this process) alive forever on a clean, all-passing run.
+  process.exit(failed > 0 ? 1 : 0);
 }
