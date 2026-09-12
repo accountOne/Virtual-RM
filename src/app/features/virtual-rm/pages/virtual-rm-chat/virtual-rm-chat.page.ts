@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 import { RmChatSessionService } from '../../interaction/rm-chat-session.service';
 import { RMAction } from '../../interaction/rm-interaction.types';
+import { RmVoiceService } from '../../interaction/rm-voice.service';
 import { RmMessageComponent } from '../../components/rm-message/rm-message.component';
 import { RmTypingComponent } from '../../components/rm-typing/rm-typing.component';
 
@@ -69,6 +70,18 @@ const SUGGESTED_QUESTIONS = [
         <button class="p-1.5 rounded-lg hover:bg-white/10 shrink-0" (click)="router.navigateByUrl('/virtual-rm')" aria-label="Thông báo">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 01-3.4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
+        <!-- Voice OUTPUT toggle — reads RM replies aloud via speechSynthesis when on. Off by
+             default (see RmVoiceService); persisted across reloads. -->
+        <button
+          class="p-1.5 rounded-lg hover:bg-white/10 shrink-0"
+          [style.background]="voice.speechEnabled() ? 'rgba(255,255,255,0.2)' : null"
+          (click)="voice.toggleSpeechOutput()"
+          [attr.aria-pressed]="voice.speechEnabled()"
+          [attr.aria-label]="voice.speechEnabled() ? 'Tắt đọc phản hồi bằng giọng nói' : 'Bật đọc phản hồi bằng giọng nói'"
+        >
+          <svg *ngIf="voice.speechEnabled()" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H3v6h3l5 4V5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M15.5 8.5a5 5 0 010 7M18.5 6a9 9 0 010 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <svg *ngIf="!voice.speechEnabled()" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H3v6h3l5 4V5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M22 9l-6 6M16 9l6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
         <div class="relative shrink-0">
           <div class="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-lg">👩‍💼</div>
           <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-positive ring-2 ring-brand-800"></span>
@@ -117,8 +130,9 @@ const SUGGESTED_QUESTIONS = [
         <button class="text-[11px] text-ink-400 hover:text-ink-600" (click)="resetChat()">↺ Bắt đầu cuộc trò chuyện mới</button>
       </div>
 
-      <!-- Input bar — a "more" menu icon and a (visual-only; Speech-to-Text is out of scope,
-           see docs/phase-5.6-evaluation.md) mic icon flank the text field, per the mockup. -->
+      <!-- Input bar — a "more" menu icon and a voice-input mic icon flank the text field, per the
+           mockup. The mic disables itself when the browser has no SpeechRecognition support
+           (see RmVoiceService.supported). -->
       <form
         class="p-3 border-t border-ink-100 flex items-center gap-2 shrink-0 max-w-xl w-full mx-auto"
         style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))"
@@ -127,7 +141,18 @@ const SUGGESTED_QUESTIONS = [
         <button type="button" class="p-2 text-ink-400 hover:text-ink-600 shrink-0" aria-label="Thêm" (click)="sidebarOpen.set(true)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
-        <button type="button" class="p-2 text-ink-400 shrink-0 cursor-default" aria-label="Nhập giọng nói (chưa hỗ trợ)" title="Nhập giọng nói — chưa hỗ trợ">
+        <button
+          type="button"
+          class="p-2 shrink-0"
+          [class.text-ink-400]="!voice.listening()"
+          [class.text-brand-500]="voice.listening()"
+          [class.animate-pulse]="voice.listening()"
+          [class.opacity-30]="!voice.supported()"
+          [disabled]="!voice.supported()"
+          (click)="toggleVoiceInput()"
+          [attr.aria-pressed]="voice.listening()"
+          [attr.aria-label]="voice.supported() ? (voice.listening() ? 'Dừng nhập giọng nói' : 'Nhập bằng giọng nói') : 'Nhập giọng nói (trình duyệt không hỗ trợ)'"
+        >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="9" y="2" width="6" height="12" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M5 11a7 7 0 0014 0M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
         <input
@@ -154,6 +179,7 @@ export class VirtualRmChatPageComponent {
   readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly session = inject(RmChatSessionService);
+  readonly voice = inject(RmVoiceService);
 
   @ViewChild('scrollEl') scrollEl?: ElementRef<HTMLDivElement>;
 
@@ -172,10 +198,21 @@ export class VirtualRmChatPageComponent {
   readonly rmState = this.session.state;
   draft = '';
 
+  /** Count of messages already handed to `voice.speak()` — an `effect` re-runs in full on every
+   * `messages()` change, so this is what keeps auto-speak from re-reading the whole history back
+   * out loud each time a new message arrives. */
+  private spokenCount = 0;
+
   constructor() {
     effect(() => {
-      this.messages();
+      const list = this.messages();
       this.scrollToBottom();
+      if (list.length < this.spokenCount) this.spokenCount = 0; // resetChat() started a new list
+      for (let i = this.spokenCount; i < list.length; i++) {
+        const msg = list[i];
+        if (msg.from === 'RM' && msg.content) this.voice.speak(msg.content);
+      }
+      this.spokenCount = list.length;
     });
   }
 
@@ -202,7 +239,9 @@ export class VirtualRmChatPageComponent {
   }
 
   handleAction(action: RMAction): void {
-    if (action.type === 'NAVIGATE' && action.route) this.goTo(action.route);
+    if (action.type !== 'NAVIGATE' || !action.route) return;
+    const link = action.entityId ? `${action.route}/${action.entityId}` : action.route;
+    this.goTo(link);
   }
 
   goTo(link: string): void {
@@ -211,6 +250,20 @@ export class VirtualRmChatPageComponent {
 
   resetChat(): void {
     this.session.resetChat();
+  }
+
+  /** Toggles voice-input capture. While listening, the interim (in-progress) transcript is
+   * reflected live into the draft input so the customer can see what's being recognized; the
+   * final transcript replaces it once the browser detects they've stopped talking. */
+  toggleVoiceInput(): void {
+    if (this.voice.listening()) {
+      this.voice.stopListening();
+      return;
+    }
+    this.voice.startListening(
+      (interim) => (this.draft = interim),
+      (final) => (this.draft = final),
+    );
   }
 
   private scrollToBottom(): void {

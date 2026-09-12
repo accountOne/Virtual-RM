@@ -81,7 +81,6 @@ accurate after implementation:
 - **Footprint storytelling** and **LC PO-upload conversational flow** — both need backend
   capabilities `phase-5.5-brd-alignment.md` already tracked as not started (no Footprint
   endpoint, no file-upload infrastructure). Nothing to apply interaction UX to yet.
-- **Speech-to-Text** — already P2/deferred since the original Phase 5.5 BRD spec.
 - **No Angular component/TestBed test suite** — see the test-count section above; this is the
   most significant honest gap in this pass, not a scope choice.
 - **No live-region ARIA announcements** for new bubbles arriving — `prefers-reduced-motion` is
