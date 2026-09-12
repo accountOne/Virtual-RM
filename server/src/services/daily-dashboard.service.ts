@@ -86,10 +86,15 @@ function addDays(dateOnly: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function timeOfDayNow(now: Date): TimeOfDay {
-  const h = now.getHours();
-  if (h < 12) return 'MORNING';
-  if (h < 18) return 'AFTERNOON';
+/** `Date.getHours()` reads the JS runtime's own local timezone — UTC on Render, not Vietnam's —
+ * so a customer opening the app at 13:00 ICT (06:00 UTC) got "Chào buổi sáng" instead of "buổi
+ * chiều" in production (confirmed live). Vietnam (ICT) is a fixed UTC+7 with no DST, so shifting
+ * the UTC epoch by 7 hours before reading the UTC hour gives the correct Vietnam-local hour
+ * regardless of the server's own timezone. */
+export function timeOfDayNow(now: Date): TimeOfDay {
+  const vnHour = new Date(now.getTime() + 7 * 60 * 60 * 1000).getUTCHours();
+  if (vnHour < 12) return 'MORNING';
+  if (vnHour < 18) return 'AFTERNOON';
   return 'EVENING';
 }
 
@@ -152,9 +157,17 @@ function priorityLevel(level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'): Dashboard
   return level === 'CRITICAL' ? 'URGENT' : level;
 }
 
-function navigationFor(navigationActions: NavigationActionDef[], entityType: string, entityId: string): NavigationAction | undefined {
-  const navId = ENTITY_NAV_TARGET[entityType];
+function navigationFor(navigationActions: NavigationActionDef[], entityType: string, entityId: string, role?: string): NavigationAction | undefined {
+  let navId = ENTITY_NAV_TARGET[entityType];
   if (!navId) return undefined;
+  // OPEN_APPROVAL (/payments/approval) is CHECKER/ADMIN-only — app.routes.ts's roleGuard bounces
+  // any other role straight back to /dashboard (confirmed live: a MAKER clicking an "urgent
+  // approval" item this way just landed on the dashboard, no error, no explanation). A MAKER
+  // can't approve anyway (maker-checker segregation of duties), so point them at the one
+  // payments view they *can* actually see instead of a link that silently goes nowhere useful.
+  if (navId === 'OPEN_APPROVAL' && role !== 'CHECKER' && role !== 'ADMIN') {
+    navId = 'OPEN_PAYMENT';
+  }
   const nav = navigationActions.find((n) => n.id === navId);
   if (!nav) return undefined;
   return {
@@ -200,7 +213,7 @@ export function buildDailyDashboard(ctx: UserContext, anchorToday: string, navig
     title: item.label,
     priority: priorityLevel(item.priority),
     reason: item.reasons.join('; '),
-    navigation: navigationFor(navigationActions, item.entityType, item.entityId),
+    navigation: navigationFor(navigationActions, item.entityType, item.entityId, ctx.role),
   }));
 
   const expiringApprovalCount = approvals.items.filter((a) => a.expiringSoon).length;

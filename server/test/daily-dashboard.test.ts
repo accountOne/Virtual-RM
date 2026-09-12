@@ -4,7 +4,7 @@ import { describe, test, assert, assertEqual } from './test-runner';
 import { buildSecurityContext, getNavigationActions } from '../src/semantic/semantic-engine';
 import { getAnchorDates } from '../src/services/transactions.service';
 import { toUserContext } from '../src/ai/types';
-import { buildDailyDashboard } from '../src/services/daily-dashboard.service';
+import { buildDailyDashboard, timeOfDayNow } from '../src/services/daily-dashboard.service';
 import { calculateApprovalAge, calculateExpiryRisk, rankPendingApprovals, APPROVAL_EXPIRY_WARNING_DAYS } from '../src/reasoning/approval-risk';
 import { getPendingApprovals } from '../src/tools';
 
@@ -33,6 +33,25 @@ describe('Daily Dashboard (10 required)', () => {
   test('greeting.timeOfDay is always one of MORNING/AFTERNOON/EVENING', () => {
     const d = buildDailyDashboard(ctx, anchorToday, navigationActions);
     assert(['MORNING', 'AFTERNOON', 'EVENING'].includes(d.greeting.timeOfDay), `unexpected timeOfDay ${d.greeting.timeOfDay}`);
+  });
+
+  // Confirmed live: a customer opening the app at 13:00 ICT (06:00 UTC — Render's own server
+  // timezone) got "Chào buổi sáng" instead of "buổi chiều", because the old implementation read
+  // Date.getHours() in the server's own (UTC) timezone rather than Vietnam's.
+  test('timeOfDayNow says AFTERNOON at 13:00 Vietnam time, even though that is 06:00 UTC (< 12)', () => {
+    assertEqual(timeOfDayNow(new Date('2026-09-12T06:05:00Z')), 'AFTERNOON');
+  });
+
+  test('timeOfDayNow says MORNING at 08:00 Vietnam time (01:00 UTC)', () => {
+    assertEqual(timeOfDayNow(new Date('2026-09-12T01:00:00Z')), 'MORNING');
+  });
+
+  test('timeOfDayNow says EVENING at 20:00 Vietnam time (13:00 UTC)', () => {
+    assertEqual(timeOfDayNow(new Date('2026-09-12T13:00:00Z')), 'EVENING');
+  });
+
+  test('timeOfDayNow boundary: 11:59 PM UTC is still MORNING in Vietnam (06:59 next day ICT)', () => {
+    assertEqual(timeOfDayNow(new Date('2026-09-11T23:59:00Z')), 'MORNING');
   });
 
   test('cashflow reports real today-only incoming/outgoing/net from real transactions', () => {
@@ -102,6 +121,26 @@ describe('Daily Dashboard (10 required)', () => {
     const a = buildDailyDashboard(ctx, anchorToday, navigationActions);
     const b = buildDailyDashboard(ctx, anchorToday, navigationActions);
     assertEqual(a.urgentItems.map((i) => i.id).join(','), b.urgentItems.map((i) => i.id).join(','));
+  });
+
+  // Confirmed live: a MAKER (msb_mk) clicking an "Approval" urgentItem's CTA (e.g. "Phê duyệt
+  // Chi lương...") landed on /payments/approval, which app.routes.ts's roleGuard restricts to
+  // CHECKER/ADMIN — the guard silently bounced them straight back to /dashboard. A MAKER can't
+  // approve their own submission anyway (maker-checker segregation of duties), so their CTA
+  // should point at a page they can actually see instead of one that just redirects away.
+  test('an Approval urgentItem routes a MAKER to /payments (not the CHECKER/ADMIN-only /payments/approval)', () => {
+    const makerCtx = toUserContext(buildSecurityContext('msb_mk', 'MAKER'));
+    const d = buildDailyDashboard(makerCtx, anchorToday, navigationActions);
+    const approvalItem = d.urgentItems.find((i) => i.navigation?.entityType === 'Approval');
+    assert(!!approvalItem, 'expected an Approval-type urgentItem in the seeded fixture data');
+    assertEqual(approvalItem!.navigation!.route, '/payments');
+  });
+
+  test('an Approval urgentItem still routes a CHECKER/ADMIN to /payments/approval', () => {
+    const d = buildDailyDashboard(ctx, anchorToday, navigationActions); // ctx is a CHECKER (see top of file)
+    const approvalItem = d.urgentItems.find((i) => i.navigation?.entityType === 'Approval');
+    assert(!!approvalItem, 'expected an Approval-type urgentItem in the seeded fixture data');
+    assertEqual(approvalItem!.navigation!.route, '/payments/approval');
   });
 });
 
