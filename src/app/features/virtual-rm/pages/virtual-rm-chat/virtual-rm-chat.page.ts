@@ -240,7 +240,14 @@ export class VirtualRmChatPageComponent {
 
   handleAction(action: RMAction): void {
     if (action.type !== 'NAVIGATE' || !action.route) return;
-    const link = action.entityId ? `${action.route}/${action.entityId}` : action.route;
+    // Two RMAction sources disagree on this shape: rm-data.service's buildLink() (regular chat
+    // CTAs) already appends entityId into `route`, while the backend's daily-dashboard
+    // navigationFor() (proactive-greeting urgent items) leaves `route` as the bare list route
+    // and reports `entityId` separately — see rm-message-builder.ts's toAction() vs. its urgent
+    // RECORD_LIST mapping. Only append when it isn't already part of the route, so this doesn't
+    // double up into e.g. ".../BG-2026-013/BG-2026-013" for the already-complete CTAs.
+    const alreadyIncludesId = action.entityId && action.route.includes(`/${action.entityId}`);
+    const link = action.entityId && !alreadyIncludesId ? `${action.route}/${action.entityId}` : action.route;
     this.goTo(link);
   }
 
