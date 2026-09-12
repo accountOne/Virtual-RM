@@ -43,4 +43,4 @@ services:
       # docs/security/csrf-cors.md), which this app was already designed not to rely on
       # SameSite alone for.
       - key: COOKIE_SAME_SITE
-        value: none
+        value: "none"
