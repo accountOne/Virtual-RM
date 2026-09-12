@@ -41,6 +41,15 @@ interface SearchResult {
           Trung tâm hỗ trợ
         </button>
 
+        <!-- Search, Notifications, and Profile below all open a panel positioned "fixed right-4
+             lg:right-6 top-16" — fixed to the header's own right padding/height, not "absolute
+             right-0" against each button's own tiny wrapper. That was the previous approach, and
+             it broke exactly for Search: its wrapper sits well left of the header's actual right
+             edge (Bell/Profile are further right), so a w-80 (320px) panel anchored to that
+             narrow wrapper's right-0 overflowed off the LEFT edge of the viewport on a phone
+             (confirmed live — the panel rendered spanning from off-screen-left to mid-header,
+             nowhere near the search icon that opened it). Anchoring to the header's own edge
+             instead makes every panel's position independent of which button opened it. -->
         <!-- Search -->
         <div class="relative">
           <button
@@ -53,7 +62,7 @@ interface SearchResult {
 
           <div
             *ngIf="searchOpen()"
-            class="absolute right-0 mt-2 w-80 max-w-[90vw] card shadow-pop p-3 z-40"
+            class="fixed right-4 lg:right-6 top-16 mt-2 w-80 max-w-[90vw] card shadow-pop p-3 z-40"
             (click)="$event.stopPropagation()"
           >
             <input
@@ -100,7 +109,7 @@ interface SearchResult {
 
           <div
             *ngIf="bellOpen()"
-            class="absolute right-0 mt-2 w-80 max-w-[90vw] card shadow-pop py-2 z-40"
+            class="fixed right-4 lg:right-6 top-16 mt-2 w-80 max-w-[90vw] card shadow-pop py-2 z-40"
             (click)="$event.stopPropagation()"
           >
             <p class="px-3.5 py-1.5 text-xs font-semibold text-ink-400">Cảnh báo &amp; thông báo</p>
@@ -137,7 +146,7 @@ interface SearchResult {
 
           <div
             *ngIf="profileOpen()"
-            class="absolute right-0 mt-2 w-64 card shadow-pop py-2 z-40"
+            class="fixed right-4 lg:right-6 top-16 mt-2 w-64 card shadow-pop py-2 z-40"
             (click)="$event.stopPropagation()"
           >
             <div class="px-3.5 py-2 border-b border-ink-100">
