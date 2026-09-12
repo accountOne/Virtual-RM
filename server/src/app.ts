@@ -106,9 +106,34 @@ export function createApp() {
 
   // Serve the built Angular app (production: `npm run build && npm run build:server`).
   // In dev mode this directory doesn't exist yet — `npm run dev` serves the client via `ng serve` instead.
+  //
+  // index.html is explicitly never cached: every other asset Angular emits is content-hashed
+  // (main-<hash>.js, styles-<hash>.css, ...), so a fresh deploy's index.html always references
+  // files this exact deploy produced — but only if the *browser* re-fetches index.html on every
+  // navigation instead of serving a stale copy from before the last deploy. `express.static`'s
+  // default headers (Last-Modified/ETag only, no explicit Cache-Control) leave that to the
+  // browser's own heuristics, which can and did serve a stale index.html pointing at
+  // already-deleted hashed chunks from a previous deploy — CSS 404s, so the whole app rendered
+  // with zero Tailwind styling (confirmed live: header icons piled up unstyled on the left
+  // instead of their normal flex layout). The hashed assets themselves get the opposite,
+  // maximally aggressive caching, since a content hash makes that always safe.
   if (fs.existsSync(CLIENT_DIST)) {
-    app.use(express.static(CLIENT_DIST));
-    app.get('*', (_req, res) => res.sendFile(path.join(CLIENT_DIST, 'index.html')));
+    app.use(
+      express.static(CLIENT_DIST, {
+        index: false,
+        setHeaders: (res, filePath) => {
+          if (path.basename(filePath) === 'index.html') {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          } else {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          }
+        },
+      }),
+    );
+    app.get('*', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.sendFile(path.join(CLIENT_DIST, 'index.html'));
+    });
   }
 
   // Never leak stack traces / internal details to the client (spec §28).

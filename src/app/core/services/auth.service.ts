@@ -84,11 +84,16 @@ export class AuthService {
     }
   }
 
-  /** Clears local state immediately for instant UX, then tells the server in the background —
-   * spec §5/§8: logout must invalidate the session server-side, not just forget it client-side. */
+  /** Tells the server first, then clears local state — in that order. `firstValueFrom` subscribes
+   * (and so runs auth.interceptor.ts, which reads `getCsrfToken()` to attach `X-CSRF-Token`)
+   * synchronously the instant it's called; clearing `csrfToken` to null before that, as this used
+   * to, made the interceptor send the logout POST with no CSRF header at all, so the request that
+   * actually invalidates the session failed its own CSRF check with 403 — surfaced to the
+   * customer, right after logging out, as "Anh/chị không có quyền thực hiện thao tác này."
+   * (confirmed live). Reordering costs nothing UX-wise (`clear()` still runs in the same tick). */
   logout(): void {
-    this.clear();
     void firstValueFrom(this.http.post('/api/auth/logout', {})).catch(() => {});
+    this.clear();
   }
 
   /** What the session-timeout warning's "Tiếp tục phiên" button calls — extends the idle
