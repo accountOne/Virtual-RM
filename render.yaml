@@ -1,46 +1,37 @@
-# Render Blueprint — deploys the backend only (server/). The frontend is deployed
-# separately to GitHub Pages via .github/workflows/deploy-pages.yml.
+# Render Blueprint — builds and serves BOTH the Angular frontend and the Express backend from
+# this one service, same origin. This replaced an earlier split deployment (Angular on GitHub
+# Pages, API here) after discovering that split deployment doesn't work reliably: GitHub Pages
+# and Render are different registrable domains, so the session cookie was a third-party cookie
+# from the browser's point of view — Safari's Intelligent Tracking Prevention blocks that by
+# default regardless of any SameSite/Secure cookie attribute (confirmed live: the backend
+# responded correctly to every request when tested directly, but a real browser never sent the
+# cookie back). Serving everything from one origin removes the problem at the root instead of
+# working around a browser policy that keeps getting stricter across browsers.
 #
-# To use: on https://dashboard.render.com choose "New +" -> "Blueprint", connect
-# this GitHub repo, and Render will read this file automatically. Free plan spins
-# down after ~15 minutes of inactivity — the first request after idle takes
-# 30-60s to wake up (fine for demo/testing, not for a live presentation).
-#
-# After it deploys, copy the service's https://<name>.onrender.com URL into the
-# API_URL repository variable (Settings -> Secrets and variables -> Actions ->
-# Variables) and re-run the "Deploy frontend to GitHub Pages" workflow.
+# To use: on https://dashboard.render.com choose "New +" -> "Blueprint", connect this GitHub
+# repo, and Render will read this file automatically. Free plan spins down after ~15 minutes of
+# inactivity — the first request after idle takes 30-60s to wake up (fine for demo/testing, not
+# for a live presentation). No `API_URL`/GitHub Pages step needed anymore — this service's own
+# URL (https://<name>.onrender.com) is the whole app.
 
 services:
   - type: web
     name: virtual-rm-api
     runtime: node
     plan: free
-    rootDir: server
-    buildCommand: npm install && npm run build
-    startCommand: node dist/server.js
+    # No `rootDir` — the build needs to run at the repo root (Angular) *and* in server/
+    # (Express), so both commands below use explicit relative paths instead.
+    buildCommand: npm install && npm run build && cd server && npm install && npm run build
+    startCommand: node server/dist/server.js
     envVars:
       - key: NODE_VERSION
         value: 20
-      # Login & Session Security upgrade — see docs/security/csrf-cors.md. Without this,
-      # server/src/app.ts falls back to a dev-only default (localhost:4200 + this repo's own
-      # known GitHub Pages origin as a safety net) — set it explicitly here so CORS is correct
-      # for whatever GitHub Pages URL actually serves the frontend, no code change needed if
-      # that ever moves to a custom domain.
-      - key: ALLOWED_ORIGINS
-        value: https://accountone.github.io
       # This service is served over HTTPS by Render — unlike local dev (plain HTTP), a Secure
-      # cookie works correctly here and should be required. Secure is also mandatory for
-      # SameSite=None below (browsers reject that combination without it).
+      # cookie works correctly here and should be required.
       - key: COOKIE_SECURE
         value: "true"
-      # accountone.github.io and virtual-rm-api.onrender.com are different registrable domains —
-      # a genuinely cross-SITE deployment, not just cross-origin-same-site. SameSite=Lax (this
-      # app's local-dev default) is NEVER sent by the browser on cross-site fetch/XHR requests
-      # (only on top-level navigations), so every authenticated API call after login would
-      # silently lose its cookie and 401 — this was the actual cause of a blank dashboard after
-      # an otherwise-successful login. SameSite=None restores normal cookie behavior for this
-      # topology; CSRF protection still holds independently via the token itself (see
-      # docs/security/csrf-cors.md), which this app was already designed not to rely on
-      # SameSite alone for.
-      - key: COOKIE_SAME_SITE
-        value: "none"
+      # ALLOWED_ORIGINS / COOKIE_SAME_SITE deliberately left unset now that the frontend is
+      # served from this same origin — same-origin requests aren't subject to CORS at all, and
+      # the default COOKIE_SAME_SITE=lax (server/src/auth/session.middleware.ts) is the more
+      # secure choice once cross-site isn't a requirement. See docs/security/csrf-cors.md for
+      # the cross-site notes, kept for reference in case a split deployment is ever needed again.

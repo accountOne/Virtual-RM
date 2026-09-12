@@ -1,5 +1,15 @@
 # CSRF & CORS
 
+> **Current deployment note:** the app is deployed as a single Render service serving both the
+> built Angular frontend and the API from one origin (`render.yaml`) — same-origin, so CORS
+> doesn't apply to the app's own requests and `COOKIE_SAME_SITE` stays at its default (`lax`). An
+> earlier split deployment (Angular on GitHub Pages, API on Render, different registrable
+> domains) was tried and abandoned: it required `SameSite=None`, which Safari's Intelligent
+> Tracking Prevention still blocks as a third-party cookie regardless — a browser policy no
+> cookie attribute can override. The cross-site sections below are kept as reference for if a
+> split deployment is ever attempted again (e.g. behind one shared custom domain, where it would
+> actually work), not a description of what's currently running.
+
 ## CSRF — double-submit token tied to the session
 
 `server/src/auth/csrf.ts` + `requireCsrf` (`session.middleware.ts`). Not a bare stateless

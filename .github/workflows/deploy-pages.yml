@@ -1,10 +1,16 @@
-name: Deploy frontend to GitHub Pages
+# DEPRECATED — this split deployment (Angular here on GitHub Pages, API on Render) doesn't work
+# reliably: GitHub Pages and the Render API are different registrable domains, so the session
+# cookie is a third-party cookie from the browser's point of view, which Safari's Intelligent
+# Tracking Prevention blocks by default regardless of any cookie attribute — confirmed live
+# (the backend answered every request correctly when tested directly; a real browser never sent
+# the session cookie back). The app now deploys as a single Render service that serves both the
+# built frontend and the API from one origin — see render.yaml. Auto-deploy is disabled below
+# (no `push` trigger) so this doesn't keep publishing a broken duplicate; kept as
+# workflow_dispatch only in case a split deployment is ever needed again (e.g. behind a shared
+# custom domain, where this would actually work — see docs/security/csrf-cors.md).
+name: Deploy frontend to GitHub Pages (deprecated — see render.yaml)
 
 on:
-  push:
-    branches:
-      - main
-      - claude/virtual-rm-demo-platform-k36qiq
   workflow_dispatch: {}
 
 permissions:
