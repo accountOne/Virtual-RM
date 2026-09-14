@@ -50,6 +50,15 @@ import { UrgentItemsCardComponent } from '../../components/urgent-items/urgent-i
 
         <app-recommendations-list [recommendations]="rmData.recommendations()" />
 
+        <!-- BRD Option 4.3 ("Xem dấu ấn cá nhân/doanh nghiệp") — see docs/phase-5.5-footprint.md -->
+        <a routerLink="/footprint" class="card p-5 flex items-center justify-between hover:bg-ink-50 transition-colors">
+          <div>
+            <p class="text-sm font-semibold text-ink-800">🎖️ Dấu ấn cá nhân/doanh nghiệp</p>
+            <p class="text-xs text-ink-400 mt-0.5">Xem hành trình đồng hành cùng MSB Business dưới dạng ảnh — tải về hoặc chia sẻ</p>
+          </div>
+          <span class="text-ink-300">→</span>
+        </a>
+
         <div class="flex justify-center pt-2">
           <a routerLink="/virtual-rm/chat" class="btn-primary">💬 Hỏi Virtual RM</a>
         </div>

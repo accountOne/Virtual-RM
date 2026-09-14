@@ -188,5 +188,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
     title: 'Demo Mode — MSB Business Banking',
   },
+  {
+    path: 'footprint',
+    loadComponent: () => import('./features/footprint/footprint.page').then((m) => m.FootprintPageComponent),
+    canActivate: [authGuard],
+    title: 'Dấu ấn — MSB Business Banking',
+  },
   { path: '**', redirectTo: 'dashboard' },
 ];

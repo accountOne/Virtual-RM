@@ -189,6 +189,10 @@ export class VirtualRmChatPageComponent {
     { icon: '🛡️', label: 'Bảo lãnh', link: '/trade-finance/guarantees' },
     { icon: '📥', label: 'Nhờ thu', link: '/trade-finance/collections' },
     { icon: '📊', label: 'Trade Finance', link: '/trade-finance' },
+    // BRD "Virtual RM gợi ý các câu hỏi liên quan đến Daily Dashboard hoặc dấu ấn cá nhân" — a
+    // direct nav chip (like the others here) rather than teaching the deterministic Semantic
+    // Engine a whole new intent just to redirect to a static page.
+    { icon: '🎖️', label: 'Dấu ấn', link: '/footprint' },
   ];
   readonly sidebarOpen = signal(false);
 

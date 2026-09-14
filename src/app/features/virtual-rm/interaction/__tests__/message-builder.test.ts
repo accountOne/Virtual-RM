@@ -258,11 +258,11 @@ describe('rm-message-builder — buildProactiveGreeting', () => {
     assertEqual(card!.records?.[0].action, undefined);
   });
 
-  test('the greeting always ends with a category-shortcuts ACTION message (LC/Bảo lãnh/Thanh toán/Dòng tiền)', () => {
+  test('the greeting always ends with a category-shortcuts ACTION message (LC/Bảo lãnh/Thanh toán/Dòng tiền/Dấu ấn)', () => {
     const messages = buildProactiveGreeting(baseDashboard());
     const last = messages[messages.length - 1];
     assertEqual(last.type, 'ACTION');
-    assertEqual(last.actions?.map((a) => a.label).join(','), 'LC,Bảo lãnh,Thanh toán,Dòng tiền');
+    assertEqual(last.actions?.map((a) => a.label).join(','), 'LC,Bảo lãnh,Thanh toán,Dòng tiền,Dấu ấn');
     assert(
       last.actions!.every((a) => !!a.icon),
       'every category-shortcut action must carry an icon (renders as a pill chip)',

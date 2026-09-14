@@ -260,6 +260,8 @@ function buildCategoryShortcuts(now: number): RMMessage {
       { label: 'Bảo lãnh', icon: '🛡️', type: 'NAVIGATE', route: '/trade-finance/guarantees' },
       { label: 'Thanh toán', icon: '💳', type: 'NAVIGATE', route: '/payments' },
       { label: 'Dòng tiền', icon: '📈', type: 'NAVIGATE', route: '/virtual-rm' },
+      // BRD "Virtual RM gợi ý các câu hỏi liên quan đến Daily Dashboard hoặc dấu ấn cá nhân".
+      { label: 'Dấu ấn', icon: '🎖️', type: 'NAVIGATE', route: '/footprint' },
     ],
     timestamp: now,
   };

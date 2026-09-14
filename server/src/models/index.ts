@@ -6,6 +6,9 @@ export interface Customer {
   rmName: string;
   rmContact: string;
   segment: string;
+  /** Date-only ISO string — when this CIF/company first registered for IBMB. Powers the "Dấu ấn
+   * doanh nghiệp" footprint's "đồng hành từ" stat (docs/phase-5.5-footprint.md). */
+  registeredAt: string;
 }
 
 export interface Account {
@@ -325,4 +328,21 @@ export interface Payable {
   dueDate: string;
   status: PayableStatus;
   relatedInvoice: string;
+}
+
+// Phase 5.5 BRD alignment — Dấu ấn (Footprint), see docs/phase-5.5-footprint.md.
+
+/** Per-demo-user profile data the Footprint feature needs that doesn't belong on the auth
+ * user-store (server/src/auth/user-store.ts) — that file is credentials/role, this is
+ * engagement-tracking mock data. `id` is the username (matches SecurityContext.userId). */
+export interface UserProfile {
+  id: string;
+  registeredAt: string;
+  /** Mock — this demo has no real session-duration tracking. */
+  usageHours: number;
+}
+
+export interface Loyalty {
+  mPoints: number;
+  vouchersRedeemed: number;
 }

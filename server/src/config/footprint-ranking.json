@@ -1,0 +1,17 @@
+{
+  "description": "Phase 5.5 BRD alignment — 3-tier 'fun label' ranking for the Dấu ấn (Footprint) feature (docs/phase-5.5-footprint.md). Editing this file changes footprint ranking without touching code, matching the same config-driven convention as risk-rules.json.",
+  "business": {
+    "tiers": [
+      { "minScore": 70, "label": "🏆 Đối tác Vàng", "message": "Một trong những doanh nghiệp gắn bó và năng động nhất trên MSB Business — cảm ơn anh/chị đã tin tưởng đồng hành!" },
+      { "minScore": 40, "label": "🥈 Đối tác Thân thiết", "message": "Doanh nghiệp đang sử dụng MSB Business rất đều đặn và hiệu quả — hành trình còn nhiều điều thú vị phía trước!" },
+      { "minScore": 0, "label": "🌱 Người bạn mới", "message": "Mới bắt đầu hành trình cùng MSB Business — rất vui được đồng hành cùng anh/chị từ những bước đầu tiên!" }
+    ]
+  },
+  "personal": {
+    "tiers": [
+      { "minScore": 70, "label": "⭐ Người dùng Vàng", "message": "Một trong những người dùng năng động và mẫn cán nhất — cảm ơn bạn đã luôn sát sao cùng doanh nghiệp!" },
+      { "minScore": 40, "label": "💼 Người dùng Tích cực", "message": "Bạn đang sử dụng MSB Business khá đều đặn — tiếp tục phát huy nhé!" },
+      { "minScore": 0, "label": "🌱 Người dùng Mới", "message": "Mới bắt đầu làm quen với MSB Business — chúc bạn có trải nghiệm thật suôn sẻ!" }
+    ]
+  }
+}

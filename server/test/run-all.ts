@@ -19,6 +19,7 @@ import './security-isolation.test';
 import './trade-finance-service.test';
 import './reasoning-phase55.test';
 import './daily-dashboard.test';
+import './footprint.test';
 
 // Login & Session Security upgrade — see docs/security/. Order matters here: fixtures.ts's
 // test must run first (it starts the shared Express app and logs in the three role fixtures

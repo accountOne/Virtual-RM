@@ -154,5 +154,33 @@ export interface Loan {
   status: LoanStatus;
 }
 
+// Phase 5.5 BRD alignment — Dấu ấn (Footprint), mirrors server/src/services/footprint.service.ts.
+export type FootprintScope = 'personal' | 'business';
+export type FootprintPeriod = 'year' | 'quarter' | 'month';
+
+export interface FootprintStat {
+  label: string;
+  value: string;
+}
+
+export interface FootprintPerson {
+  name: string;
+  detail: string;
+}
+
+export interface Footprint {
+  scope: FootprintScope;
+  period: FootprintPeriod;
+  name: string;
+  rankLabel: string;
+  rankMessage: string;
+  wishMessage: string;
+  sinceLabel: string;
+  stats: FootprintStat[];
+  topPartners?: { received: FootprintPerson[]; sent: FootprintPerson[] };
+  topPeople?: FootprintPerson[];
+  topTransactions?: FootprintPerson[];
+}
+
 export * from './trade-finance.model';
 export * from './daily-dashboard.model';

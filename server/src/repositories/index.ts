@@ -14,10 +14,12 @@ import {
   fxDealsRepository,
   letterOfCreditsRepository,
   loansRepository,
+  loyaltyRepository,
   payablesRepository,
   paymentOrdersRepository,
   payrollsRepository,
   receivablesRepository,
+  userProfilesRepository,
 } from './semantic-data.repository';
 
 export * from './customer.repository';
@@ -53,4 +55,6 @@ export const resettableRepositories = [
   creditLimitsRepository,
   receivablesRepository,
   payablesRepository,
+  userProfilesRepository,
+  loyaltyRepository,
 ];

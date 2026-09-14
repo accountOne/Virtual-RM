@@ -13,6 +13,7 @@ import { tradeFinanceController } from '../controllers/trade-finance.controller'
 import { authController } from '../controllers/auth.controller';
 import { voiceController } from '../controllers/voice.controller';
 import { loansController } from '../controllers/loans.controller';
+import { footprintController } from '../controllers/footprint.controller';
 import { requireRole } from '../auth/session.middleware';
 import { loginRateLimiter, transactionRateLimiter, virtualRmRateLimiter } from '../auth/rate-limit';
 
@@ -60,6 +61,9 @@ apiRouter.get('/virtual-rm/trade-finance-briefing', semanticController.tradeFina
 
 // Phase 5.5 BRD alignment — Daily Dashboard (docs/phase-5.5-brd-gap-analysis.md §4 item 1).
 apiRouter.get('/virtual-rm/daily-dashboard', semanticController.dailyDashboard);
+
+// Phase 5.5 BRD alignment — Dấu ấn (Footprint), see docs/phase-5.5-footprint.md.
+apiRouter.get('/virtual-rm/footprint', virtualRmRateLimiter, footprintController.get);
 
 // Phase 7 — dedicated Trade Finance Business Banking screens (system-of-record REST API,
 // separate from the chat query API above; both read the same underlying repositories).

@@ -1,4 +1,4 @@
-import { JsonFileRepository } from './json-file.repository';
+import { JsonFileRepository, JsonSingletonRepository } from './json-file.repository';
 import {
   ApprovalRecord,
   BankGuarantee,
@@ -8,10 +8,12 @@ import {
   FxRate,
   LetterOfCredit,
   Loan,
+  Loyalty,
   Payable,
   PaymentOrder,
   Payroll,
   Receivable,
+  UserProfile,
 } from '../models';
 
 /** Supporting datasets for the Business Banking Semantic Pack (see /business-semantics).
@@ -27,6 +29,8 @@ export const loansRepository = new JsonFileRepository<Loan>('loans.json');
 export const creditLimitsRepository = new JsonFileRepository<CreditLimit>('credit-limits.json');
 export const receivablesRepository = new JsonFileRepository<Receivable>('receivables.json');
 export const payablesRepository = new JsonFileRepository<Payable>('payables.json');
+export const userProfilesRepository = new JsonFileRepository<UserProfile>('user-profiles.json');
+export const loyaltyRepository = new JsonSingletonRepository<Loyalty>('loyalty.json');
 
 /** fx-rates.json is a plain array with no `id` field (rows are keyed by currency),
  * so it's read directly rather than through JsonFileRepository<T extends { id?: string }>. */
