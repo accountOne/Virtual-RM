@@ -20,9 +20,11 @@ import {
   getCashPosition,
   getCollectionDeadlines,
   getCollections,
+  getCreditLimits,
   getGuaranteeDeadlines,
   getLcDeadlines,
   getLetterOfCredits,
+  getLoans,
   getPayables,
   getPaymentOrders,
   getPendingApprovals,
@@ -801,9 +803,22 @@ export async function runReasoning(input: RunInput): Promise<ReasoningResult> {
       const lcs = getLcDeadlines.execute(security, {});
       const guarantees = getGuaranteeDeadlines.execute(security, {});
       const collections = getCollectionDeadlines.execute(security, {});
-      toolsUsed.push(getTasks.name, getPendingApprovals.name, getPayables.name, getLcDeadlines.name, getGuaranteeDeadlines.name, getCollectionDeadlines.name);
+      const loans = getLoans.execute(security, {});
+      const creditLimits = getCreditLimits.execute(security, {});
+      const recommendations = getRecommendations.execute(security, {});
+      toolsUsed.push(
+        getTasks.name,
+        getPendingApprovals.name,
+        getPayables.name,
+        getLcDeadlines.name,
+        getGuaranteeDeadlines.name,
+        getCollectionDeadlines.name,
+        getLoans.name,
+        getCreditLimits.name,
+        getRecommendations.name,
+      );
 
-      const ranked = crossDomainPriorities({ tasks, pendingApprovals, payables, lcs, guarantees, collections, anchorToday });
+      const ranked = crossDomainPriorities({ tasks, pendingApprovals, payables, lcs, guarantees, collections, loans, creditLimits, recommendations, anchorToday });
       calculationsUsed.push('CROSS_DOMAIN_PRIORITY');
       const top3 = ranked.slice(0, 3);
 

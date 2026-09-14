@@ -10,7 +10,17 @@
 // relationship the two existing briefings already have to the Reasoning Engine.
 
 import { accountsRepository, alertsRepository, customerRepository, transactionsRepository } from '../repositories';
-import { getCollectionDeadlines, getGuaranteeDeadlines, getLcDeadlines, getPayables, getPendingApprovals, getTasks } from '../tools';
+import {
+  getCollectionDeadlines,
+  getCreditLimits,
+  getGuaranteeDeadlines,
+  getLcDeadlines,
+  getLoans,
+  getPayables,
+  getPendingApprovals,
+  getRecommendations,
+  getTasks,
+} from '../tools';
 import { calculateNetCashflow } from '../calculation/financial-calculations';
 import { crossDomainPriorities, ENTITY_NAV_TARGET, ENTITY_SCOPED_NAV_TYPES } from '../reasoning/priority-engine';
 import { APPROVAL_EXPIRY_WARNING_DAYS, rankPendingApprovals, RankedApproval } from '../reasoning/approval-risk';
@@ -196,6 +206,9 @@ export function buildDailyDashboard(ctx: UserContext, anchorToday: string, navig
   const collections = getCollectionDeadlines.execute(ctx, {});
   const payables = getPayables.execute(ctx, { range: next30 });
   const pendingApprovalRaw = getPendingApprovals.execute(ctx, {});
+  const loans = getLoans.execute(ctx, {});
+  const creditLimits = getCreditLimits.execute(ctx, {});
+  const recommendations = getRecommendations.execute(ctx, {});
 
   const ranked = crossDomainPriorities({
     tasks: tasks.items,
@@ -204,6 +217,9 @@ export function buildDailyDashboard(ctx: UserContext, anchorToday: string, navig
     lcs,
     guarantees,
     collections,
+    loans,
+    creditLimits,
+    recommendations,
     anchorToday,
   });
   const top3 = ranked.slice(0, 3);

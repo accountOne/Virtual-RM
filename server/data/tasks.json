@@ -49,5 +49,35 @@
     "status": "OPEN",
     "actionLabel": "Thực hiện",
     "actionLink": "/company/profile"
+  },
+  {
+    "id": "task-006",
+    "title": "Thu thập thông tin sinh trắc học người đại diện pháp luật",
+    "description": "Bổ sung xác thực sinh trắc học (khuôn mặt) cho người đại diện theo pháp luật theo quy định NHNN",
+    "priority": "MEDIUM",
+    "dueDate": "2026-09-14",
+    "status": "OPEN",
+    "actionLabel": "Thực hiện",
+    "actionLink": "/company/profile"
+  },
+  {
+    "id": "task-007",
+    "title": "Đổi mật khẩu đăng nhập",
+    "description": "Mật khẩu đăng nhập sắp hết hạn sử dụng theo chính sách bảo mật, cần đổi mật khẩu mới",
+    "priority": "MEDIUM",
+    "dueDate": "2026-09-13",
+    "status": "OPEN",
+    "actionLabel": "Thực hiện",
+    "actionLink": "/company/profile"
+  },
+  {
+    "id": "task-008",
+    "title": "Bổ sung thông tin lệnh chuyển tiền quốc tế đến (TTR)",
+    "description": "Lệnh chuyển tiền quốc tế đến cần bổ sung thông tin mục đích chuyển tiền trong vòng 1 ngày",
+    "priority": "HIGH",
+    "dueDate": "2026-09-10",
+    "status": "OPEN",
+    "actionLabel": "Thực hiện",
+    "actionLink": "/payments"
   }
 ]

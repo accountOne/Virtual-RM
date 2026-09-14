@@ -142,6 +142,17 @@ describe('Daily Dashboard (10 required)', () => {
     assert(!!approvalItem, 'expected an Approval-type urgentItem in the seeded fixture data');
     assertEqual(approvalItem!.navigation!.route, '/payments/approval');
   });
+
+  // BRD "Các khoản vay đến hạn/sắp đến hạn cần phải thanh toán" (§B.3 detail table) — loan-001
+  // (server/data/loans.json) matures 2026-09-14, 5 days out from this suite's fixed anchorToday
+  // (2026-09-09), which is urgent enough to place it in the actual top-3 urgentItems.
+  test('a near-maturity active loan (loan-001) appears as a Loan urgentItem, routed to /loans', () => {
+    const d = buildDailyDashboard(ctx, anchorToday, navigationActions);
+    const loanItem = d.urgentItems.find((i) => i.navigation?.entityType === 'Loan');
+    assert(!!loanItem, 'expected loan-001 (5 days from maturity) to rank into the top-3 urgentItems');
+    assertEqual(loanItem!.id, 'loan-001');
+    assertEqual(loanItem!.navigation!.route, '/loans');
+  });
 });
 
 describe('Approval age/expiry risk calculation (15 required)', () => {

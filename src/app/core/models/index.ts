@@ -139,5 +139,20 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export type LoanStatus = 'ACTIVE' | 'OVERDUE' | 'COMPLETED';
+
+export interface Loan {
+  id: string;
+  loanNumber: string;
+  purpose: string;
+  principal: number;
+  outstanding: number;
+  currency: string;
+  interestRate: number;
+  disbursedDate: string;
+  maturityDate: string;
+  status: LoanStatus;
+}
+
 export * from './trade-finance.model';
 export * from './daily-dashboard.model';

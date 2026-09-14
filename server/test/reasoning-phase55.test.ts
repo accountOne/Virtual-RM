@@ -16,7 +16,7 @@ import { pluckEvidence, summarizeEvidence, calculatedEvidence } from '../src/rea
 import { verifyReasoning, safeFallbackAnswer } from '../src/reasoning/verification-engine';
 import { scoreLcRisk, scoreGuaranteeRisk, scoreCollectionRisk, levelFromScore } from '../src/reasoning/risk-engine';
 import { crossDomainPriorities } from '../src/reasoning/priority-engine';
-import { getLcDeadlines, getGuaranteeDeadlines, getCollectionDeadlines, getTasks, getPendingApprovals, getPayables } from '../src/tools';
+import { getLcDeadlines, getGuaranteeDeadlines, getCollectionDeadlines, getTasks, getPendingApprovals, getPayables, getLoans, getCreditLimits, getRecommendations } from '../src/tools';
 
 const security = buildSecurityContext('msb_ck', 'CHECKER');
 const anchorToday = getAnchorDates().today;
@@ -389,7 +389,10 @@ describe('priority engine (15 required)', () => {
   const lcs = getLcDeadlines.execute(ctx, {});
   const guarantees = getGuaranteeDeadlines.execute(ctx, {});
   const collections = getCollectionDeadlines.execute(ctx, {});
-  const items = crossDomainPriorities({ tasks, pendingApprovals, payables, lcs, guarantees, collections, anchorToday });
+  const loans = getLoans.execute(ctx, {});
+  const creditLimits = getCreditLimits.execute(ctx, {});
+  const recommendations = getRecommendations.execute(ctx, {});
+  const items = crossDomainPriorities({ tasks, pendingApprovals, payables, lcs, guarantees, collections, loans, creditLimits, recommendations, anchorToday });
 
   test('returns at least one item on real seeded data', () => assert(items.length > 0, 'expected at least one cross-domain priority item'));
   test('every priorityScore is within [0,100]', () => {
@@ -410,6 +413,23 @@ describe('priority engine (15 required)', () => {
   test('at least one Task item is present when open tasks exist', () => {
     if (tasks.length > 0) assert(items.some((i) => i.entityType === 'Task'), 'expected at least one Task priority item');
   });
+  // BRD "Hạn mức tín dụng sắp hết hạn/hết hạn cần thực hiện tái cấp" — uses credit-limits.json's
+  // own reviewDate field, one item per seeded limit (cl-001/002/003).
+  test('every seeded credit limit produces a CreditLimit priority item', () => {
+    const clItems = items.filter((i) => i.entityType === 'CreditLimit');
+    assertEqual(clItems.length, creditLimits.length);
+    for (const cl of creditLimits) assert(clItems.some((i) => i.entityId === cl.id), `expected a CreditLimit item for ${cl.id}`);
+  });
+  // BRD "Review offering từ ngân hàng" — reuses the existing Recommendations feature directly.
+  test('every currently-eligible recommendation produces a Recommendation priority item', () => {
+    const recItems = items.filter((i) => i.entityType === 'Recommendation');
+    assertEqual(recItems.length, recommendations.length);
+    for (const rec of recommendations) {
+      const item = recItems.find((i) => i.entityId === rec.id);
+      assert(!!item, `expected a Recommendation item for ${rec.id}`);
+      assertEqual(item!.reasons[0], rec.reason);
+    }
+  });
   test('every item.priority is consistent with its own priorityScore (never a mismatched band)', () => {
     for (const i of items) assertEqual(i.priority, levelFromScore(i.priorityScore));
   });
@@ -417,7 +437,7 @@ describe('priority engine (15 required)', () => {
     for (const i of items) assert(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(i.priority), `unexpected priority level ${i.priority}`);
   });
   test('an empty cross-domain input returns an empty, not crashing, result', () => {
-    const empty = crossDomainPriorities({ tasks: [], pendingApprovals: [], payables: [], lcs: [], guarantees: [], collections: [], anchorToday });
+    const empty = crossDomainPriorities({ tasks: [], pendingApprovals: [], payables: [], lcs: [], guarantees: [], collections: [], loans: [], creditLimits: [], recommendations: [], anchorToday });
     assertEqual(empty.length, 0);
   });
   test('every item has a recommendedAction', () => {
@@ -442,7 +462,7 @@ describe('priority engine (15 required)', () => {
     for (const i of items.filter((x) => x.entityType === 'Payable')) assert(i.priorityScore >= 20, 'low-urgency payables should not clutter the daily list');
   });
   test('scores are deterministic — calling crossDomainPriorities twice on the same input gives identical results', () => {
-    const again = crossDomainPriorities({ tasks, pendingApprovals, payables, lcs, guarantees, collections, anchorToday });
+    const again = crossDomainPriorities({ tasks, pendingApprovals, payables, lcs, guarantees, collections, loans, creditLimits, recommendations, anchorToday });
     assertEqual(again.map((i) => i.priorityScore).join(','), items.map((i) => i.priorityScore).join(','));
   });
 });

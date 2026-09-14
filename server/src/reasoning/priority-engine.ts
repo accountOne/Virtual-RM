@@ -13,7 +13,7 @@
 // isn't urgent). Documented explicitly here and in docs/phase-5.5-risk-engine.md rather than
 // silently deviating from the "×" spec text.
 
-import { ApprovalRecord, Payable, PaymentOrder, Task } from '../models';
+import { ApprovalRecord, CreditLimit, Loan, Payable, PaymentOrder, Recommendation, Task, TaskPriority } from '../models';
 import { scoreCollectionRisk, scoreGuaranteeRisk, scoreLcRisk } from './risk-engine';
 import { CrossDomainPriorityItem, RiskLevel4 } from './reasoning-types';
 import { LetterOfCredit, BankGuarantee, Collection } from '../models';
@@ -58,8 +58,22 @@ export interface PriorityInput {
   lcs: LetterOfCredit[];
   guarantees: BankGuarantee[];
   collections: Collection[];
+  loans: Loan[];
+  creditLimits: CreditLimit[];
+  recommendations: Recommendation[];
   anchorToday: string;
 }
+
+/** Maps a Recommendation's own `priority` (no due date — a bank-initiated suggestion, not a
+ * deadline) onto the same [0,1] urgency/impact scale the other domains derive from dates/amounts.
+ * BRD's "Review offering từ ngân hàng" urgent-item category (§B.3 detail table). */
+const RECOMMENDATION_URGENCY: Record<TaskPriority, number> = { HIGH: 0.6, MEDIUM: 0.4, LOW: 0.2 };
+
+const CREDIT_LIMIT_LABEL: Record<CreditLimit['limitType'], string> = {
+  OVERALL: 'tổng thể',
+  WORKING_CAPITAL: 'vốn lưu động',
+  TRADE_FINANCE: 'Trade Finance',
+};
 
 /** Ranks every open item across all six domains and returns them sorted by priorityScore
  * descending. The caller (reasoning-engine.ts) takes the top 3 for the DAILY_PRIORITY answer,
@@ -167,6 +181,61 @@ export function crossDomainPriorities(input: PriorityInput): CrossDomainPriority
     });
   }
 
+  // BRD "Các khoản vay đến hạn/sắp đến hạn cần phải thanh toán" (§B.3 detail table) — only
+  // still-open loans; a COMPLETED/OVERDUE-but-settled loan isn't an upcoming payment anymore.
+  for (const loan of input.loans) {
+    if (loan.status !== 'ACTIVE') continue;
+    const daysLeft = daysUntil(loan.maturityDate, anchorToday);
+    const urgency = urgencyFromDays(daysLeft);
+    const impact = impactFromAmount(loan.outstanding);
+    const score = combine(urgency, impact, 0.5, urgency);
+    if (score < 20) continue;
+    items.push({
+      entityType: 'Loan',
+      entityId: loan.id,
+      label: `Đáo hạn khoản vay ${loan.loanNumber}`,
+      priorityScore: score,
+      priority: levelFromScore(score),
+      reasons: [daysLeft <= 0 ? 'Đã đến/quá hạn thanh toán' : `Còn ${daysLeft} ngày đến hạn`, `Dư nợ ${loan.outstanding.toLocaleString('vi-VN')} ${loan.currency}`],
+      recommendedAction: `Chuẩn bị thanh toán khoản vay ${loan.loanNumber}`,
+    });
+  }
+
+  // BRD "Hạn mức tín dụng sắp hết hạn/hết hạn cần thực hiện tái cấp" (§B.3 detail table) — uses
+  // credit-limits.json's own `reviewDate` field directly, no invented date.
+  for (const cl of input.creditLimits) {
+    const daysLeft = daysUntil(cl.reviewDate, anchorToday);
+    const urgency = urgencyFromDays(daysLeft);
+    const score = combine(urgency, 0.4, 0.4, urgency);
+    if (score < 20) continue;
+    items.push({
+      entityType: 'CreditLimit',
+      entityId: cl.id,
+      label: `Tái cấp hạn mức ${CREDIT_LIMIT_LABEL[cl.limitType] ?? cl.limitType}`,
+      priorityScore: score,
+      priority: levelFromScore(score),
+      reasons: [daysLeft <= 0 ? 'Đã đến/quá hạn rà soát hạn mức' : `Còn ${daysLeft} ngày đến hạn rà soát`, `Đã dùng ${cl.usedAmount.toLocaleString('vi-VN')}/${cl.totalLimit.toLocaleString('vi-VN')} ${cl.currency}`],
+      recommendedAction: `Liên hệ RM để rà soát/tái cấp hạn mức ${CREDIT_LIMIT_LABEL[cl.limitType] ?? cl.limitType}`,
+    });
+  }
+
+  // BRD "Review offering từ ngân hàng" (§B.3 detail table) — reuses the existing Recommendations
+  // feature (already exactly this concept: a bank-initiated suggestion the customer should look
+  // at), rather than inventing a second "offering" data source.
+  for (const rec of input.recommendations) {
+    const urgency = RECOMMENDATION_URGENCY[rec.priority];
+    const score = combine(urgency, urgency, 0.4, 0.3);
+    items.push({
+      entityType: 'Recommendation',
+      entityId: rec.id,
+      label: rec.title,
+      priorityScore: score,
+      priority: levelFromScore(score),
+      reasons: [rec.reason],
+      recommendedAction: rec.cta,
+    });
+  }
+
   return items.sort((a, b) => b.priorityScore - a.priorityScore);
 }
 
@@ -181,6 +250,11 @@ export const ENTITY_NAV_TARGET: Record<string, string> = {
   Approval: 'OPEN_APPROVAL',
   Task: 'OPEN_TASK',
   Payable: 'OPEN_PAYMENT',
+  Loan: 'OPEN_LOAN',
+  // Neither has a dedicated screen in this demo — /products is the closest existing "see more
+  // about this" destination for both (3 of 4 seeded Recommendations already link there too).
+  CreditLimit: 'OPEN_PRODUCT',
+  Recommendation: 'OPEN_PRODUCT',
 };
 
 /** Only LC/Guarantee/Collection deep-link to a specific record (/trade-finance/.../:id) — the

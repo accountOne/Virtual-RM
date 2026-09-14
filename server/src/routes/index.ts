@@ -12,6 +12,7 @@ import { semanticController } from '../controllers/semantic.controller';
 import { tradeFinanceController } from '../controllers/trade-finance.controller';
 import { authController } from '../controllers/auth.controller';
 import { voiceController } from '../controllers/voice.controller';
+import { loansController } from '../controllers/loans.controller';
 import { requireRole } from '../auth/session.middleware';
 import { loginRateLimiter, transactionRateLimiter, virtualRmRateLimiter } from '../auth/rate-limit';
 
@@ -41,6 +42,7 @@ apiRouter.post('/tasks/:id/complete', tasksController.complete);
 apiRouter.get('/alerts', alertsController.list);
 apiRouter.get('/products', productsController.list);
 apiRouter.get('/recommendations', recommendationsController.list);
+apiRouter.get('/loans', loansController.list);
 apiRouter.get('/rm/briefing', rmController.briefing);
 apiRouter.post('/rm/query', rmController.query);
 

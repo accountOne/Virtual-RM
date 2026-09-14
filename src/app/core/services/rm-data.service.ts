@@ -6,6 +6,7 @@ import {
   Alert,
   Briefing,
   Customer,
+  Loan,
   Product,
   Recommendation,
   RmAnswer,
@@ -114,6 +115,7 @@ export class RmDataService {
   readonly alerts = signal<Alert[]>([]);
   readonly products = signal<Product[]>([]);
   readonly recommendations = signal<Recommendation[]>([]);
+  readonly loans = signal<Loan[]>([]);
   readonly briefing = signal<Briefing | null>(null);
   readonly loading = signal<boolean>(false);
   readonly loaded = signal<boolean>(false);
@@ -124,7 +126,7 @@ export class RmDataService {
   async loadAll(): Promise<void> {
     this.loading.set(true);
     try {
-      const [customer, accounts, transactions, tasks, alerts, products, recommendations, briefing] = await Promise.all([
+      const [customer, accounts, transactions, tasks, alerts, products, recommendations, loans, briefing] = await Promise.all([
         firstValueFrom(this.http.get<Customer>('/api/customer')),
         firstValueFrom(this.http.get<Account[]>('/api/accounts')),
         firstValueFrom(this.http.get<Transaction[]>('/api/transactions')),
@@ -132,6 +134,7 @@ export class RmDataService {
         firstValueFrom(this.http.get<Alert[]>('/api/alerts')),
         firstValueFrom(this.http.get<Product[]>('/api/products')),
         firstValueFrom(this.http.get<Recommendation[]>('/api/recommendations')),
+        firstValueFrom(this.http.get<Loan[]>('/api/loans')),
         firstValueFrom(this.http.get<Briefing>('/api/rm/briefing')),
       ]);
       this.customer.set(customer);
@@ -141,6 +144,7 @@ export class RmDataService {
       this.alerts.set(alerts);
       this.products.set(products);
       this.recommendations.set(recommendations);
+      this.loans.set(loans);
       this.briefing.set(briefing);
       this.loaded.set(true);
     } finally {
