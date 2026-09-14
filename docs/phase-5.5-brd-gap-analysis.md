@@ -202,3 +202,49 @@ classifier, query planner, risk engine, priority engine, evidence engine, verifi
 baseline (§3.2), not re-audited line by line — it already has its own audit/architecture/
 evaluation docs (`docs/phase-5.5-audit.md` through `evaluation.md`). This document's job is
 strictly BRD-vs-current-state, per §3 of the BRD alignment spec.
+
+## 8. Addendum — 12/09/2026 re-verification
+
+The rest of this document (§1–§7) is kept as originally written — a point-in-time audit dated
+11/09/2026, before any BRD-alignment code existed. This addendum re-verifies the same 20-item
+gap table (§4) against the codebase as it actually stands on 12/09/2026, one day and several
+implementation passes later. It does not replace §4; it reports what changed. The live, currently
+accurate version of this same table is `docs/phase-5.5-brd-alignment.md`'s "Gap table item
+status" section — this addendum exists so a reader of this specific document isn't misled by the
+now-stale §4/§5 into thinking items 1–3, 8, and 14 are still open.
+
+**Confirmed done since this audit was written** (see `phase-5.5-brd-alignment.md` for full
+evidence): items 1 (Daily Dashboard endpoint), 2 (greeting time-of-day), 3 (pending approval
+age/expiry), 8 (Speech-to-Text — done 12/09/2026, was still P2/not-started when this audit's §5
+priority summary was written), 14 (Checker-flow enforcement).
+
+**Confirmed still fully open, re-verified with fresh evidence** (repo-wide search redone
+12/09/2026, not just re-reading this document's own §3.4): item 5 (Personal/Business Footprint —
+zero implementation, and additionally confirmed there is no account-creation-date field anywhere
+in `server/data/customer.json` that a "since when" stat could even be computed from, and no
+image/chart-rendering library in either `package.json`), items 9–13/15–16 (LC Issuance Assistant —
+zero implementation; the only artifact to build on is `RMAction.type: 'UPLOAD'`
+(`src/app/features/virtual-rm/interaction/rm-interaction.types.ts`), declared but never
+constructed or handled anywhere).
+
+**Item 4 turned out to need splitting, not a single verdict** — the original §3.4/§4 treated "BRD-
+specific task categories" as one uniform "nothing exists" gap. Re-reading the BRD's actual task
+list line by line (not just its section heading) surfaces five *materially different* sub-items:
+
+| # | Sub-item | 12/09/2026 status |
+|---|---|---|
+| 4a | Biometric info reminder (legal representative) | Not started — no matches anywhere for "sinh trắc học"/"biometric"/"đại diện theo pháp luật" |
+| 4b | ID document expiry reminder | Not started — no matches anywhere for "giấy tờ tùy thân"/"CCCD"/"CMND" |
+| 4c | Password expiry reminder | Not started — no `passwordExpiresAt`-style field anywhere in `server/src/auth/` |
+| 4d | Loan due/near-due as an urgent item | **Partial**, not "nothing exists" — `Loan` model, `server/data/loans.json`, and `getLoans`/`getLoanObligations` tools already exist (wired into the chat cash-flow-forecast path), but `crossDomainPriorities()` (`server/src/reasoning/priority-engine.ts`) ranks exactly 6 entity types — Task/Approval/Payable/LetterOfCredit/BankGuarantee/Collection — and `Loan` is not one of them, so a due loan never surfaces as a Daily Dashboard urgent item. `src/app/features/loans/loans.page.ts` shows hardcoded mock due-date/renewal text rather than real data from `loans.json` |
+| 4e | 6 specific approval-expiry sub-rules (non-credit day-29, credit day-6, TTR 1-day, hoàn chứng từ, hạn mức tín dụng renewal, bank offering review) | **Partial**, not "nothing exists" — one generic rule exists (`APPROVAL_EXPIRY_WINDOW_DAYS = 30`, warn inside 5 days, in `server/src/reasoning/approval-risk.ts`; its own code comment admits this threshold is "inferred to match a BRD worked example," not the BRD's actual credit/non-credit split). None of "TTR", "hoàn chứng từ" (as a due-task concept), "hạn mức tín dụng" renewal, or "review offering" have any match anywhere in `server/src` |
+
+**Net effect on §5's priority summary:** the P1 "BRD-specific task categories" line should be read
+as 4a–4c (genuinely zero, need new mock data fields before they can rank at all) plus a smaller,
+lower-risk P1/P2 item — extending `crossDomainPriorities()` with a 7th `Loan` branch (4d) and
+adding a credit/non-credit type field to `ApprovalRecord`/`PaymentOrder` to drive the 6-rule split
+(4e) — rather than one undifferentiated block of work.
+
+No other items in §4's table changed status. `docs/phase-5.5-brd-alignment.md` remains the single
+source of truth for current status going forward; re-verify against it (not this document's §4)
+before starting new work.
