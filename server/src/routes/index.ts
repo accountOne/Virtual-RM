@@ -14,6 +14,7 @@ import { authController } from '../controllers/auth.controller';
 import { voiceController } from '../controllers/voice.controller';
 import { loansController } from '../controllers/loans.controller';
 import { footprintController } from '../controllers/footprint.controller';
+import { lcAssistController } from '../controllers/lc-assist.controller';
 import { requireRole } from '../auth/session.middleware';
 import { loginRateLimiter, transactionRateLimiter, virtualRmRateLimiter } from '../auth/rate-limit';
 
@@ -64,6 +65,12 @@ apiRouter.get('/virtual-rm/daily-dashboard', semanticController.dailyDashboard);
 
 // Phase 5.5 BRD alignment — Dấu ấn (Footprint), see docs/phase-5.5-footprint.md.
 apiRouter.get('/virtual-rm/footprint', virtualRmRateLimiter, footprintController.get);
+
+// Phase 5.5 BRD alignment — LC PO-upload assistant (mock extraction — see
+// docs/phase-5.5-lc-assistant.md). MAKER/ADMIN only, same as actually creating an LC below —
+// this whole flow only ever leads up to that same form.
+apiRouter.post('/virtual-rm/lc/analyze-po', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), lcAssistController.analyzePo);
+apiRouter.post('/virtual-rm/lc/draft-message', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), lcAssistController.draftMessage);
 
 // Phase 7 — dedicated Trade Finance Business Banking screens (system-of-record REST API,
 // separate from the chat query API above; both read the same underlying repositories).

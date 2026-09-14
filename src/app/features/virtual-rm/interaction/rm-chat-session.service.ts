@@ -1,12 +1,25 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { AuthService } from '../../../core/services/auth.service';
 import { DailyDashboardService } from '../../../core/services/daily-dashboard.service';
+import { LcAssistService, PoExtractedFields } from '../../../core/services/lc-assist.service';
 import { RmDataService } from '../../../core/services/rm-data.service';
 import { RmContextService } from './rm-context.service';
-import { RMMessage } from './rm-interaction.types';
+import { RMAction, RMMessage } from './rm-interaction.types';
 import { buildProactiveGreeting, buildRmMessages } from './rm-message-builder';
 import { RmStateService } from './rm-state.service';
 import { RmStreamService } from './rm-stream.service';
 import { RmTimingService } from './rm-timing.service';
+
+// LC PO-upload assistant (docs/phase-5.5-lc-assistant.md) — a small set of natural-language
+// triggers that start the flow client-side, without teaching the deterministic Semantic Engine
+// (94+ well-tested intents) a new one just for this. Deliberately narrow so it never hijacks an
+// unrelated LC question ("LC nào sắp hết hạn?" doesn't match).
+const LC_ASSIST_TRIGGER = /(mở|phát hành|tạo|làm)\s+(một\s+)?(cái\s+)?lc\b/i;
+
+// Mirrors trade-finance.controller.ts::createLc's 403 message (server/src/controllers/
+// trade-finance.controller.ts) — no shared package between the two TS projects, so this is a
+// deliberate, narrow duplication kept in sync by hand rather than a needless shared library.
+const CHECKER_BLOCKED_MESSAGE = 'Anh/chị đang sử dụng vai trò Checker. Vui lòng yêu cầu Maker khởi tạo đề nghị phát hành LC.';
 
 // Bumped from `vrm_chat_messages` because the stored shape changed from flat ChatMessage
 // (`text`/`ctas`) to rich RMMessage (`type`/`content`/`metrics`/...); reusing the old key would
@@ -38,6 +51,8 @@ export class RmChatSessionService {
   private readonly rmState = inject(RmStateService);
   private readonly timing = inject(RmTimingService);
   private readonly stream = inject(RmStreamService);
+  private readonly auth = inject(AuthService);
+  private readonly lcAssist = inject(LcAssistService);
 
   readonly messages = signal<RMMessage[]>([]);
   readonly busy = signal(false);
@@ -46,6 +61,9 @@ export class RmChatSessionService {
 
   private awaitingProactiveUpgrade = false;
   private greetingStarted = false;
+  /** LC PO-upload assistant step tracking — set once the customer has picked Import/Export and
+   * cleared once the flow ends (file uploaded, or a normal question interrupts it). */
+  private lcAssistType: 'IMPORT' | 'EXPORT' | null = null;
 
   constructor() {
     const restored = restoreMessages();
@@ -101,6 +119,10 @@ export class RmChatSessionService {
     const trimmed = question.trim();
     if (!trimmed || this.busy()) return;
     this.pushMessage({ id: localId('user'), from: 'USER', type: 'TEXT', content: trimmed, timestamp: Date.now() });
+    if (LC_ASSIST_TRIGGER.test(trimmed)) {
+      await this.beginLcAssist();
+      return;
+    }
     this.busy.set(true);
     this.rmState.set('PROCESSING');
     const start = performance.now();
@@ -121,6 +143,157 @@ export class RmChatSessionService {
         from: 'RM',
         type: 'TEXT',
         content: 'Xin lỗi, hệ thống đang gặp sự cố. Anh/chị thử lại sau ít phút nhé.',
+        timestamp: Date.now(),
+      });
+    } finally {
+      this.busy.set(false);
+      this.rmState.set('IDLE');
+    }
+  }
+
+  /** Chat-page entry chip for the LC PO-upload assistant — pushes the same synthetic user
+   * bubble a typed trigger phrase would, so the transcript reads naturally either way. */
+  startLcAssist(): void {
+    if (this.busy()) return;
+    this.pushMessage({
+      id: localId('user'),
+      from: 'USER',
+      type: 'TEXT',
+      content: 'Tôi muốn phát hành LC từ đơn hàng (PO)',
+      timestamp: Date.now(),
+    });
+    void this.beginLcAssist();
+  }
+
+  /** BRD LC PO-upload flow, step 1: role check, then ask Import/Export. Entirely client-side
+   * state (no server-side conversation store) — consistent with this demo's "no server session
+   * for business state" convention (see server/src/ai/conversation-context.ts's own doc
+   * comment); each backend call below (analyze-po, draft-message) is a plain stateless request. */
+  private async beginLcAssist(): Promise<void> {
+    const role = this.auth.currentUser()?.role;
+    if (role !== 'MAKER' && role !== 'ADMIN') {
+      this.pushMessage({ id: localId('lc-blocked'), from: 'RM', type: 'TEXT', content: CHECKER_BLOCKED_MESSAGE, timestamp: Date.now() });
+      return;
+    }
+    this.busy.set(true);
+    this.rmState.set('RESPONDING');
+    try {
+      await this.stream.reveal(
+        [
+          {
+            id: localId('lc-type'),
+            from: 'RM',
+            type: 'ACTION',
+            content: 'Được ạ! Anh/chị muốn mở LC Nhập khẩu hay Xuất khẩu?',
+            actions: [
+              { label: 'Nhập khẩu (Import)', type: 'CONFIRM', payload: { step: 'lcType', value: 'IMPORT' } },
+              { label: 'Xuất khẩu (Export)', type: 'CONFIRM', payload: { step: 'lcType', value: 'EXPORT' } },
+            ],
+            timestamp: Date.now(),
+          },
+        ],
+        (msg) => this.pushMessage(msg),
+      );
+    } finally {
+      this.busy.set(false);
+      this.rmState.set('IDLE');
+    }
+  }
+
+  /** Handles a click on one of the LC-assist flow's CONFIRM-type buttons (currently just the
+   * Import/Export step) — called from the chat page instead of the normal actionClick→NAVIGATE
+   * path, since these choices never leave the browser. */
+  async resolveLcAssistChoice(action: RMAction): Promise<void> {
+    const payload = action.payload as { step: string; value: string } | undefined;
+    if (!payload || this.busy()) return;
+    this.pushMessage({ id: localId('user'), from: 'USER', type: 'TEXT', content: action.label, timestamp: Date.now() });
+
+    if (payload.step === 'lcType') {
+      this.lcAssistType = payload.value === 'EXPORT' ? 'EXPORT' : 'IMPORT';
+      this.busy.set(true);
+      this.rmState.set('RESPONDING');
+      try {
+        await this.stream.reveal(
+          [
+            {
+              id: localId('lc-upload'),
+              from: 'RM',
+              type: 'ACTION',
+              content:
+                'Anh/chị vui lòng tải lên file đơn hàng (Purchase Order) — hỗ trợ PDF, ảnh, Word, Excel. ' +
+                '(Bản demo: em sẽ mô phỏng đọc file, không phân tích nội dung file thật.)',
+              actions: [{ label: 'Chọn file PO', icon: '📎', type: 'UPLOAD' }],
+              timestamp: Date.now(),
+            },
+          ],
+          (msg) => this.pushMessage(msg),
+        );
+      } finally {
+        this.busy.set(false);
+        this.rmState.set('IDLE');
+      }
+    }
+  }
+
+  /** BRD LC PO-upload flow, step 2: "analyze" the file (deterministic mock — see
+   * po-analysis.service.ts) and present the extracted fields plus a CTA that hands them to
+   * `/trade-finance/lc/create` via router state (handled by the chat page's handleAction). */
+  async uploadPoFile(file: File): Promise<void> {
+    if (this.busy()) return;
+    this.pushMessage({ id: localId('user'), from: 'USER', type: 'TEXT', content: `📎 ${file.name}`, timestamp: Date.now() });
+    this.busy.set(true);
+    this.rmState.set('ANALYZING');
+    try {
+      const result = await this.lcAssist.analyzePo(file);
+      const extracted: PoExtractedFields = { ...result.extracted, type: this.lcAssistType ?? result.extracted.type };
+      this.lcAssistType = null;
+      this.rmState.set('RESPONDING');
+
+      const fieldMessages: RMMessage[] = [
+        {
+          id: localId('lc-extract'),
+          from: 'RM',
+          type: 'TEXT',
+          content: `Em đã "đọc" xong đơn hàng: **${result.templateLabel}** (bản demo — số liệu mô phỏng nhất quán theo file, không đọc nội dung file thật).`,
+          timestamp: Date.now(),
+        },
+        {
+          id: localId('lc-metrics'),
+          from: 'RM',
+          type: 'METRIC',
+          title: 'Thông tin trích xuất',
+          metrics: [
+            { label: 'Người thụ hưởng', value: extracted.beneficiary },
+            { label: 'Giá trị', value: `${extracted.currency} ${new Intl.NumberFormat('en-US').format(extracted.amount)}` },
+            { label: 'Loại LC', value: `${extracted.type} · ${extracted.subType}` },
+            { label: 'Giao hàng chậm nhất', value: extracted.latestShipmentDate ?? '(chưa có — anh/chị điền nốt)' },
+          ],
+          timestamp: Date.now(),
+        },
+      ];
+      if (result.missingFields.length) {
+        fieldMessages.push({
+          id: localId('lc-missing'),
+          from: 'RM',
+          type: 'INSIGHT',
+          content: `Còn thiếu vài thông tin (${result.missingFields.length}) anh/chị điền nốt trong form nhé.`,
+          timestamp: Date.now(),
+        });
+      }
+      fieldMessages.push({
+        id: localId('lc-fill'),
+        from: 'RM',
+        type: 'ACTION',
+        actions: [{ label: '📝 Điền vào đơn mở LC', type: 'NAVIGATE', route: '/trade-finance/lc/create', payload: extracted }],
+        timestamp: Date.now(),
+      });
+      await this.stream.reveal(fieldMessages, (msg) => this.pushMessage(msg));
+    } catch {
+      this.pushMessage({
+        id: localId('lc-error'),
+        from: 'RM',
+        type: 'TEXT',
+        content: 'Xin lỗi, em chưa đọc được file này. Anh/chị thử lại hoặc điền form thủ công nhé.',
         timestamp: Date.now(),
       });
     } finally {

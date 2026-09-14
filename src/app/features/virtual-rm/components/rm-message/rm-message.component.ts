@@ -130,24 +130,37 @@ const ROW_ICON_CLASS: Record<RMSeverity, string> = {
           </div>
 
           <!-- ACTION / NAVIGATION / CONFIRMATION: pill chips when actions carry an icon
-               (category shortcuts), otherwise filled/outline CTA buttons. -->
+               (category shortcuts), otherwise filled/outline CTA buttons. An UPLOAD action
+               (LC PO-upload assistant — docs/phase-5.5-lc-assistant.md) renders as a file
+               picker instead of firing actionClick, since it needs a real <input type="file">
+               to open the OS file dialog. -->
           <ng-container *ngIf="hasActions">
             <p *ngIf="message.content" class="text-sm text-ink-600 mb-2">{{ message.content }}</p>
             <div class="flex flex-wrap gap-2">
-              <button
-                *ngFor="let a of message.actions; let i = index"
-                (click)="actionClick.emit(a)"
-                class="text-xs font-semibold rounded-full transition-colors"
-                [ngClass]="
-                  a.icon
-                    ? 'px-3 py-1.5 border border-ink-200 text-ink-700 hover:bg-ink-50'
-                    : i === 0
-                      ? 'px-3.5 py-2 bg-brand-500 text-white hover:bg-brand-600'
-                      : 'px-3.5 py-2 border border-brand-200 text-brand-600 hover:bg-brand-50'
-                "
-              >
-                {{ a.icon }} {{ a.label }}
-              </button>
+              <ng-container *ngFor="let a of message.actions; let i = index">
+                <label
+                  *ngIf="a.type === 'UPLOAD'; else normalActionBtn"
+                  class="text-xs font-semibold rounded-full px-3.5 py-2 bg-brand-500 text-white hover:bg-brand-600 transition-colors cursor-pointer"
+                >
+                  {{ a.icon }} {{ a.label }}
+                  <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx" (change)="onFileChange($event, a)" />
+                </label>
+                <ng-template #normalActionBtn>
+                  <button
+                    (click)="actionClick.emit(a)"
+                    class="text-xs font-semibold rounded-full transition-colors"
+                    [ngClass]="
+                      a.icon
+                        ? 'px-3 py-1.5 border border-ink-200 text-ink-700 hover:bg-ink-50'
+                        : i === 0
+                          ? 'px-3.5 py-2 bg-brand-500 text-white hover:bg-brand-600'
+                          : 'px-3.5 py-2 border border-brand-200 text-brand-600 hover:bg-brand-50'
+                    "
+                  >
+                    {{ a.icon }} {{ a.label }}
+                  </button>
+                </ng-template>
+              </ng-container>
             </div>
           </ng-container>
 
@@ -175,6 +188,7 @@ export class RmMessageComponent {
   @Input({ required: true }) message!: RMMessage;
   @Output() actionClick = new EventEmitter<RMAction>();
   @Output() quickReply = new EventEmitter<string>();
+  @Output() fileSelected = new EventEmitter<{ action: RMAction; file: File }>();
 
   readonly severityClass = SEVERITY_CLASS;
   readonly severityIcon = SEVERITY_ICON;
@@ -204,5 +218,12 @@ export class RmMessageComponent {
     // ACTION/NAVIGATION/CONFIRMATION only — RECORD_LIST/ALERT render their own actions inline
     // above instead of falling through to this generic block.
     return (this.message.type === 'ACTION' || this.message.type === 'NAVIGATION' || this.message.type === 'CONFIRMATION') && !!this.message.actions?.length;
+  }
+
+  onFileChange(event: Event, action: RMAction): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) this.fileSelected.emit({ action, file });
+    input.value = '';
   }
 }

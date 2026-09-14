@@ -101,6 +101,7 @@ const SUGGESTED_QUESTIONS = [
           [message]="msg"
           (actionClick)="handleAction($event)"
           (quickReply)="ask($event)"
+          (fileSelected)="handleFileSelected($event)"
         />
         <app-rm-typing *ngIf="busy()" [state]="rmState()" />
 
@@ -112,6 +113,15 @@ const SUGGESTED_QUESTIONS = [
               class="text-xs px-2.5 py-1.5 rounded-full border border-ink-200 text-ink-700 hover:bg-ink-50 transition-colors font-medium"
             >
               {{ n.icon }} {{ n.label }}
+            </button>
+            <!-- LC PO-upload assistant (docs/phase-5.5-lc-assistant.md) — starts a guided
+                 in-chat flow instead of a plain navigation, so it needs its own handler rather
+                 than goTo(). -->
+            <button
+              (click)="startLcAssist()"
+              class="text-xs px-2.5 py-1.5 rounded-full border border-brand-200 text-brand-700 bg-brand-50/60 hover:bg-brand-50 transition-colors font-medium"
+            >
+              🧾 Tạo LC từ đơn hàng (PO)
             </button>
           </div>
           <div class="flex gap-1.5 flex-wrap">
@@ -243,6 +253,12 @@ export class VirtualRmChatPageComponent {
   }
 
   handleAction(action: RMAction): void {
+    // LC PO-upload assistant (docs/phase-5.5-lc-assistant.md): CONFIRM choices never leave the
+    // browser — routed to the session's own step handler instead of navigation.
+    if (action.type === 'CONFIRM') {
+      void this.session.resolveLcAssistChoice(action);
+      return;
+    }
     if (action.type !== 'NAVIGATE' || !action.route) return;
     // Two RMAction sources disagree on this shape: rm-data.service's buildLink() (regular chat
     // CTAs) already appends entityId into `route`, while the backend's daily-dashboard
@@ -252,11 +268,26 @@ export class VirtualRmChatPageComponent {
     // double up into e.g. ".../BG-2026-013/BG-2026-013" for the already-complete CTAs.
     const alreadyIncludesId = action.entityId && action.route.includes(`/${action.entityId}`);
     const link = action.entityId && !alreadyIncludesId ? `${action.route}/${action.entityId}` : action.route;
+    // The LC PO-upload assistant's "Điền vào đơn mở LC" CTA carries the extracted fields as
+    // `payload`, handed to lc-create.page.ts via router state (read from `history.state` there)
+    // rather than a query string, since it's a full structured object.
+    if (action.payload) {
+      this.router.navigateByUrl(link, { state: action.payload as Record<string, unknown> });
+      return;
+    }
     this.goTo(link);
   }
 
   goTo(link: string): void {
     this.router.navigateByUrl(link);
+  }
+
+  startLcAssist(): void {
+    this.session.startLcAssist();
+  }
+
+  handleFileSelected(event: { action: RMAction; file: File }): void {
+    void this.session.uploadPoFile(event.file);
   }
 
   resetChat(): void {
