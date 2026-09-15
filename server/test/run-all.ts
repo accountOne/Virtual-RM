@@ -20,6 +20,7 @@ import './trade-finance-service.test';
 import './reasoning-phase55.test';
 import './daily-dashboard.test';
 import './footprint.test';
+import './agent-semantic.test';
 
 // Login & Session Security upgrade — see docs/security/. Order matters here: fixtures.ts's
 // test must run first (it starts the shared Express app and logs in the three role fixtures
@@ -35,6 +36,7 @@ import './security/virtual-rm-auth.test';
 import './security/audit-log.test';
 import './security/voice.test';
 import './lc-assist.test';
+import './agent-http.test';
 import './security/session.test';
 
 import { runAll } from './test-runner';

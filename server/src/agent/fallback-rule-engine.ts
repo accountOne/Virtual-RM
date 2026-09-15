@@ -45,9 +45,15 @@ function extractAmount(originalText: string): EntityValue | undefined {
   return entityValue(n * multiplier, 0.6);
 }
 
+// This demo's own ledger ids (server/data/transactions.json) use a "txn-NNN" prefix, which
+// DOCUMENT_ID_RE below doesn't cover (it only knows the trade-finance-style LC/BG/COL/LN/INV/PO
+// prefixes) — recognized separately so "kiểm tra giao dịch txn-001" resolves a real transaction
+// under fallback too, not just an id typed in the trade-finance shorthand style.
+const TXN_ID_RE = /\btxn-[\w-]+\b/i;
+
 function extractEntities(originalText: string): AgentEntities {
   const entities: AgentEntities = {};
-  const docMatch = originalText.match(DOCUMENT_ID_RE);
+  const docMatch = originalText.match(DOCUMENT_ID_RE) ?? originalText.match(TXN_ID_RE);
   if (docMatch) entities.transactionId = entityValue(docMatch[0].toUpperCase(), 0.8);
   const acctMatch = originalText.match(ACCOUNT_NO_RE);
   if (acctMatch) entities.accountNumber = entityValue(acctMatch[0], 0.8);
@@ -72,7 +78,7 @@ const RULES: Rule[] = [
   // X" never contains a longer literal phrase since the amount sits between "chuyển" and "cho".
   // Rare false positives (e.g. "chuyển đổi ngoại tệ") are an accepted trade-off in this
   // secondary fallback tier only used when Gemini itself is unreachable.
-  { intent: 'create_transfer', phrases: ['chuyển tiền', 'chuyển khoản', 'chuyển giúp', 'thực hiện giao dịch chuyển', 'chuyển cho', 'chuyển đến', 'chuyển'] },
+  { intent: 'create_transfer', phrases: ['chuyển tiền', 'chuyển khoản', 'chuyển giúp', 'thực hiện giao dịch chuyển', 'thực hiện giao dịch', 'chuyển cho', 'chuyển đến', 'chuyển'] },
   { intent: 'check_balance', phrases: ['số dư', 'còn bao nhiêu tiền', 'tài khoản của tôi còn', 'kiểm tra số dư'] },
   { intent: 'track_transaction', phrases: ['kiểm tra giao dịch', 'tra cứu giao dịch', 'trạng thái giao dịch', 'giao dịch mã'] },
   { intent: 'create_lc', phrases: ['mở lc', 'phát hành lc', 'tạo lc', 'làm lc'] },

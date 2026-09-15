@@ -26,6 +26,10 @@ export interface AgentResponse {
   /** 'ANSWERED' covers both the general_question pass-through and a plain informational read
    * result — neither one is a multi-step workflow the customer needs to track further. */
   status: 'ANSWERED' | WorkflowStatus;
+  /** Which agent intent produced this response — omitted only when no classification happened
+   * at all (there is none for a pre-classification error). Mainly for observability/testing;
+   * the UI does not need to branch on it (the message is already fully phrased). */
+  intent?: AgentIntent;
   message: string;
   workflowId?: string;
   /** Only present on WAITING_APPROVAL — the frontend must echo this back on
@@ -142,6 +146,7 @@ function planWrite(workflow: AgentWorkflow, intent: AgentIntent, entities: Agent
     transition(workflow.workflowId, 'NEEDS_CLARIFICATION', { entities });
     return finalize(sessionId, {
       status: 'NEEDS_CLARIFICATION',
+      intent,
       workflowId: workflow.workflowId,
       missingFields: stillMissing,
       message: buildClarificationQuestion(intent, stillMissing, entities),
@@ -157,6 +162,7 @@ function planWrite(workflow: AgentWorkflow, intent: AgentIntent, entities: Agent
     logEvent('agent.workflow.waiting_approval', { workflowId: waiting.workflowId, intent, toolName: map.execute });
     return finalize(sessionId, {
       status: 'WAITING_APPROVAL',
+      intent,
       workflowId: waiting.workflowId,
       idempotencyKey: waiting.idempotencyKey,
       preview,
@@ -166,7 +172,7 @@ function planWrite(workflow: AgentWorkflow, intent: AgentIntent, entities: Agent
     transition(workflow.workflowId, 'FAILED', { error: err instanceof Error ? err.message : String(err) });
     logEvent('agent.workflow.failed', { workflowId: workflow.workflowId, intent, stage: 'planning' });
     clearWorkflowState(sessionId);
-    return finalize(sessionId, { status: 'FAILED', workflowId: workflow.workflowId, message: buildFailureMessage() });
+    return finalize(sessionId, { status: 'FAILED', intent, workflowId: workflow.workflowId, message: buildFailureMessage() });
   }
 }
 
@@ -218,20 +224,20 @@ interface Understanding {
  * branch, so the write/read/general/unknown routing logic exists in exactly one place. */
 function dispatchIntent(understanding: Understanding, ctx: UserContext, security: SecurityContext, sessionId: string): AgentResponse | Promise<AgentResponse> {
   if (understanding.intent === 'unknown') {
-    return finalize(sessionId, { status: 'ANSWERED', message: 'Xin lỗi, em chưa hiểu rõ yêu cầu này. Anh/chị có thể nói rõ hơn được không ạ?' });
+    return finalize(sessionId, { status: 'ANSWERED', intent: 'unknown', message: 'Xin lỗi, em chưa hiểu rõ yêu cầu này. Anh/chị có thể nói rõ hơn được không ạ?' });
   }
 
   if (understanding.intent === 'general_question') {
     // Reuse the existing, well-tested 61-intent deterministic engine wholesale — the Agent
     // never re-implements Q&A it already has (docs/GEMINI_AGENT_AUDIT.md §10).
     const result = answerQuery(lastUserMessage(sessionId), security, {});
-    return finalize(sessionId, { status: 'ANSWERED', message: result.answer.summary });
+    return finalize(sessionId, { status: 'ANSWERED', intent: 'general_question', message: result.answer.summary });
   }
 
   const writeMap = WRITE_TOOL_MAP[understanding.intent];
   if (writeMap) {
     if (ctx.role !== 'MAKER' && ctx.role !== 'ADMIN') {
-      return finalize(sessionId, { status: 'ANSWERED', message: buildCheckerBlockedMessage() });
+      return finalize(sessionId, { status: 'ANSWERED', intent: understanding.intent, message: buildCheckerBlockedMessage() });
     }
     const workflow = createWorkflow({ userId: sessionId, intent: understanding.intent, entities: understanding.entities });
     logEvent('agent.workflow.created', { workflowId: workflow.workflowId, intent: understanding.intent });
@@ -244,7 +250,7 @@ function dispatchIntent(understanding: Understanding, ctx: UserContext, security
     return executeReadIntent(understanding.intent, understanding.entities, ctx, sessionId);
   }
 
-  return finalize(sessionId, { status: 'ANSWERED', message: buildGenericFallbackMessage() });
+  return finalize(sessionId, { status: 'ANSWERED', intent: understanding.intent, message: buildGenericFallbackMessage() });
 }
 
 function lastUserMessage(sessionId: string): string {
@@ -267,12 +273,12 @@ async function executeReadIntent(intent: AgentIntent, entities: AgentEntities, c
     transition(workflow.workflowId, 'COMPLETED', { result });
     logEvent('agent.workflow.completed', { workflowId: workflow.workflowId, intent });
     clearWorkflowState(sessionId);
-    return finalize(sessionId, { status: 'COMPLETED', workflowId: workflow.workflowId, result, message: formatReadResultMessage(intent, result) });
+    return finalize(sessionId, { status: 'COMPLETED', intent, workflowId: workflow.workflowId, result, message: formatReadResultMessage(intent, result) });
   } catch (err) {
     transition(workflow.workflowId, 'FAILED', { error: err instanceof Error ? err.message : String(err) });
     logEvent('agent.workflow.failed', { workflowId: workflow.workflowId, intent, stage: 'executing' });
     clearWorkflowState(sessionId);
-    return finalize(sessionId, { status: 'FAILED', workflowId: workflow.workflowId, message: buildFailureMessage() });
+    return finalize(sessionId, { status: 'FAILED', intent, workflowId: workflow.workflowId, message: buildFailureMessage() });
   }
 }
 
@@ -300,12 +306,13 @@ export async function handleMessage(input: HandleMessageInput): Promise<AgentRes
       transition(openWorkflow.workflowId, 'CANCELLED');
       logEvent('agent.workflow.cancelled', { workflowId: openWorkflow.workflowId });
       clearWorkflowState(sessionId);
-      return finalize(sessionId, { status: 'CANCELLED', workflowId: openWorkflow.workflowId, message: buildCancelledMessage() });
+      return finalize(sessionId, { status: 'CANCELLED', intent: openWorkflow.intent, workflowId: openWorkflow.workflowId, message: buildCancelledMessage() });
     }
     // spec §11: "Không chấp nhận 'OK' từ LLM như một approval" — a plain chat message can never
     // approve; only the dedicated approve endpoint (Phase F/G) counts as explicit user action.
     return finalize(sessionId, {
       status: 'WAITING_APPROVAL',
+      intent: openWorkflow.intent,
       workflowId: openWorkflow.workflowId,
       idempotencyKey: openWorkflow.idempotencyKey,
       preview: openWorkflow.preview,
@@ -318,7 +325,7 @@ export async function handleMessage(input: HandleMessageInput): Promise<AgentRes
       transition(openWorkflow.workflowId, 'CANCELLED');
       logEvent('agent.workflow.cancelled', { workflowId: openWorkflow.workflowId });
       clearWorkflowState(sessionId);
-      return finalize(sessionId, { status: 'CANCELLED', workflowId: openWorkflow.workflowId, message: buildCancelledMessage() });
+      return finalize(sessionId, { status: 'CANCELLED', intent: openWorkflow.intent, workflowId: openWorkflow.workflowId, message: buildCancelledMessage() });
     }
     return continueClarification(openWorkflow, input.message, ctx, input.security, sessionId, anchorToday);
   }

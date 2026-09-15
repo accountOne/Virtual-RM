@@ -6,6 +6,8 @@ export type AgentWorkflowStatus = 'UNDERSTANDING' | 'NEEDS_CLARIFICATION' | 'PLA
 
 export interface AgentResponse {
   status: 'ANSWERED' | AgentWorkflowStatus;
+  /** Which agent intent produced this response — for observability; the UI never branches on it. */
+  intent?: string;
   message: string;
   workflowId?: string;
   /** Only present on WAITING_APPROVAL — must be echoed back to approve() (spec §13). */

@@ -10,7 +10,7 @@
 // unaffected by anything here.
 
 import { UserContext } from '../ai/types';
-import { assertAgentToolAllowed, AgentTool } from './agent-tool-registry';
+import { AgentTool, AgentToolNotAuthorizedError, assertAgentToolAllowed } from './agent-tool-registry';
 import { AgentWorkflow, getWorkflow, transition } from './workflow-engine';
 
 const DRAFT_TTL_MS = 5 * 60_000; // spec §12 "draft not expired" — 5 minutes is generous for a demo click-through, short enough that a stale tab can't replay an old draft.
@@ -61,7 +61,19 @@ export function validateApproval(workflowId: string, ctx: UserContext, idempoten
     throw new ApprovalValidationError('Idempotency key mismatch — this approval has already been processed or is stale', 'IDEMPOTENCY_MISMATCH');
   }
   if (!workflow.toolName) throw new ApprovalValidationError('Workflow has no tool to execute', 'INVALID_DRAFT');
-  const tool = assertAgentToolAllowed(workflow.toolName, ctx.role);
+  // assertAgentToolAllowed throws its own AgentToolNotAuthorizedError — normalized to
+  // ApprovalValidationError here so every failure this function can produce shares one error
+  // type/code contract for callers (agent.controller.ts's statusCodeFor only recognizes
+  // ApprovalValidationError/InvalidWorkflowTransitionError; without this catch, a role check
+  // failing here would have fallen through to a generic 500 instead of the correct 403 — caught
+  // by a unit test asserting a Checker gets rejected with a recognizable error, not a crash).
+  let tool: AgentTool<any, any>;
+  try {
+    tool = assertAgentToolAllowed(workflow.toolName, ctx.role);
+  } catch (err) {
+    if (err instanceof AgentToolNotAuthorizedError) throw new ApprovalValidationError(err.message, 'FORBIDDEN');
+    throw err;
+  }
   assertDraftStillSane(workflow);
   return { workflow, tool };
 }
