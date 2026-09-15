@@ -41,3 +41,11 @@ services:
       # own (more limited, no-cost) Web Speech API automatically; nothing breaks.
       - key: OPENAI_API_KEY
         sync: false
+      # Gemini AI Agent (see server/src/agent/gemini-client.ts, docs/GEMINI_SETUP.md). Same
+      # `sync: false` pattern as OPENAI_API_KEY above — Render prompts for the real value in its
+      # dashboard, never committed here. Without it set, the Agent falls back to the deterministic
+      # rule engine automatically (server/src/agent/fallback-rule-engine.ts); nothing breaks.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-flash-latest
