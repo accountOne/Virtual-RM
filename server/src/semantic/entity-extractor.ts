@@ -9,8 +9,11 @@ export interface KnownNames {
   suppliers: string[];
 }
 
-const DOCUMENT_ID_RE = /\b(LC|BG|COL|LN|INV|PO)-[\w-]+\b/i;
-const ACCOUNT_NO_RE = /\b\d{9,}\b/;
+// Exported for server/src/agent/fallback-rule-engine.ts (Gemini Agent's degraded-but-honest
+// fallback path, spec §20) — reused as-is rather than re-implemented, same document/account
+// number shape either way.
+export const DOCUMENT_ID_RE = /\b(LC|BG|COL|LN|INV|PO)-[\w-]+\b/i;
+export const ACCOUNT_NO_RE = /\b\d{9,}\b/;
 
 /**
  * Extracts structured entities (beneficiary/customer/supplier/documentId/accountNo) from the
