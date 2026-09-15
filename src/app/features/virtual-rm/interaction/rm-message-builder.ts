@@ -1,3 +1,4 @@
+import { AgentResponse } from '../../../core/services/agent.service';
 import { DailyDashboard, DashboardPriority, PriorityTask } from '../../../core/models/daily-dashboard.model';
 import { SemanticAnswer, SemanticAnswerAction, buildLink } from '../../../core/services/rm-data.service';
 import { RMAction, RMMessage, RMMetricItem, RMRecordListItem, RMSeverity } from './rm-interaction.types';
@@ -325,4 +326,70 @@ export function buildProactiveGreeting(dashboard: DailyDashboard): RMMessage[] {
   messages.push(buildCategoryShortcuts(now));
 
   return messages;
+}
+
+// --- Gemini AI Agent (docs/AI_AGENT_ARCHITECTURE.md) -----------------------------------------
+
+const PREVIEW_FIELD_LABELS: Record<string, string> = {
+  amount: 'Số tiền',
+  currency: 'Loại tiền',
+  beneficiaryName: 'Người thụ hưởng',
+  beneficiary: 'Người thụ hưởng',
+  sourceAccountLabel: 'Tài khoản nguồn',
+  fee: 'Phí',
+  lcType: 'Loại',
+  subType: 'Hình thức',
+  type: 'Hình thức',
+  expiryDate: 'Ngày hết hạn',
+  dueDate: 'Ngày đến hạn',
+  guaranteeType: 'Loại bảo lãnh',
+  collectionType: 'Loại nhờ thu',
+  drawee: 'Đối tác',
+};
+
+function formatPreviewValue(key: string, value: unknown): string {
+  if ((key === 'amount' || key === 'fee') && typeof value === 'number') {
+    return new Intl.NumberFormat('vi-VN').format(value) + ' đ';
+  }
+  return String(value);
+}
+
+function buildPreviewMetrics(preview: Record<string, unknown>): RMMetricItem[] {
+  return Object.entries(preview)
+    .filter(([key]) => key in PREVIEW_FIELD_LABELS)
+    .map(([key, value]) => ({ label: PREVIEW_FIELD_LABELS[key], value: formatPreviewValue(key, value) }));
+}
+
+/** Turns one backend AgentResponse (POST /api/agent/message) into RMMessage bubbles. A
+ * WAITING_APPROVAL response becomes a preview card (METRIC) plus an explicit approve/cancel
+ * action row — the spec's own "Xác nhận giao dịch" mock — reusing RMAction.type 'CONFIRM'
+ * exactly like the existing LC PO-upload assistant's Import/Export step already does, just with
+ * a distinguishable payload shape ({agentAction: 'approve'|'cancel', ...} vs. LC-assist's
+ * {step, value}) so rm-chat-session.service.ts's handleAction can tell them apart. Every other
+ * status is a single text bubble — the backend's response-templates.ts already phrases a
+ * natural, complete Vietnamese message for every case (spec §16). */
+export function buildAgentMessages(response: AgentResponse): RMMessage[] {
+  const now = Date.now();
+
+  if (response.status === 'WAITING_APPROVAL' && response.preview && response.workflowId && response.idempotencyKey) {
+    const metrics = buildPreviewMetrics(response.preview);
+    const messages: RMMessage[] = [];
+    if (metrics.length) {
+      messages.push({ id: nextId('agent-preview'), from: 'RM', type: 'METRIC', title: 'Xác nhận giao dịch', metrics, timestamp: now });
+    }
+    messages.push({
+      id: nextId('agent-approval'),
+      from: 'RM',
+      type: 'ACTION',
+      content: response.message,
+      actions: [
+        { label: 'Hủy', type: 'CONFIRM', payload: { agentAction: 'cancel', workflowId: response.workflowId } },
+        { label: 'Xác nhận', type: 'CONFIRM', payload: { agentAction: 'approve', workflowId: response.workflowId, idempotencyKey: response.idempotencyKey } },
+      ],
+      timestamp: now,
+    });
+    return messages;
+  }
+
+  return [{ id: nextId('agent-text'), from: 'RM', type: 'TEXT', content: response.message, timestamp: now }];
 }

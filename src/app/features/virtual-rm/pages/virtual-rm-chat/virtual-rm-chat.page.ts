@@ -82,6 +82,22 @@ const SUGGESTED_QUESTIONS = [
           <svg *ngIf="voice.speechEnabled()" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H3v6h3l5 4V5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M15.5 8.5a5 5 0 010 7M18.5 6a9 9 0 010 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
           <svg *ngIf="!voice.speechEnabled()" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H3v6h3l5 4V5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M22 9l-6 6M16 9l6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
+        <!-- Gemini AI Agent toggle (docs/AI_AGENT_ARCHITECTURE.md) — off by default, additive to
+             the existing deterministic-engine chat. -->
+        <button
+          type="button"
+          class="px-2 py-1 rounded-full text-[11px] font-semibold shrink-0 border transition-colors"
+          [class.bg-white]="agentMode()"
+          [class.text-brand-700]="agentMode()"
+          [class.border-white]="agentMode()"
+          [class.text-white]="!agentMode()"
+          [style.borderColor]="agentMode() ? null : 'rgba(255,255,255,0.4)'"
+          (click)="toggleAgentMode()"
+          [attr.aria-pressed]="agentMode()"
+          aria-label="Bật/tắt AI Agent (Gemini)"
+        >
+          🤖 Agent
+        </button>
         <div class="relative shrink-0">
           <div class="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-lg">👩‍💼</div>
           <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-positive ring-2 ring-brand-800"></span>
@@ -210,6 +226,7 @@ export class VirtualRmChatPageComponent {
   readonly busy = this.session.busy;
   readonly hasUserAsked = this.session.hasUserAsked;
   readonly rmState = this.session.state;
+  readonly agentMode = this.session.agentMode;
   draft = '';
 
   /** Count of messages already handed to `voice.speak()` — an `effect` re-runs in full on every
@@ -253,9 +270,16 @@ export class VirtualRmChatPageComponent {
   }
 
   handleAction(action: RMAction): void {
-    // LC PO-upload assistant (docs/phase-5.5-lc-assistant.md): CONFIRM choices never leave the
-    // browser — routed to the session's own step handler instead of navigation.
+    // Two different features both use RMAction.type 'CONFIRM' for a client-side-only choice —
+    // distinguished by payload shape: the Gemini AI Agent's approve/cancel card
+    // ({agentAction, workflowId, ...}, docs/AI_AGENT_ARCHITECTURE.md) vs. the LC PO-upload
+    // assistant's Import/Export step ({step, value}, docs/phase-5.5-lc-assistant.md).
     if (action.type === 'CONFIRM') {
+      const payload = action.payload as { agentAction?: 'approve' | 'cancel'; workflowId?: string; idempotencyKey?: string } | undefined;
+      if (payload?.agentAction && payload.workflowId) {
+        void this.session.handleAgentAction({ agentAction: payload.agentAction, workflowId: payload.workflowId, idempotencyKey: payload.idempotencyKey });
+        return;
+      }
       void this.session.resolveLcAssistChoice(action);
       return;
     }
@@ -284,6 +308,10 @@ export class VirtualRmChatPageComponent {
 
   startLcAssist(): void {
     this.session.startLcAssist();
+  }
+
+  toggleAgentMode(): void {
+    this.session.toggleAgentMode();
   }
 
   handleFileSelected(event: { action: RMAction; file: File }): void {

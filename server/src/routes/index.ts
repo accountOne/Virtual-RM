@@ -15,6 +15,7 @@ import { voiceController } from '../controllers/voice.controller';
 import { loansController } from '../controllers/loans.controller';
 import { footprintController } from '../controllers/footprint.controller';
 import { lcAssistController } from '../controllers/lc-assist.controller';
+import { agentController } from '../controllers/agent.controller';
 import { requireRole } from '../auth/session.middleware';
 import { loginRateLimiter, transactionRateLimiter, virtualRmRateLimiter } from '../auth/rate-limit';
 
@@ -71,6 +72,15 @@ apiRouter.get('/virtual-rm/footprint', virtualRmRateLimiter, footprintController
 // this whole flow only ever leads up to that same form.
 apiRouter.post('/virtual-rm/lc/analyze-po', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), lcAssistController.analyzePo);
 apiRouter.post('/virtual-rm/lc/draft-message', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), lcAssistController.draftMessage);
+
+// Gemini AI Agent — see docs/AI_AGENT_ARCHITECTURE.md. Role checks for write intents happen
+// inside agent-orchestrator.ts itself (per-intent, since only some intents write anything), not
+// here at the route level — unlike the routes above where every request under a given path is
+// uniformly a write.
+apiRouter.post('/agent/message', virtualRmRateLimiter, agentController.message);
+apiRouter.post('/agent/workflow/:workflowId/approve', transactionRateLimiter, agentController.approve);
+apiRouter.post('/agent/workflow/:workflowId/cancel', virtualRmRateLimiter, agentController.cancel);
+apiRouter.get('/agent/workflow/:workflowId', virtualRmRateLimiter, agentController.status);
 
 // Phase 7 — dedicated Trade Finance Business Banking screens (system-of-record REST API,
 // separate from the chat query API above; both read the same underlying repositories).

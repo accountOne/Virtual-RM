@@ -1,11 +1,12 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { AgentService, AgentWorkflowRecord } from '../../../core/services/agent.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { DailyDashboardService } from '../../../core/services/daily-dashboard.service';
 import { LcAssistService, PoExtractedFields } from '../../../core/services/lc-assist.service';
 import { RmDataService } from '../../../core/services/rm-data.service';
 import { RmContextService } from './rm-context.service';
 import { RMAction, RMMessage } from './rm-interaction.types';
-import { buildProactiveGreeting, buildRmMessages } from './rm-message-builder';
+import { buildAgentMessages, buildProactiveGreeting, buildRmMessages } from './rm-message-builder';
 import { RmStateService } from './rm-state.service';
 import { RmStreamService } from './rm-stream.service';
 import { RmTimingService } from './rm-timing.service';
@@ -53,11 +54,17 @@ export class RmChatSessionService {
   private readonly stream = inject(RmStreamService);
   private readonly auth = inject(AuthService);
   private readonly lcAssist = inject(LcAssistService);
+  private readonly agent = inject(AgentService);
 
   readonly messages = signal<RMMessage[]>([]);
   readonly busy = signal(false);
   readonly hasUserAsked = computed(() => this.messages().some((m) => m.from === 'USER'));
   readonly state = this.rmState.state;
+  /** Gemini AI Agent toggle (docs/AI_AGENT_ARCHITECTURE.md) — additive, off by default: the
+   * existing deterministic-engine `submit()` path is unchanged and untouched by this signal.
+   * When on, free-text input routes to `askAgent()` instead (LC PO-upload's own trigger still
+   * takes precedence either way — it does more than the Agent's own create_lc intent). */
+  readonly agentMode = signal(false);
 
   private awaitingProactiveUpgrade = false;
   private greetingStarted = false;
@@ -115,12 +122,20 @@ export class RmChatSessionService {
     void this.submit(question);
   }
 
+  toggleAgentMode(): void {
+    this.agentMode.update((v) => !v);
+  }
+
   async submit(question: string): Promise<void> {
     const trimmed = question.trim();
     if (!trimmed || this.busy()) return;
     this.pushMessage({ id: localId('user'), from: 'USER', type: 'TEXT', content: trimmed, timestamp: Date.now() });
     if (LC_ASSIST_TRIGGER.test(trimmed)) {
       await this.beginLcAssist();
+      return;
+    }
+    if (this.agentMode()) {
+      await this.submitToAgent(trimmed);
       return;
     }
     this.busy.set(true);
@@ -145,6 +160,58 @@ export class RmChatSessionService {
         content: 'Xin lỗi, hệ thống đang gặp sự cố. Anh/chị thử lại sau ít phút nhé.',
         timestamp: Date.now(),
       });
+    } finally {
+      this.busy.set(false);
+      this.rmState.set('IDLE');
+    }
+  }
+
+  /** Gemini AI Agent path (spec §0/§16) — POST /api/agent/message. Handles all statuses
+   * uniformly: WAITING_APPROVAL renders an approval card (buildAgentMessages), everything else
+   * (ANSWERED/NEEDS_CLARIFICATION/COMPLETED/FAILED/CANCELLED) a plain text bubble with the
+   * backend's own natural-language message — the server decides what to say, this just displays
+   * it. The USER bubble for `question` is already pushed by the caller (submit()). */
+  private async submitToAgent(question: string): Promise<void> {
+    this.busy.set(true);
+    this.rmState.set('PROCESSING');
+    try {
+      const response = await this.agent.sendMessage(question);
+      this.rmState.set('RESPONDING');
+      await this.stream.reveal(buildAgentMessages(response), (msg) => this.pushMessage(msg));
+    } catch {
+      this.pushMessage({
+        id: localId('agent-error'),
+        from: 'RM',
+        type: 'TEXT',
+        content: 'Xin lỗi, AI Agent đang gặp sự cố. Anh/chị thử lại sau ít phút nhé.',
+        timestamp: Date.now(),
+      });
+    } finally {
+      this.busy.set(false);
+      this.rmState.set('IDLE');
+    }
+  }
+
+  /** Approve/Cancel click on an Agent WAITING_APPROVAL card (RMAction.type 'CONFIRM', payload
+   * `{agentAction, workflowId, idempotencyKey?}` — see rm-message-builder.ts::buildAgentMessages
+   * and virtual-rm-chat.page.ts::handleAction, which routes here instead of
+   * resolveLcAssistChoice() based on the payload shape). */
+  async handleAgentAction(payload: { agentAction: 'approve' | 'cancel'; workflowId: string; idempotencyKey?: string }): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.rmState.set('PROCESSING');
+    try {
+      if (payload.agentAction === 'cancel') {
+        await this.agent.cancel(payload.workflowId);
+        this.pushMessage({ id: localId('agent-cancelled'), from: 'RM', type: 'TEXT', content: 'Em đã huỷ yêu cầu này. Anh/chị cần hỗ trợ gì thêm không ạ?', timestamp: Date.now() });
+        return;
+      }
+      if (!payload.idempotencyKey) return;
+      const workflow = await this.agent.approve(payload.workflowId, payload.idempotencyKey);
+      this.pushMessage({ id: localId('agent-result'), from: 'RM', type: 'TEXT', content: buildApprovalResultMessage(workflow), timestamp: Date.now() });
+    } catch (err) {
+      const message = (err as { error?: { message?: string } })?.error?.message ?? 'Không thể xử lý yêu cầu này lúc này. Anh/chị thử lại nhé.';
+      this.pushMessage({ id: localId('agent-action-error'), from: 'RM', type: 'TEXT', content: message, timestamp: Date.now() });
     } finally {
       this.busy.set(false);
       this.rmState.set('IDLE');
@@ -317,6 +384,22 @@ export class RmChatSessionService {
     this.messages.update((list) => [...list, msg]);
     persistMessages(this.messages());
   }
+}
+
+/** Mirrors server/src/agent/response-templates.ts::buildCompletionMessage/buildFailureMessage —
+ * duplicated client-side rather than shared (separate TS projects, no shared package, same
+ * accepted-duplication precedent as this file's own CHECKER_BLOCKED_MESSAGE above) since the
+ * approve/cancel endpoints return the raw AgentWorkflow record, not a pre-phrased message. */
+function buildApprovalResultMessage(workflow: AgentWorkflowRecord): string {
+  if (workflow.status !== 'COMPLETED') {
+    return 'Rất tiếc, em chưa thực hiện được yêu cầu này. Anh/chị thử lại hoặc liên hệ RM để được hỗ trợ nhé.';
+  }
+  const r = (workflow.result ?? {}) as Record<string, unknown>;
+  if (typeof r['paymentOrderId'] === 'string') return `Đã tạo lệnh chuyển tiền thành công (mã ${r['paymentOrderId']}) — lệnh đang chờ Checker phê duyệt theo đúng quy trình của MSB Business.`;
+  if (typeof r['lcNumber'] === 'string') return `Đã gửi yêu cầu mở LC ${r['lcNumber']} — đang chờ phê duyệt (mô phỏng, không phát hành LC thật).`;
+  if (typeof r['bgNumber'] === 'string') return `Đã gửi yêu cầu phát hành bảo lãnh ${r['bgNumber']} — đang chờ phê duyệt (mô phỏng).`;
+  if (typeof r['collectionNumber'] === 'string') return `Đã tạo bộ nhờ thu ${r['collectionNumber']} (mô phỏng).`;
+  return 'Đã hoàn tất yêu cầu của anh/chị.';
 }
 
 function isRmMessageArray(value: unknown): value is RMMessage[] {
