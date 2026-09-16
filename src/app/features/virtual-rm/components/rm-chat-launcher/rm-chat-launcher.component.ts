@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
 import { RmChatSessionService } from '../../interaction/rm-chat-session.service';
@@ -72,6 +72,21 @@ export class RmChatLauncherComponent {
     this.router.events.pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd)).subscribe((e) => {
       this.onChatPage.set(e.urlAfterRedirects.startsWith(CHAT_ROUTE));
     });
+  }
+
+  /** Bug: a position saved on a wider viewport (or before a mobile browser's address bar
+   * collapsed/expanded, or a device rotation) was only ever re-clamped once, at construction time
+   * — resizing the same already-loaded page (no full reload) left the stored absolute px position
+   * unchanged, so the button could end up partly or fully off-screen. Re-clamp on every resize,
+   * but only when a custom (dragged) position is actually set — the "no custom position" default
+   * already tracks the viewport for free via the right-5/bottom-5 CSS classes. */
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    const pos = this.buttonPos();
+    if (!pos) return;
+    const clamped = clamp(pos);
+    this.buttonPos.set(clamped);
+    persistPos(clamped);
   }
 
   onPointerDown(ev: PointerEvent): void {
