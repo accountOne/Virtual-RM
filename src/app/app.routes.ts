@@ -59,6 +59,13 @@ export const routes: Routes = [
     title: 'Phê duyệt giao dịch — MSB Business Banking',
   },
   {
+    path: 'payments/approval/:id',
+    loadComponent: () =>
+      import('./features/payments/pages/command-detail/command-detail.page').then((m) => m.CommandDetailPageComponent),
+    canActivate: [authGuard, roleGuard('CHECKER', 'ADMIN')],
+    title: 'Chi tiết lệnh chờ duyệt — MSB Business Banking',
+  },
+  {
     path: 'payments/single-transfer',
     loadComponent: () =>
       import('./features/payments/pages/single-transfer/single-transfer.page').then((m) => m.SingleTransferPageComponent),

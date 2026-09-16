@@ -91,6 +91,16 @@ export const commandsController = {
     }
   },
 
+  auditTrail(req: Request, res: Response) {
+    try {
+      const command = commandsService.getById(req.params.id);
+      assertOwnedByMaker(command, actorFrom(req));
+      res.json(commandsService.auditTrail(command.id));
+    } catch (err) {
+      handleError(res, err);
+    }
+  },
+
   submit(req: Request, res: Response) {
     try {
       const command = commandsService.getById(req.params.id);
@@ -114,6 +124,15 @@ export const commandsController = {
       const command = commandsService.getById(req.params.id);
       commandsService.recordCheckerView(command, actorFrom(req));
       res.json(command);
+    } catch (err) {
+      handleError(res, err);
+    }
+  },
+
+  checkerAuditTrail(req: Request, res: Response) {
+    try {
+      commandsService.getById(req.params.id); // 404s if the command doesn't exist
+      res.json(commandsService.auditTrail(req.params.id));
     } catch (err) {
       handleError(res, err);
     }

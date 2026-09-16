@@ -53,6 +53,30 @@ export interface BankingCommand {
   rejectReason?: string;
 }
 
+export type AuditEventType =
+  | 'DRAFT_CREATED'
+  | 'FIELD_UPDATED'
+  | 'VALIDATED'
+  | 'SUBMITTED'
+  | 'VIEWED_BY_CHECKER'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'EXECUTED'
+  | 'FAILED';
+
+export interface AuditEvent {
+  id: string;
+  commandId: string;
+  eventType: AuditEventType;
+  actorUserId: string;
+  actorRole: 'MAKER' | 'CHECKER' | 'ADMIN' | 'SYSTEM';
+  oldStatus?: string;
+  newStatus?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
 /** Thin HTTP wrapper over the Maker/Checker BankingCommand API (server/src/controllers/
  * commands.controller.ts) — same shape as every other core/services/*.ts client (agent.service.ts
  * included). No business logic here; validation/warnings/state all come from the server. */
@@ -94,6 +118,10 @@ export class CommandsService {
 
   async checkerDetail(id: string): Promise<BankingCommand> {
     return firstValueFrom(this.http.get<BankingCommand>(`/api/checker/commands/${id}`));
+  }
+
+  async auditTrail(id: string): Promise<AuditEvent[]> {
+    return firstValueFrom(this.http.get<AuditEvent[]>(`/api/checker/commands/${id}/audit-events`));
   }
 
   async approve(id: string, idempotencyKey: string): Promise<BankingCommand> {

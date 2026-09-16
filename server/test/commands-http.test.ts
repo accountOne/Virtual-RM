@@ -176,6 +176,21 @@ describe('Scenario 6 — Checker approves: real execution, real audit', () => {
     const after = accountsRepository.findById('acc-001')!;
     assertEqual(after.availableBalance, before.availableBalance - 1_234_000);
   });
+
+  test('audit trail records the full lifecycle, visible to both Maker and Checker', async () => {
+    const submitted = buildSubmittedCommand(MAKER, { amount: 222_000 });
+    await getCheckerClient().get(`/api/checker/commands/${submitted.id}`); // records VIEWED_BY_CHECKER
+    await getCheckerClient().post(`/api/checker/commands/${submitted.id}/approve`, { idempotencyKey: submitted.idempotencyKey });
+
+    const checkerView = await getCheckerClient().get<{ eventType: string }[]>(`/api/checker/commands/${submitted.id}/audit-events`);
+    const eventTypes = checkerView.body.map((e) => e.eventType);
+    for (const expected of ['DRAFT_CREATED', 'SUBMITTED', 'VIEWED_BY_CHECKER', 'APPROVED', 'EXECUTED']) {
+      assert(eventTypes.includes(expected), `expected ${expected} in audit trail, got ${JSON.stringify(eventTypes)}`);
+    }
+
+    const makerView = await getMakerClient().get<{ eventType: string }[]>(`/api/commands/${submitted.id}/audit-events`);
+    assertEqual(makerView.body.length, checkerView.body.length, 'Maker and Checker must see the same audit trail');
+  });
 });
 
 describe('Scenario 7 — double approve is rejected, no duplicate execution', () => {

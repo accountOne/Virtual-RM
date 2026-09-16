@@ -95,9 +95,11 @@ apiRouter.get('/commands/:id', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN
 apiRouter.post('/commands/:id/validate', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), commandsController.validate);
 apiRouter.put('/commands/:id', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), commandsController.updateDraft);
 apiRouter.post('/commands/:id/submit', transactionRateLimiter, requireRole('MAKER', 'ADMIN'), commandsController.submit);
+apiRouter.get('/commands/:id/audit-events', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), commandsController.auditTrail);
 
 apiRouter.get('/checker/commands', virtualRmRateLimiter, requireRole('CHECKER', 'ADMIN'), commandsController.checkerList);
 apiRouter.get('/checker/commands/:id', virtualRmRateLimiter, requireRole('CHECKER', 'ADMIN'), commandsController.checkerGet);
+apiRouter.get('/checker/commands/:id/audit-events', virtualRmRateLimiter, requireRole('CHECKER', 'ADMIN'), commandsController.checkerAuditTrail);
 apiRouter.post('/checker/commands/:id/approve', transactionRateLimiter, requireRole('CHECKER', 'ADMIN'), commandsController.approve);
 apiRouter.post('/checker/commands/:id/reject', transactionRateLimiter, requireRole('CHECKER', 'ADMIN'), commandsController.reject);
 

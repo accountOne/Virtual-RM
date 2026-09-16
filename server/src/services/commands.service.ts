@@ -180,6 +180,15 @@ export const commandsService = {
     return submitted;
   },
 
+  /** Full audit trail for one command, oldest first — spec §14's Checker detail screen shows
+   * this as a timeline. */
+  auditTrail(commandId: string): AuditEvent[] {
+    return auditEventsRepository
+      .readAll()
+      .filter((e) => e.commandId === commandId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  },
+
   /** Records that a Checker opened this command — spec §13's AuditEvent list includes
    * VIEWED_BY_CHECKER explicitly, so "the Checker looked at this before deciding" is provable. */
   recordCheckerView(command: BankingCommand, actor: CommandActor): void {
