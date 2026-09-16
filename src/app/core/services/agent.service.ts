@@ -15,6 +15,10 @@ export interface AgentResponse {
   preview?: Record<string, unknown>;
   missingFields?: string[];
   result?: unknown;
+  /** Set when the Agent hands a write intent off to a real BankingCommand draft (Maker/Checker
+   * upgrade, Slice 5) instead of running its own approval flow — the UI opens the matching
+   * banking form pre-filled with this draft rather than showing a WAITING_APPROVAL card. */
+  commandId?: string;
 }
 
 export interface AgentWorkflowRecord {

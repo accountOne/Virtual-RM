@@ -198,6 +198,32 @@ export class SingleTransferPageComponent {
   readonly command = signal<BankingCommand | null>(null);
   readonly previewing = signal(false);
   readonly submitting = signal(false);
+  readonly loadingDraft = signal(false);
+
+  constructor() {
+    // Maker/Checker upgrade, Slice 5 — the Virtual RM Agent hands off a create_transfer intent
+    // by navigating here with `{ commandId }` in router state (rm-message-builder.ts's
+    // buildAgentMessages(), same mechanism the LC PO-upload assistant already uses for structured
+    // prefill — see lc-create.page.ts's own constructor). Loads the REAL draft the Agent already
+    // created server-side rather than re-deriving it client-side.
+    const state = history.state as { commandId?: string } | undefined;
+    if (state?.commandId) void this.loadDraft(state.commandId);
+  }
+
+  private async loadDraft(commandId: string): Promise<void> {
+    this.loadingDraft.set(true);
+    try {
+      const cmd = await this.commands.get(commandId);
+      this.command.set(cmd);
+      const data = cmd.formData as Partial<TransferForm>;
+      Object.assign(this.form, emptyForm(), data);
+      this.toast.show(`Đã tải sẵn thông tin từ Virtual RM (${cmd.referenceNo}) — vui lòng bổ sung phần còn thiếu.`, 'info');
+    } catch {
+      this.toast.show('Không tải được bản nháp từ Virtual RM — vui lòng nhập lại thủ công.', 'error');
+    } finally {
+      this.loadingDraft.set(false);
+    }
+  }
 
   canPreview(): boolean {
     const f = this.form;

@@ -371,6 +371,23 @@ function buildPreviewMetrics(preview: Record<string, unknown>): RMMetricItem[] {
 export function buildAgentMessages(response: AgentResponse): RMMessage[] {
   const now = Date.now();
 
+  // Maker/Checker upgrade, Slice 5 (spec §7 "form-driven agent") — create_transfer hands off to
+  // a real BankingCommand draft instead of the Agent's own WAITING_APPROVAL card. Reuses the same
+  // NAVIGATE+payload mechanism the LC PO-upload assistant already established for passing
+  // structured prefill data via router state (see lc-create.page.ts's own `history.state` read).
+  if (response.commandId) {
+    return [
+      {
+        id: nextId('agent-form-handoff'),
+        from: 'RM',
+        type: 'ACTION',
+        content: response.message,
+        actions: [{ label: 'Mở form chuyển tiền', type: 'NAVIGATE', route: '/payments/single-transfer', payload: { commandId: response.commandId } }],
+        timestamp: now,
+      },
+    ];
+  }
+
   if (response.status === 'WAITING_APPROVAL' && response.preview && response.workflowId && response.idempotencyKey) {
     const metrics = buildPreviewMetrics(response.preview);
     const messages: RMMessage[] = [];

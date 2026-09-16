@@ -14,7 +14,9 @@ import { understand } from '../src/agent/gemini-semantic-engine';
 import { geminiConfigured } from '../src/agent/gemini-client';
 import { REQUIRED_FIELDS_BY_INTENT, semanticUnderstandingSchema } from '../src/agent/schemas/semantic-understanding.schema';
 import { AgentWorkflow, createWorkflow, findOpenWorkflowForUser, getWorkflow, InvalidWorkflowTransitionError, transition, _resetWorkflowsForTests } from '../src/agent/workflow-engine';
-import { approvalsRepository, paymentOrdersRepository, transactionsRepository } from '../src/repositories';
+import { dispatchIntent, Understanding } from '../src/agent/agent-orchestrator';
+import { approvalsRepository, bankingCommandsRepository, paymentOrdersRepository, transactionsRepository } from '../src/repositories';
+import { _resetAgentConversationsForTests } from '../src/agent/agent-conversation';
 
 const MAKER_CTX = { companyId: 'comp-001', userId: 'msb_mk', role: 'MAKER' as const };
 const CHECKER_CTX = { companyId: 'comp-001', userId: 'msb_ck', role: 'CHECKER' as const };
@@ -329,6 +331,62 @@ describe('agent-mock-tools — read tools use real seeded data, execute_transfer
     assertEqual(paymentOrdersRepository.readAll().length, originalPaymentOrders.length);
     assertEqual(transactionsRepository.readAll().length, originalTransactions.length);
     assertEqual(approvalsRepository.readAll().length, originalApprovals.length);
+  });
+});
+
+describe('agent-orchestrator — create_transfer hands off to a BankingCommand draft (Maker/Checker upgrade Slice 5)', () => {
+  const HANDOFF_SESSION = 'test-agent-transfer-handoff';
+  const originalCommands = bankingCommandsRepository.readAll();
+
+  function fullTransferUnderstanding(): Understanding {
+    return {
+      intent: 'create_transfer',
+      confidence: 0.95,
+      entities: {
+        amount: { value: 3_300_000, confidence: 0.95, source: 'user_message' },
+        beneficiaryName: { value: 'Người Nhận Thử Nghiệm', confidence: 0.9, source: 'user_message' },
+        currency: { value: 'VND', confidence: 0.9, source: 'user_message' },
+      },
+    };
+  }
+
+  test('a real BankingCommand DRAFT is created with the Agent-extracted entities, response carries commandId', async () => {
+    _resetAgentConversationsForTests();
+    const security = { companyId: MAKER_CTX.companyId, userId: MAKER_CTX.userId, role: MAKER_CTX.role };
+    const response = await dispatchIntent(fullTransferUnderstanding(), MAKER_CTX, security, HANDOFF_SESSION);
+
+    assertEqual(response.status, 'ANSWERED');
+    assertEqual(response.intent, 'create_transfer');
+    assert(!!response.commandId, 'expected a commandId in the hand-off response');
+    assert(response.message.includes('form'), `expected the message to mention the form, got: ${response.message}`);
+
+    const command = bankingCommandsRepository.findById(response.commandId!);
+    assert(!!command, 'expected the BankingCommand to actually exist in storage');
+    assertEqual(command!.status, 'DRAFT');
+    assertEqual(command!.commandType, 'TRANSFER');
+    assertEqual(command!.makerUserId, MAKER_CTX.userId);
+    assertEqual((command!.formData as { amount: number }).amount, 3_300_000);
+    assertEqual((command!.formData as { beneficiaryName: string }).beneficiaryName, 'Người Nhận Thử Nghiệm');
+    assert(!!command!.semanticData, 'expected semanticData to be populated');
+    assertEqual(command!.semanticData?.intent, 'create_transfer');
+  });
+
+  test('the Agent workflow itself reaches COMPLETED (no WAITING_APPROVAL left for create_transfer)', async () => {
+    _resetAgentConversationsForTests();
+    const security = { companyId: MAKER_CTX.companyId, userId: MAKER_CTX.userId, role: MAKER_CTX.role };
+    const response = await dispatchIntent(fullTransferUnderstanding(), MAKER_CTX, security, HANDOFF_SESSION);
+    const workflow = getWorkflow(response.workflowId!);
+    assert(!!workflow, 'expected a workflow record');
+    assertEqual(workflow!.status, 'COMPLETED');
+    assertEqual((workflow!.result as { commandId?: string })?.commandId, response.commandId);
+    assertEqual(findOpenWorkflowForUser(HANDOFF_SESSION), undefined, 'a COMPLETED workflow must not still read as "open"');
+  });
+
+  test('cleanup: bankingCommandsRepository restored, workflow store reset', () => {
+    bankingCommandsRepository.writeAll(originalCommands);
+    _resetWorkflowsForTests();
+    _resetAgentConversationsForTests();
+    assertEqual(bankingCommandsRepository.readAll().length, originalCommands.length);
   });
 });
 

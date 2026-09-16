@@ -4,8 +4,10 @@
 // TypeScript control flow, not a model decision.
 
 import { toUserContext, UserContext } from '../ai/types';
+import { findUser } from '../auth/user-store';
 import { answerQuery } from '../semantic/semantic-engine';
 import { SecurityContext } from '../semantic/types';
+import { commandsService } from '../services/commands.service';
 import { getAnchorDates } from '../services/transactions.service';
 import { appendMessage, clearWorkflowState, getOrCreateConversation, mergeEntities, setCurrentIntent, setWorkflowId } from './agent-conversation';
 import { assertAgentToolAllowed } from './agent-tool-registry';
@@ -19,7 +21,7 @@ import {
   buildGenericFallbackMessage,
   buildPreviewMessage,
 } from './response-templates';
-import { AgentEntities, AgentIntent, EntityField, REQUIRED_FIELDS_BY_INTENT } from './schemas/semantic-understanding.schema';
+import { AgentEntities, AgentIntent, EntityField, REQUIRED_FIELDS_BY_INTENT, WRITE_INTENTS } from './schemas/semantic-understanding.schema';
 import { AgentWorkflow, createWorkflow, findOpenWorkflowForUser, transition, WorkflowStatus } from './workflow-engine';
 
 export interface AgentResponse {
@@ -38,6 +40,11 @@ export interface AgentResponse {
   preview?: Record<string, unknown>;
   missingFields?: string[];
   result?: unknown;
+  /** Set only when the Agent hands a write intent off to a real BankingCommand draft (spec §7
+   * "form-driven agent" — Slice 5 of docs/MAKER_CHECKER_AUDIT.md) instead of running its own
+   * Approval Gate. The frontend opens the matching banking form pre-filled with this draft
+   * rather than rendering a WAITING_APPROVAL card. */
+  commandId?: string;
 }
 
 const CANCEL_PHRASES = ['hủy', 'huỷ', 'thôi khỏi', 'không muốn nữa', 'dừng lại', 'bỏ qua yêu cầu', 'thôi không cần'];
@@ -47,8 +54,12 @@ function looksLikeCancel(message: string): boolean {
   return CANCEL_PHRASES.some((p) => normalized.includes(p));
 }
 
+// create_transfer is intentionally absent — it hands off to a BankingCommand draft
+// (handOffTransferDraft) instead of going through this map's draft/execute tool pair. The
+// underlying create_transfer_draft/execute_transfer AgentTools (agent-mock-tools.ts) still exist
+// and are still directly unit-tested (approval-gate.ts's own checklist), just no longer reachable
+// through the orchestrator's normal dispatch for this intent.
 const WRITE_TOOL_MAP: Partial<Record<AgentIntent, { draft: string; execute: string }>> = {
-  create_transfer: { draft: 'create_transfer_draft', execute: 'execute_transfer' },
   create_lc: { draft: 'create_lc_draft', execute: 'submit_lc_mock' },
   create_guarantee: { draft: 'create_guarantee_draft', execute: 'submit_guarantee_mock' },
   create_collection: { draft: 'create_collection_draft', execute: 'submit_collection_mock' },
@@ -154,6 +165,15 @@ function planWrite(workflow: AgentWorkflow, intent: AgentIntent, entities: Agent
   }
 
   transition(workflow.workflowId, 'PLANNING', { entities });
+
+  // Maker/Checker upgrade (docs/MAKER_CHECKER_AUDIT.md Slice 5) — create_transfer now hands off
+  // to a real BankingCommand draft instead of running the Agent's own Approval Gate
+  // (execute_transfer). LC/GUARANTEE/COLLECTION stay on the old draft-tool/WAITING_APPROVAL path
+  // until Slice 6 migrates them the same way.
+  if (intent === 'create_transfer') {
+    return handOffTransferDraft(workflow, entities, ctx, sessionId);
+  }
+
   const map = WRITE_TOOL_MAP[intent]!;
   try {
     const draftTool = assertAgentToolAllowed(map.draft, ctx.role);
@@ -173,6 +193,54 @@ function planWrite(workflow: AgentWorkflow, intent: AgentIntent, entities: Agent
     logEvent('agent.workflow.failed', { workflowId: workflow.workflowId, intent, stage: 'planning' });
     clearWorkflowState(sessionId);
     return finalize(sessionId, { status: 'FAILED', intent, workflowId: workflow.workflowId, message: buildFailureMessage() });
+  }
+}
+
+/**
+ * spec §7 "form-driven agent": once required entities (amount + beneficiaryName) are known, the
+ * Agent's job is to PRE-FILL a real BankingCommand draft and hand off — never to draft its own
+ * preview or wait for its own approval. The Maker completes whatever Gemini couldn't extract
+ * (account number, bank, purpose — none of these have an entity field at all, by design: see
+ * docs/SEMANTIC_MODEL.md) in the real banking form (Slice 3), which runs the exact same
+ * validation/warning/submit path as a manually-typed transfer. The Agent's own workflow ends
+ * here at COMPLETED — there is no WAITING_APPROVAL step left for this intent to reach.
+ */
+function handOffTransferDraft(workflow: AgentWorkflow, entities: AgentEntities, ctx: UserContext, sessionId: string): AgentResponse {
+  try {
+    const amount = entities.amount ? Number(entities.amount.value) : undefined;
+    const beneficiaryName = entities.beneficiaryName ? String(entities.beneficiaryName.value) : undefined;
+    if (!amount || !beneficiaryName) throw new Error('handOffTransferDraft requires amount and beneficiaryName');
+
+    const formData: Record<string, unknown> = { amount, beneficiaryName, currency: entities.currency ? String(entities.currency.value) : 'VND' };
+    if (entities.sourceAccount) formData['sourceAccount'] = String(entities.sourceAccount.value);
+
+    const displayName = findUser(ctx.userId)?.displayName ?? ctx.userId;
+    const draft = commandsService.createDraft({ userId: ctx.userId, displayName, role: ctx.role ?? 'MAKER' }, 'TRANSFER', formData, {
+      originalMessage: lastUserMessage(sessionId),
+      intent: 'create_transfer',
+      entities: entities as unknown as Record<string, unknown>,
+    });
+
+    // PLANNING has no direct edge to COMPLETED (workflow-engine.ts) — creating the draft IS the
+    // Agent's own "execution" of its job (understand + prepare), same shape executeReadIntent()
+    // already uses for read intents.
+    transition(workflow.workflowId, 'EXECUTING');
+    const completed = transition(workflow.workflowId, 'COMPLETED', { result: { commandId: draft.id, referenceNo: draft.referenceNo } });
+    logEvent('agent.workflow.completed', { workflowId: completed.workflowId, intent: 'create_transfer', commandId: draft.id });
+    clearWorkflowState(sessionId);
+
+    return finalize(sessionId, {
+      status: 'ANSWERED',
+      intent: 'create_transfer',
+      workflowId: completed.workflowId,
+      commandId: draft.id,
+      message: `Em đã chuẩn bị sẵn ${formatAmount(amount, formData['currency'] as string)} chuyển cho ${beneficiaryName} trong form chuyển tiền (${draft.referenceNo}). Anh/chị mở form để bổ sung số tài khoản, ngân hàng thụ hưởng và mục đích chuyển tiền rồi gửi duyệt nhé.`,
+    });
+  } catch (err) {
+    transition(workflow.workflowId, 'FAILED', { error: err instanceof Error ? err.message : String(err) });
+    logEvent('agent.workflow.failed', { workflowId: workflow.workflowId, intent: 'create_transfer', stage: 'planning' });
+    clearWorkflowState(sessionId);
+    return finalize(sessionId, { status: 'FAILED', intent: 'create_transfer', workflowId: workflow.workflowId, message: buildFailureMessage() });
   }
 }
 
@@ -214,7 +282,7 @@ async function continueClarification(workflow: AgentWorkflow, message: string, c
   return planWrite(workflow, workflow.intent, mergedEntities, ctx, sessionId);
 }
 
-interface Understanding {
+export interface Understanding {
   intent: AgentIntent;
   confidence: number;
   entities: AgentEntities;
@@ -222,7 +290,13 @@ interface Understanding {
 
 /** Shared by the fresh-turn path in handleMessage() and continueClarification()'s topic-change
  * branch, so the write/read/general/unknown routing logic exists in exactly one place. */
-function dispatchIntent(understanding: Understanding, ctx: UserContext, security: SecurityContext, sessionId: string): AgentResponse | Promise<AgentResponse> {
+/** Exported for direct unit testing (server/test/commands-domain.test.ts's Agent hand-off tests)
+ * — real Gemini/fallback understanding can't be forced to extract both amount AND
+ * beneficiaryName together for create_transfer (docs/SEMANTIC_MODEL.md §6's known fallback
+ * limitation), so exercising handOffTransferDraft() end to end needs a synthetic Understanding,
+ * the same way workflow-engine.ts/approval-gate.ts are already tested with hand-built state
+ * rather than only through handleMessage(). */
+export function dispatchIntent(understanding: Understanding, ctx: UserContext, security: SecurityContext, sessionId: string): AgentResponse | Promise<AgentResponse> {
   if (understanding.intent === 'unknown') {
     return finalize(sessionId, { status: 'ANSWERED', intent: 'unknown', message: 'Xin lỗi, em chưa hiểu rõ yêu cầu này. Anh/chị có thể nói rõ hơn được không ạ?' });
   }
@@ -234,8 +308,7 @@ function dispatchIntent(understanding: Understanding, ctx: UserContext, security
     return finalize(sessionId, { status: 'ANSWERED', intent: 'general_question', message: result.answer.summary });
   }
 
-  const writeMap = WRITE_TOOL_MAP[understanding.intent];
-  if (writeMap) {
+  if (WRITE_INTENTS.has(understanding.intent)) {
     if (ctx.role !== 'MAKER' && ctx.role !== 'ADMIN') {
       return finalize(sessionId, { status: 'ANSWERED', intent: understanding.intent, message: buildCheckerBlockedMessage() });
     }
