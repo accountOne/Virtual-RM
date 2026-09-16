@@ -417,5 +417,22 @@ export function buildAgentMessages(response: AgentResponse): RMMessage[] {
     return messages;
   }
 
+  // Plain informational answer (general_question, or a READ_TOOL_MAP result) — render it exactly
+  // like the deterministic (non-Agent) chat does when it has the same shape of data, instead of
+  // always falling back to a bare text bubble. Previously this branch ignored action/actions/
+  // records entirely, which is why every Agent-mode Q&A answer (including ones that literally
+  // reuse the same answerQuery() the non-Agent chat uses) rendered with no CTA at all.
+  if (response.action || response.actions?.length || response.records?.length) {
+    const answer: SemanticAnswer = {
+      title: response.answerTitle ?? '',
+      summary: response.message,
+      metrics: [],
+      records: response.records ?? [],
+      action: response.action,
+      actions: response.actions,
+    };
+    return buildRmMessages(answer);
+  }
+
   return [{ id: nextId('agent-text'), from: 'RM', type: 'TEXT', content: response.message, timestamp: now }];
 }

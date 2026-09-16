@@ -7,7 +7,7 @@ import { toUserContext, UserContext } from '../ai/types';
 import { findUser } from '../auth/user-store';
 import { CommandType } from '../models';
 import { answerQuery } from '../semantic/semantic-engine';
-import { SecurityContext } from '../semantic/types';
+import { AnswerAction, SecurityContext, SemanticAnswer } from '../semantic/types';
 import { commandsService } from '../services/commands.service';
 import { getAnchorDates } from '../services/transactions.service';
 import { appendMessage, clearWorkflowState, getOrCreateConversation, mergeEntities, setCurrentIntent, setWorkflowId } from './agent-conversation';
@@ -40,6 +40,20 @@ export interface AgentResponse {
   preview?: Record<string, unknown>;
   missingFields?: string[];
   result?: unknown;
+  /** Navigation CTA(s) for an ANSWERED/COMPLETED read response — same shape and `target`
+   * vocabulary (OPEN_ACCOUNT, OPEN_LC_DETAIL, ...) the deterministic Semantic Engine's own
+   * SemanticAnswer already uses (see semantic/types.ts's AnswerAction and rm-data.service.ts's
+   * NAV_ACTION_ROUTES/buildLink). Previously only the deterministic (non-Agent) chat path ever
+   * populated these, so every Agent answer — including `general_question`, which literally reuses
+   * `answerQuery()` — rendered as plain text with no CTA at all, even when the underlying answer
+   * already had one computed and ready. */
+  action?: AnswerAction;
+  actions?: AnswerAction[];
+  /** Present alongside `action`/`actions` when the answer is naturally a list (e.g. multiple LC
+   * matches) — mirrors SemanticAnswer.records so the frontend can render the same grouped
+   * RECORD_LIST card the deterministic path uses instead of a flat text summary. */
+  records?: unknown[];
+  answerTitle?: string;
   /** Set only when the Agent hands a write intent off to a real BankingCommand draft (spec §7
    * "form-driven agent" — Slice 5 of docs/MAKER_CHECKER_AUDIT.md) instead of running its own
    * Approval Gate. The frontend opens the matching banking form pre-filled with this draft
@@ -119,6 +133,51 @@ function formatReadResultMessage(intent: AgentIntent, result: unknown): string {
       return (result as { message: string }).message;
     default:
       return 'Đã có kết quả.';
+  }
+}
+
+/** Navigation CTA for a READ_TOOL_MAP result — these tools (agent-mock-tools.ts) are Agent-only,
+ * with no equivalent in the deterministic Semantic Engine, so there is nothing existing to reuse
+ * here the way general_question reuses answerQuery()'s own action. `target` strings are the same
+ * vocabulary NAV_ACTION_ROUTES (rm-data.service.ts) already maps to real routes. Only attaches an
+ * `entityId` where a matching Angular `:id` detail route actually exists (LC/Guarantee/Collection)
+ * — deliberately NOT for accounts/transactions, which only have list routes today. */
+function buildReadResultAction(intent: AgentIntent, result: unknown): AnswerAction | undefined {
+  switch (intent) {
+    case 'check_balance': {
+      const acc = result as { accountName: string } | undefined;
+      return acc ? { label: 'Xem tài khoản', type: 'NAVIGATE', target: 'OPEN_ACCOUNT' } : undefined;
+    }
+    case 'track_transaction':
+    case 'transaction_search': {
+      const r = result as { transaction?: unknown; recent?: unknown[] };
+      return r.transaction || r.recent?.length ? { label: 'Xem giao dịch', type: 'NAVIGATE', target: 'OPEN_TRANSACTION' } : undefined;
+    }
+    case 'check_lc_status': {
+      const list = result as { lcNumber: string }[];
+      if (!list.length) return undefined;
+      return list.length === 1
+        ? { label: `Xem ${list[0].lcNumber}`, type: 'NAVIGATE', target: 'OPEN_LC_DETAIL', entityId: list[0].lcNumber }
+        : { label: 'Xem danh sách LC', type: 'NAVIGATE', target: 'OPEN_LC' };
+    }
+    case 'check_guarantee_status': {
+      const list = result as { bgNumber: string }[];
+      if (!list.length) return undefined;
+      return list.length === 1
+        ? { label: `Xem ${list[0].bgNumber}`, type: 'NAVIGATE', target: 'OPEN_GUARANTEE_DETAIL', entityId: list[0].bgNumber }
+        : { label: 'Xem danh sách bảo lãnh', type: 'NAVIGATE', target: 'OPEN_GUARANTEE' };
+    }
+    case 'check_collection_status': {
+      const list = result as { collectionNumber: string }[];
+      if (!list.length) return undefined;
+      return list.length === 1
+        ? { label: `Xem ${list[0].collectionNumber}`, type: 'NAVIGATE', target: 'OPEN_COLLECTION_DETAIL', entityId: list[0].collectionNumber }
+        : { label: 'Xem danh sách nhờ thu', type: 'NAVIGATE', target: 'OPEN_COLLECTION' };
+    }
+    case 'product_information':
+      return { label: 'Xem sản phẩm', type: 'NAVIGATE', target: 'OPEN_PRODUCT' };
+    default:
+      return undefined;
   }
 }
 
@@ -350,9 +409,24 @@ export function dispatchIntent(understanding: Understanding, ctx: UserContext, s
 
   if (understanding.intent === 'general_question') {
     // Reuse the existing, well-tested 61-intent deterministic engine wholesale — the Agent
-    // never re-implements Q&A it already has (docs/GEMINI_AGENT_AUDIT.md §10).
+    // never re-implements Q&A it already has (docs/GEMINI_AGENT_AUDIT.md §10). Carry through the
+    // answer's own action/actions/records/title too, not just its text summary — these were
+    // previously dropped here, which is why every general_question reply in Agent mode rendered
+    // with no CTA even though the exact same question in the non-Agent chat had one.
     const result = answerQuery(lastUserMessage(sessionId), security, {});
-    return finalize(sessionId, { status: 'ANSWERED', intent: 'general_question', message: result.answer.summary });
+    // ClarificationResult's `answer` is a narrower shape with no action/actions field at all (a
+    // "please clarify" prompt genuinely has no CTA) — SemanticQueryResult's full SemanticAnswer
+    // does. Both share title/summary/records, so a Partial<SemanticAnswer> cast is safe here.
+    const answer = result.answer as Partial<SemanticAnswer>;
+    return finalize(sessionId, {
+      status: 'ANSWERED',
+      intent: 'general_question',
+      message: answer.summary ?? '',
+      answerTitle: answer.title,
+      action: answer.action,
+      actions: answer.actions,
+      records: answer.records?.length ? answer.records : undefined,
+    });
   }
 
   if (WRITE_INTENTS.has(understanding.intent)) {
@@ -393,7 +467,19 @@ async function executeReadIntent(intent: AgentIntent, entities: AgentEntities, c
     transition(workflow.workflowId, 'COMPLETED', { result });
     logEvent('agent.workflow.completed', { workflowId: workflow.workflowId, intent });
     clearWorkflowState(sessionId);
-    return finalize(sessionId, { status: 'COMPLETED', intent, workflowId: workflow.workflowId, result, message: formatReadResultMessage(intent, result) });
+    return finalize(sessionId, {
+      status: 'COMPLETED',
+      intent,
+      workflowId: workflow.workflowId,
+      result,
+      message: formatReadResultMessage(intent, result),
+      action: buildReadResultAction(intent, result),
+      // Only check_lc_status/check_guarantee_status/check_collection_status return an array
+      // (formatReadResultMessage's own type casts confirm this — everything else returns an
+      // object) — forwarding it lets the frontend render the same grouped RECORD_LIST card the
+      // deterministic chat uses for multiple matches, instead of a flat "N found" sentence.
+      records: Array.isArray(result) && result.length > 1 ? result : undefined,
+    });
   } catch (err) {
     transition(workflow.workflowId, 'FAILED', { error: err instanceof Error ? err.message : String(err) });
     logEvent('agent.workflow.failed', { workflowId: workflow.workflowId, intent, stage: 'executing' });

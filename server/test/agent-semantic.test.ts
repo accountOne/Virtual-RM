@@ -16,7 +16,7 @@ import { REQUIRED_FIELDS_BY_INTENT, semanticUnderstandingSchema } from '../src/a
 import { AgentWorkflow, createWorkflow, findOpenWorkflowForUser, getWorkflow, InvalidWorkflowTransitionError, transition, _resetWorkflowsForTests } from '../src/agent/workflow-engine';
 import { dispatchIntent, Understanding } from '../src/agent/agent-orchestrator';
 import { approvalsRepository, bankingCommandsRepository, paymentOrdersRepository, transactionsRepository } from '../src/repositories';
-import { _resetAgentConversationsForTests } from '../src/agent/agent-conversation';
+import { _resetAgentConversationsForTests, appendMessage } from '../src/agent/agent-conversation';
 
 const MAKER_CTX = { companyId: 'comp-001', userId: 'msb_mk', role: 'MAKER' as const };
 const CHECKER_CTX = { companyId: 'comp-001', userId: 'msb_ck', role: 'CHECKER' as const };
@@ -472,6 +472,48 @@ describe('agent-orchestrator — create_transfer hands off to a BankingCommand d
 // balance. The workflow store is otherwise entirely in-memory/global (spec §14's own "in-memory
 // is enough for a demo" design), so a full reset here is the correct, simplest fix rather than
 // hunting down every individual leaked workflow above.
+describe('agent-orchestrator — CTAs on read/Q&A responses (fix: Agent chat answers had no CTA at all)', () => {
+  const CTA_SESSION = 'test-agent-cta';
+
+  test('general_question forwards records from the reused Semantic Engine answer (LC_LIST)', async () => {
+    _resetAgentConversationsForTests();
+    appendMessage(CTA_SESSION, { role: 'user', content: 'danh sách LC' });
+    const understanding: Understanding = { intent: 'general_question', confidence: 0.9, entities: {} };
+    const security = { companyId: MAKER_CTX.companyId, userId: MAKER_CTX.userId, role: MAKER_CTX.role };
+    const response = await dispatchIntent(understanding, MAKER_CTX, security, CTA_SESSION);
+    assertEqual(response.status, 'ANSWERED');
+    assert(Array.isArray(response.records) && response.records.length > 0, 'expected LC_LIST records to be forwarded, not dropped');
+  });
+
+  test('check_lc_status (no lcNumber => every LC) returns a "view all" navigation action', async () => {
+    _resetWorkflowsForTests();
+    _resetAgentConversationsForTests();
+    const understanding: Understanding = { intent: 'check_lc_status', confidence: 0.9, entities: {} };
+    const security = { companyId: MAKER_CTX.companyId, userId: MAKER_CTX.userId, role: MAKER_CTX.role };
+    const response = await dispatchIntent(understanding, MAKER_CTX, security, CTA_SESSION + '-lc-status');
+    assertEqual(response.status, 'COMPLETED');
+    assert(!!response.action, 'expected a navigation action on the read result');
+    assertEqual(response.action!.target, 'OPEN_LC');
+  });
+
+  test('check_balance returns an OPEN_ACCOUNT navigation action when an account is found', async () => {
+    _resetWorkflowsForTests();
+    _resetAgentConversationsForTests();
+    const understanding: Understanding = { intent: 'check_balance', confidence: 0.9, entities: {} };
+    const security = { companyId: MAKER_CTX.companyId, userId: MAKER_CTX.userId, role: MAKER_CTX.role };
+    const response = await dispatchIntent(understanding, MAKER_CTX, security, CTA_SESSION + '-balance');
+    assertEqual(response.status, 'COMPLETED');
+    assert(!!response.action, 'expected a navigation action on the balance result');
+    assertEqual(response.action!.target, 'OPEN_ACCOUNT');
+  });
+
+  test('cleanup: workflow store + conversations reset', () => {
+    _resetWorkflowsForTests();
+    _resetAgentConversationsForTests();
+    assertEqual(findOpenWorkflowForUser(MAKER_CTX.userId), undefined);
+  });
+});
+
 describe('workflow store isolation', () => {
   test('reset the global workflow store so later test files never see a workflow left open by a negative-path test above', () => {
     _resetWorkflowsForTests();

@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { SemanticAnswerAction } from './rm-data.service';
 
 export type AgentWorkflowStatus = 'UNDERSTANDING' | 'NEEDS_CLARIFICATION' | 'PLANNING' | 'WAITING_APPROVAL' | 'EXECUTING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
@@ -19,6 +20,15 @@ export interface AgentResponse {
    * upgrade, Slice 5) instead of running its own approval flow — the UI opens the matching
    * banking form pre-filled with this draft rather than showing a WAITING_APPROVAL card. */
   commandId?: string;
+  /** Navigation CTA(s) for an ANSWERED/COMPLETED read response — same `target` vocabulary
+   * (OPEN_ACCOUNT, OPEN_LC_DETAIL, ...) the deterministic chat's SemanticAnswer already uses.
+   * Previously the Agent never returned these, so every Agent answer rendered as plain text with
+   * no CTA even when the underlying data (e.g. general_question reusing the same Semantic Engine)
+   * had one ready. See rm-message-builder.ts's buildAgentMessages(). */
+  action?: SemanticAnswerAction;
+  actions?: SemanticAnswerAction[];
+  records?: unknown[];
+  answerTitle?: string;
 }
 
 export interface AgentWorkflowRecord {
