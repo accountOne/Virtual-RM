@@ -21,6 +21,7 @@ import './reasoning-phase55.test';
 import './daily-dashboard.test';
 import './footprint.test';
 import './agent-semantic.test';
+import './commands-domain.test';
 
 // Login & Session Security upgrade — see docs/security/. Order matters here: fixtures.ts's
 // test must run first (it starts the shared Express app and logs in the three role fixtures

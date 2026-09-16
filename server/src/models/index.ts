@@ -346,3 +346,119 @@ export interface Loyalty {
   mPoints: number;
   vouchersRedeemed: number;
 }
+
+// ---------------------------------------------------------------------------
+// Maker/Checker Banking Command — see docs/MAKER_CHECKER_AUDIT.md.
+// Single persisted source of truth Maker and Checker both read — replaces the ad-hoc
+// Transaction/PaymentOrder/ApprovalRecord path for NEW commands (those models stay for
+// historical/seeded data and existing tests; nothing here deletes them).
+// ---------------------------------------------------------------------------
+
+export type CommandType = 'TRANSFER' | 'LC' | 'GUARANTEE' | 'COLLECTION';
+export type CommandStatus = 'DRAFT' | 'PENDING_CHECKER' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'FAILED';
+
+export type WarningSeverity = 'INFO' | 'WARNING' | 'HIGH' | 'BLOCKING';
+export type WarningSource = 'FRONTEND' | 'BACKEND' | 'BUSINESS_RULE';
+
+/** A single warning/blocking flag attached to a command. `code` is stable (never phrased
+ * text alone) so Maker and Checker UIs render from the exact same catalog entry — see
+ * domain/rules/warning-catalog.ts. `blocking: true` must always pair with
+ * `severity: 'BLOCKING'`; kept as two fields (not derived) so a stored warning is
+ * self-describing without re-reading the catalog. */
+export interface Warning {
+  code: string;
+  severity: WarningSeverity;
+  title: string;
+  message: string;
+  field?: string;
+  source: WarningSource;
+  blocking: boolean;
+}
+
+export interface ValidationError {
+  field: string;
+  code: string;
+  message: string;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: ValidationError[];
+  warnings: Warning[];
+  checkedAt: string;
+}
+
+export interface CommandSemanticData {
+  originalMessage?: string;
+  intent?: string;
+  entities?: Record<string, unknown>;
+  confidence?: number;
+}
+
+export interface BankingCommand {
+  id: string;
+  commandType: CommandType;
+  referenceNo: string;
+  makerUserId: string;
+  makerName: string;
+  checkerUserId?: string;
+  checkerName?: string;
+  status: CommandStatus;
+  formData: Record<string, unknown>;
+  semanticData?: CommandSemanticData;
+  validationResult: ValidationResult;
+  warnings: Warning[];
+  /** Bumped on every formData change after the first save — a Checker viewing a command
+   * always sees the version they're approving; approve revalidates against the CURRENT
+   * version, never a cached one (spec §12/§16.5). */
+  version: number;
+  /** Fresh key minted at PENDING_CHECKER — same double-defense pattern as the Agent's own
+   * workflow idempotencyKey (server/src/agent/workflow-engine.ts): approve must echo it back,
+   * independent of the status-machine guard that already prevents a double transition. */
+  idempotencyKey?: string;
+  executionResult?: unknown;
+  createdAt: string;
+  updatedAt: string;
+  submittedAt?: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  rejectReason?: string;
+}
+
+/** Snapshot of formData/validation/warnings taken at the moment a command was submitted to
+ * the Checker — spec §12: if a Maker edits a DRAFT again after submitting, the Checker must
+ * never silently see the edited data without a new version/snapshot. */
+export interface CommandSnapshot {
+  id: string;
+  commandId: string;
+  version: number;
+  formData: Record<string, unknown>;
+  validationResult: ValidationResult;
+  warnings: Warning[];
+  submittedBy: string;
+  submittedAt: string;
+}
+
+export type AuditEventType =
+  | 'DRAFT_CREATED'
+  | 'FIELD_UPDATED'
+  | 'VALIDATED'
+  | 'SUBMITTED'
+  | 'VIEWED_BY_CHECKER'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'EXECUTED'
+  | 'FAILED';
+
+export interface AuditEvent {
+  id: string;
+  commandId: string;
+  eventType: AuditEventType;
+  actorUserId: string;
+  actorRole: 'MAKER' | 'CHECKER' | 'ADMIN' | 'SYSTEM';
+  oldStatus?: string;
+  newStatus?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}

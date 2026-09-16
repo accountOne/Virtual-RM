@@ -6,6 +6,7 @@ import { alertsRepository } from './alerts.repository';
 import { productsRepository } from './products.repository';
 import { recommendationsRepository } from './recommendations.repository';
 import { rmMessagesRepository } from './rm-messages.repository';
+import { auditEventsRepository, bankingCommandsRepository, commandSnapshotsRepository } from './commands.repository';
 import {
   approvalsRepository,
   bankGuaranteesRepository,
@@ -31,6 +32,7 @@ export * from './products.repository';
 export * from './recommendations.repository';
 export * from './rm-messages.repository';
 export * from './semantic-data.repository';
+export * from './commands.repository';
 
 /** All repositories that support reset-to-seed, used by the admin "Reset Demo Data" action.
  * fx-rates.json is intentionally excluded — it's static reference data with no admin edit
@@ -57,4 +59,7 @@ export const resettableRepositories = [
   payablesRepository,
   userProfilesRepository,
   loyaltyRepository,
+  bankingCommandsRepository,
+  commandSnapshotsRepository,
+  auditEventsRepository,
 ];
