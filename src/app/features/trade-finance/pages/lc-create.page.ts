@@ -1,18 +1,21 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { LcAssistService, PoExtractedFields } from '../../../core/services/lc-assist.service';
-import { TradeFinanceService } from '../../../core/services/trade-finance.service';
+import { BankingCommand, CommandsService } from '../../../core/services/commands.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { WarningPanelComponent } from '../../../shared/components/warning-panel/warning-panel.component';
 
 const STEP_LABELS = ['Thông tin cơ bản', 'Các bên liên quan', 'Giá trị & tiền tệ', 'Giao hàng', 'Chứng từ', 'Xem lại'];
 const REQUIRED_DOCUMENT_OPTIONS = ['COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_OF_LADING', 'CERTIFICATE_OF_ORIGIN', 'INSURANCE_CERTIFICATE'];
 
-/** Phase 7 — /trade-finance/lc/create. DEMO ONLY: submitting creates a mock record with
- * status PENDING_APPROVAL via POST /api/trade-finance/lc — this never issues a real LC
- * (spec §14's human-in-the-loop rule: Virtual RM/this form may prepare and submit a
- * request, never autonomously issue/approve one).
+/** Phase 7 — /trade-finance/lc/create. Maker/Checker upgrade (Slice 6): submitting now creates a
+ * real BankingCommand DRAFT (POST /api/commands) instead of writing straight to
+ * trade-finance.service.ts — a Checker has an actual approve/reject path for this now
+ * (docs/MAKER_CHECKER_AUDIT.md gap #2). DEMO ONLY: no real LC is issued until a Checker approves
+ * (spec §14's human-in-the-loop rule still holds, just enforced by a real second person now
+ * instead of only "never auto-issues").
  *
  * Phase 5.5 BRD alignment — LC PO-upload assistant (docs/phase-5.5-lc-assistant.md): the
  * Virtual RM chat can hand this page a partially-filled `form` via router state (read from
@@ -21,7 +24,7 @@ const REQUIRED_DOCUMENT_OPTIONS = ['COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_O
 @Component({
   selector: 'app-lc-create-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, WarningPanelComponent],
   template: `
     <div class="max-w-2xl mx-auto p-4 sm:p-6 space-y-5 pb-24">
       <div>
@@ -41,7 +44,7 @@ const REQUIRED_DOCUMENT_OPTIONS = ['COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_O
         ✨ Tạo đề nghị dễ dàng với Virtual RM — tải lên đơn hàng (PO), em điền form giúp anh/chị →
       </a>
 
-      <div class="flex items-center gap-1.5 flex-wrap">
+      <div class="flex items-center gap-1.5 flex-wrap" *ngIf="!submitted()">
         <span
           *ngFor="let label of stepLabels; let i = index"
           class="text-[11px] px-2.5 py-1 rounded-full"
@@ -51,7 +54,7 @@ const REQUIRED_DOCUMENT_OPTIONS = ['COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_O
         </span>
       </div>
 
-      <div class="card p-5 sm:p-6 space-y-4">
+      <div class="card p-5 sm:p-6 space-y-4" *ngIf="!submitted()">
         <ng-container [ngSwitch]="step()">
           <ng-container *ngSwitchCase="1">
             <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Loại LC</span>
@@ -124,7 +127,8 @@ const REQUIRED_DOCUMENT_OPTIONS = ['COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_O
               <div class="flex justify-between"><dt class="text-ink-400">Expiry</dt><dd>{{ form.expiryDate || '—' }}</dd></div>
               <div class="flex justify-between"><dt class="text-ink-400">Chứng từ</dt><dd>{{ form.requiredDocuments.length }} loại</dd></div>
             </dl>
-            <p class="text-xs text-ink-400 mt-3">Đây là demo — yêu cầu sẽ được tạo với trạng thái "Chờ phê duyệt", không phát hành LC thật.</p>
+            <app-warning-panel [warnings]="command()?.warnings ?? []" />
+            <p class="text-xs text-ink-400 mt-3">Đây là demo — yêu cầu sẽ được gửi tới Checker với trạng thái "Chờ duyệt", không phát hành LC thật.</p>
 
             <button type="button" class="text-xs font-medium text-brand-600 hover:text-brand-700 mt-3" (click)="toggleDraftPreview()">
               {{ draftMessage() ? '▲ Ẩn bản nháp điện LC' : '👁️ Xem bản nháp điện LC' }}
@@ -138,27 +142,35 @@ const REQUIRED_DOCUMENT_OPTIONS = ['COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_O
         </ng-container>
       </div>
 
-      <div class="flex justify-between">
+      <div class="flex justify-between" *ngIf="!submitted()">
         <button class="btn-secondary" *ngIf="step() > 1" (click)="step.set(step() - 1)">← Quay lại</button>
         <span *ngIf="step() === 1"></span>
-        <button class="btn-primary" *ngIf="step() < 6" (click)="step.set(step() + 1)">Tiếp tục →</button>
-        <button class="btn-primary" *ngIf="step() === 6" [disabled]="submitting()" (click)="submit()">Gửi yêu cầu phê duyệt</button>
+        <button class="btn-primary" *ngIf="step() < 6" [disabled]="checking()" (click)="nextStep()">{{ step() === 5 ? (checking() ? 'Đang kiểm tra...' : 'Kiểm tra & Xem lại →') : 'Tiếp tục →' }}</button>
+        <button class="btn-primary" *ngIf="step() === 6" [disabled]="submitting() || !canSubmit()" (click)="submit()">Gửi yêu cầu phê duyệt</button>
+      </div>
+
+      <div class="card p-6 text-center" *ngIf="submitted() && command() as cmd">
+        <div class="w-14 h-14 rounded-full bg-teal-50 text-positive flex items-center justify-center text-2xl mx-auto">✓</div>
+        <p class="text-base font-semibold text-ink-800 mt-3">Yêu cầu đã được gửi tới Checker</p>
+        <p class="text-sm text-ink-500 mt-1">{{ cmd.referenceNo }} — {{ form.amount | number }} {{ form.currency }} đang chờ phê duyệt.</p>
       </div>
     </div>
   `,
 })
 export class LcCreatePageComponent {
-  private readonly tf = inject(TradeFinanceService);
+  private readonly commands = inject(CommandsService);
   private readonly toast = inject(ToastService);
-  private readonly router = inject(Router);
   private readonly lcAssist = inject(LcAssistService);
 
   readonly stepLabels = STEP_LABELS;
   readonly documentOptions = REQUIRED_DOCUMENT_OPTIONS;
   readonly step = signal(1);
+  readonly checking = signal(false);
   readonly submitting = signal(false);
+  readonly submitted = signal(false);
   readonly prefilled = signal(false);
   readonly draftMessage = signal<string | null>(null);
+  readonly command = signal<BankingCommand | null>(null);
 
   readonly form = {
     type: 'IMPORT' as 'IMPORT' | 'EXPORT',
@@ -175,6 +187,16 @@ export class LcCreatePageComponent {
   };
 
   constructor() {
+    // Maker/Checker upgrade, Slice 6 — the Virtual RM Agent hands off a create_lc intent by
+    // navigating here with `{ commandId }` in router state (same mechanism as single-transfer
+    // .page.ts's own constructor, Slice 5). Takes priority over the PO-upload assistant's raw-
+    // field prefill below since a commandId means a real server-side draft already exists.
+    const state = history.state as { commandId?: string } | undefined;
+    if (state?.commandId) {
+      void this.loadDraft(state.commandId);
+      return;
+    }
+
     const prefill = history.state as Partial<PoExtractedFields> | undefined;
     if (prefill && (prefill.beneficiary || prefill.amount)) {
       if (prefill.type) this.form.type = prefill.type;
@@ -187,6 +209,17 @@ export class LcCreatePageComponent {
       if (prefill.expiryDate) this.form.expiryDate = prefill.expiryDate;
       if (prefill.requiredDocuments?.length) this.form.requiredDocuments = prefill.requiredDocuments;
       this.prefilled.set(true);
+    }
+  }
+
+  private async loadDraft(commandId: string): Promise<void> {
+    try {
+      const cmd = await this.commands.get(commandId);
+      this.command.set(cmd);
+      Object.assign(this.form, cmd.formData);
+      this.prefilled.set(true);
+    } catch {
+      this.toast.error('Không tải được bản nháp từ Virtual RM — vui lòng nhập lại thủ công.');
     }
   }
 
@@ -221,26 +254,55 @@ export class LcCreatePageComponent {
     }
   }
 
+  canSubmit(): boolean {
+    return !this.command()?.warnings.some((w) => w.blocking);
+  }
+
+  private formData(): Record<string, unknown> {
+    return {
+      type: this.form.type,
+      subType: this.form.subType,
+      beneficiary: this.form.beneficiary || 'Beneficiary (demo)',
+      applicant: this.form.applicant,
+      issuingBank: this.form.issuingBank,
+      advisingBank: this.form.advisingBank || undefined,
+      currency: this.form.currency,
+      amount: Number(this.form.amount) || 0,
+      latestShipmentDate: this.form.latestShipmentDate || new Date().toISOString().slice(0, 10),
+      expiryDate: this.form.expiryDate || new Date().toISOString().slice(0, 10),
+      requiredDocuments: this.form.requiredDocuments,
+    };
+  }
+
+  async nextStep(): Promise<void> {
+    if (this.step() !== 5) {
+      this.step.set(this.step() + 1);
+      return;
+    }
+    this.checking.set(true);
+    try {
+      const existing = this.command();
+      const cmd = existing ? await this.commands.updateDraft(existing.id, this.formData()) : await this.commands.create('LC', this.formData());
+      this.command.set(await this.commands.validate(cmd.id));
+      this.step.set(6);
+    } catch {
+      this.toast.error('Không thể kiểm tra yêu cầu — vui lòng thử lại.');
+    } finally {
+      this.checking.set(false);
+    }
+  }
+
   async submit(): Promise<void> {
+    const cmd = this.command();
+    if (!cmd) return;
     this.submitting.set(true);
     try {
-      const created = await this.tf.createLc({
-        type: this.form.type,
-        subType: this.form.subType,
-        beneficiary: this.form.beneficiary || 'Beneficiary (demo)',
-        applicant: this.form.applicant,
-        currency: this.form.currency,
-        amount: Number(this.form.amount) || 0,
-        issuingBank: this.form.issuingBank,
-        advisingBank: this.form.advisingBank || undefined,
-        latestShipmentDate: this.form.latestShipmentDate || new Date().toISOString().slice(0, 10),
-        expiryDate: this.form.expiryDate || new Date().toISOString().slice(0, 10),
-        requiredDocuments: this.form.requiredDocuments,
-      });
-      this.toast.success(`Đã gửi yêu cầu mở LC ${created.lcNumber} — chờ phê duyệt (mô phỏng).`);
-      this.router.navigateByUrl(`/trade-finance/lc/${created.lcNumber}`);
+      const submittedCmd = await this.commands.submit(cmd.id);
+      this.command.set(submittedCmd);
+      this.submitted.set(true);
+      this.toast.success(`Đã gửi yêu cầu mở LC ${submittedCmd.referenceNo} tới Checker.`);
     } catch (err) {
-      // BRD §26 — a Checker's request is rejected server-side (403) with the exact message
+      // BRD §26 — a Checker's own request is rejected server-side (403) with the exact message
       // the BRD specifies; surfaced here rather than a generic failure toast.
       const message = (err as { error?: { message?: string } })?.error?.message ?? 'Không thể gửi yêu cầu mở LC. Vui lòng thử lại.';
       this.toast.error(message);

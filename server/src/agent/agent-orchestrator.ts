@@ -5,6 +5,7 @@
 
 import { toUserContext, UserContext } from '../ai/types';
 import { findUser } from '../auth/user-store';
+import { CommandType } from '../models';
 import { answerQuery } from '../semantic/semantic-engine';
 import { SecurityContext } from '../semantic/types';
 import { commandsService } from '../services/commands.service';
@@ -19,7 +20,6 @@ import {
   buildClarificationQuestion,
   buildFailureMessage,
   buildGenericFallbackMessage,
-  buildPreviewMessage,
 } from './response-templates';
 import { AgentEntities, AgentIntent, EntityField, REQUIRED_FIELDS_BY_INTENT, WRITE_INTENTS } from './schemas/semantic-understanding.schema';
 import { AgentWorkflow, createWorkflow, findOpenWorkflowForUser, transition, WorkflowStatus } from './workflow-engine';
@@ -53,17 +53,6 @@ function looksLikeCancel(message: string): boolean {
   const normalized = message.trim().toLowerCase();
   return CANCEL_PHRASES.some((p) => normalized.includes(p));
 }
-
-// create_transfer is intentionally absent — it hands off to a BankingCommand draft
-// (handOffTransferDraft) instead of going through this map's draft/execute tool pair. The
-// underlying create_transfer_draft/execute_transfer AgentTools (agent-mock-tools.ts) still exist
-// and are still directly unit-tested (approval-gate.ts's own checklist), just no longer reachable
-// through the orchestrator's normal dispatch for this intent.
-const WRITE_TOOL_MAP: Partial<Record<AgentIntent, { draft: string; execute: string }>> = {
-  create_lc: { draft: 'create_lc_draft', execute: 'submit_lc_mock' },
-  create_guarantee: { draft: 'create_guarantee_draft', execute: 'submit_guarantee_mock' },
-  create_collection: { draft: 'create_collection_draft', execute: 'submit_collection_mock' },
-};
 
 const READ_TOOL_MAP: Partial<Record<AgentIntent, string>> = {
   check_balance: 'get_balance',
@@ -166,58 +155,116 @@ function planWrite(workflow: AgentWorkflow, intent: AgentIntent, entities: Agent
 
   transition(workflow.workflowId, 'PLANNING', { entities });
 
-  // Maker/Checker upgrade (docs/MAKER_CHECKER_AUDIT.md Slice 5) — create_transfer now hands off
-  // to a real BankingCommand draft instead of running the Agent's own Approval Gate
-  // (execute_transfer). LC/GUARANTEE/COLLECTION stay on the old draft-tool/WAITING_APPROVAL path
-  // until Slice 6 migrates them the same way.
-  if (intent === 'create_transfer') {
-    return handOffTransferDraft(workflow, entities, ctx, sessionId);
-  }
-
-  const map = WRITE_TOOL_MAP[intent]!;
-  try {
-    const draftTool = assertAgentToolAllowed(map.draft, ctx.role);
-    const preview = draftTool.execute(ctx, { entities }) as Record<string, unknown>;
-    const waiting = transition(workflow.workflowId, 'WAITING_APPROVAL', { toolName: map.execute, preview });
-    logEvent('agent.workflow.waiting_approval', { workflowId: waiting.workflowId, intent, toolName: map.execute });
-    return finalize(sessionId, {
-      status: 'WAITING_APPROVAL',
-      intent,
-      workflowId: waiting.workflowId,
-      idempotencyKey: waiting.idempotencyKey,
-      preview,
-      message: buildPreviewMessage(intent, preview),
-    });
-  } catch (err) {
-    transition(workflow.workflowId, 'FAILED', { error: err instanceof Error ? err.message : String(err) });
-    logEvent('agent.workflow.failed', { workflowId: workflow.workflowId, intent, stage: 'planning' });
-    clearWorkflowState(sessionId);
-    return finalize(sessionId, { status: 'FAILED', intent, workflowId: workflow.workflowId, message: buildFailureMessage() });
-  }
+  // Maker/Checker upgrade (docs/MAKER_CHECKER_AUDIT.md Slices 5+6) — every write intent hands off
+  // to a real BankingCommand draft instead of running the Agent's own Approval Gate. There is no
+  // longer a WAITING_APPROVAL destination for any write intent — the old draft-tool/execute-tool
+  // path (create_transfer_draft/execute_transfer, create_lc_draft/submit_lc_mock, etc.) is unused
+  // by the orchestrator now, though the underlying AgentTools still exist and are still directly
+  // unit-tested (approval-gate.ts's own checklist).
+  // Cast is sound: planWrite is only ever called for a write intent (WRITE_INTENTS.has(...) gates
+  // every call site — dispatchIntent and continueClarification's topic-unchanged path).
+  return handOffWriteIntent(intent as 'create_transfer' | 'create_lc' | 'create_guarantee' | 'create_collection', workflow, entities, ctx, sessionId);
 }
 
-/**
- * spec §7 "form-driven agent": once required entities (amount + beneficiaryName) are known, the
- * Agent's job is to PRE-FILL a real BankingCommand draft and hand off — never to draft its own
- * preview or wait for its own approval. The Maker completes whatever Gemini couldn't extract
- * (account number, bank, purpose — none of these have an entity field at all, by design: see
- * docs/SEMANTIC_MODEL.md) in the real banking form (Slice 3), which runs the exact same
- * validation/warning/submit path as a manually-typed transfer. The Agent's own workflow ends
- * here at COMPLETED — there is no WAITING_APPROVAL step left for this intent to reach.
- */
-function handOffTransferDraft(workflow: AgentWorkflow, entities: AgentEntities, ctx: UserContext, sessionId: string): AgentResponse {
-  try {
-    const amount = entities.amount ? Number(entities.amount.value) : undefined;
-    const beneficiaryName = entities.beneficiaryName ? String(entities.beneficiaryName.value) : undefined;
-    if (!amount || !beneficiaryName) throw new Error('handOffTransferDraft requires amount and beneficiaryName');
+const HANDOFF_COMMAND_TYPE: Record<'create_transfer' | 'create_lc' | 'create_guarantee' | 'create_collection', CommandType> = {
+  create_transfer: 'TRANSFER',
+  create_lc: 'LC',
+  create_guarantee: 'GUARANTEE',
+  create_collection: 'COLLECTION',
+};
 
-    const formData: Record<string, unknown> = { amount, beneficiaryName, currency: entities.currency ? String(entities.currency.value) : 'VND' };
-    if (entities.sourceAccount) formData['sourceAccount'] = String(entities.sourceAccount.value);
+/** Same LC/guarantee/collection defaults the standalone create-forms themselves already fall
+ * back to (lc-create.page.ts/guarantee-create.page.ts/collection-create.page.ts) — kept in sync
+ * by hand since front/back don't share constants in this codebase (established convention, see
+ * beneficiary-banks.ts's own header comment); duplicated here so a draft loaded into the real
+ * form looks exactly like one a Maker filled in by hand, not missing fields the form's own
+ * defaults would otherwise have caught. */
+function buildWriteFormData(intent: 'create_lc' | 'create_guarantee' | 'create_collection', entities: AgentEntities): Record<string, unknown> {
+  const str = (e: AgentEntities[keyof AgentEntities]) => (e ? String(e.value) : undefined);
+  const num = (e: AgentEntities[keyof AgentEntities]) => (e ? Number(e.value) : undefined);
+  const fallbackDate = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+
+  if (intent === 'create_lc') {
+    return {
+      type: 'IMPORT',
+      subType: str(entities.lcType)?.toUpperCase() === 'USANCE' ? 'USANCE' : 'SIGHT',
+      beneficiary: str(entities.beneficiary),
+      applicant: str(entities.applicant) ?? 'ABC Manufacturing JSC',
+      issuingBank: 'MSB',
+      advisingBank: '',
+      currency: str(entities.lcCurrency) ?? 'USD',
+      amount: num(entities.lcAmount),
+      latestShipmentDate: fallbackDate(30),
+      expiryDate: str(entities.expiryDate) ?? fallbackDate(45),
+      requiredDocuments: ['COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_OF_LADING'],
+    };
+  }
+  if (intent === 'create_guarantee') {
+    const typeRaw = str(entities.guaranteeType)?.toUpperCase();
+    const type = typeRaw === 'PERFORMANCE_BOND' || typeRaw === 'ADVANCE_PAYMENT' || typeRaw === 'PAYMENT_GUARANTEE' ? typeRaw : 'BID_BOND';
+    return {
+      type,
+      beneficiary: str(entities.beneficiary) ?? str(entities.beneficiaryName) ?? 'Beneficiary (demo)',
+      applicant: 'ABC Manufacturing JSC',
+      currency: str(entities.currency) ?? 'VND',
+      amount: num(entities.guaranteeAmount),
+      expiryDate: str(entities.expiryDate) ?? fallbackDate(90),
+    };
+  }
+  // create_collection
+  return {
+    type: 'EXPORT',
+    subType: str(entities.collectionType)?.toUpperCase() === 'DA' ? 'DA' : 'DP',
+    direction: 'OUTWARD',
+    drawer: 'ABC Manufacturing JSC',
+    drawee: str(entities.beneficiaryName) ?? str(entities.beneficiary) ?? 'Đối tác (demo)',
+    currency: str(entities.currency) ?? 'USD',
+    amount: num(entities.amount),
+    dueDate: str(entities.date) ?? fallbackDate(30),
+  };
+}
+
+const HANDOFF_FORM_ROUTE: Record<CommandType, string> = {
+  TRANSFER: 'form chuyển tiền',
+  LC: 'form mở LC (/trade-finance/lc/create)',
+  GUARANTEE: 'form phát hành bảo lãnh (/trade-finance/guarantees/create)',
+  COLLECTION: 'form tạo nhờ thu (/trade-finance/collections/create)',
+};
+
+/**
+ * spec §7 "form-driven agent": once required entities are known for ANY write intent, the
+ * Agent's job is to PRE-FILL a real BankingCommand draft and hand off — never to draft its own
+ * preview or wait for its own approval (docs/MAKER_CHECKER_AUDIT.md Slice 5 for create_transfer,
+ * Slice 6 for the other 3 — closing the same gap consistently for every write intent, not just
+ * transfer). The Maker completes whatever Gemini couldn't extract in the real banking form, which
+ * runs the exact same validation/warning/submit path as filling it in by hand. The Agent's own
+ * workflow ends here at COMPLETED — there is no WAITING_APPROVAL step left for any write intent.
+ */
+function handOffWriteIntent(intent: 'create_transfer' | 'create_lc' | 'create_guarantee' | 'create_collection', workflow: AgentWorkflow, entities: AgentEntities, ctx: UserContext, sessionId: string): AgentResponse {
+  const commandType = HANDOFF_COMMAND_TYPE[intent];
+  try {
+    let formData: Record<string, unknown>;
+    let summary: string;
+
+    if (intent === 'create_transfer') {
+      const amount = entities.amount ? Number(entities.amount.value) : undefined;
+      const beneficiaryName = entities.beneficiaryName ? String(entities.beneficiaryName.value) : undefined;
+      if (!amount || !beneficiaryName) throw new Error('create_transfer hand-off requires amount and beneficiaryName');
+      const currency = entities.currency ? String(entities.currency.value) : 'VND';
+      formData = { amount, beneficiaryName, currency };
+      if (entities.sourceAccount) formData['sourceAccount'] = String(entities.sourceAccount.value);
+      summary = `${formatAmount(amount, currency)} chuyển cho ${beneficiaryName}`;
+    } else {
+      formData = buildWriteFormData(intent, entities);
+      const required = REQUIRED_FIELDS_BY_INTENT[intent] ?? [];
+      if (required.some((f) => !entities[f])) throw new Error(`${intent} hand-off called before required entities were known`);
+      summary = `yêu cầu ${intent === 'create_lc' ? 'mở LC' : intent === 'create_guarantee' ? 'phát hành bảo lãnh' : 'tạo nhờ thu'}`;
+    }
 
     const displayName = findUser(ctx.userId)?.displayName ?? ctx.userId;
-    const draft = commandsService.createDraft({ userId: ctx.userId, displayName, role: ctx.role ?? 'MAKER' }, 'TRANSFER', formData, {
+    const draft = commandsService.createDraft({ userId: ctx.userId, displayName, role: ctx.role ?? 'MAKER' }, commandType, formData, {
       originalMessage: lastUserMessage(sessionId),
-      intent: 'create_transfer',
+      intent,
       entities: entities as unknown as Record<string, unknown>,
     });
 
@@ -226,21 +273,21 @@ function handOffTransferDraft(workflow: AgentWorkflow, entities: AgentEntities, 
     // already uses for read intents.
     transition(workflow.workflowId, 'EXECUTING');
     const completed = transition(workflow.workflowId, 'COMPLETED', { result: { commandId: draft.id, referenceNo: draft.referenceNo } });
-    logEvent('agent.workflow.completed', { workflowId: completed.workflowId, intent: 'create_transfer', commandId: draft.id });
+    logEvent('agent.workflow.completed', { workflowId: completed.workflowId, intent, commandId: draft.id });
     clearWorkflowState(sessionId);
 
     return finalize(sessionId, {
       status: 'ANSWERED',
-      intent: 'create_transfer',
+      intent,
       workflowId: completed.workflowId,
       commandId: draft.id,
-      message: `Em đã chuẩn bị sẵn ${formatAmount(amount, formData['currency'] as string)} chuyển cho ${beneficiaryName} trong form chuyển tiền (${draft.referenceNo}). Anh/chị mở form để bổ sung số tài khoản, ngân hàng thụ hưởng và mục đích chuyển tiền rồi gửi duyệt nhé.`,
+      message: `Em đã chuẩn bị sẵn ${summary} trong ${HANDOFF_FORM_ROUTE[commandType]} (${draft.referenceNo}). Anh/chị mở form để bổ sung/kiểm tra thông tin còn thiếu rồi gửi duyệt nhé.`,
     });
   } catch (err) {
     transition(workflow.workflowId, 'FAILED', { error: err instanceof Error ? err.message : String(err) });
-    logEvent('agent.workflow.failed', { workflowId: workflow.workflowId, intent: 'create_transfer', stage: 'planning' });
+    logEvent('agent.workflow.failed', { workflowId: workflow.workflowId, intent, stage: 'planning' });
     clearWorkflowState(sessionId);
-    return finalize(sessionId, { status: 'FAILED', intent: 'create_transfer', workflowId: workflow.workflowId, message: buildFailureMessage() });
+    return finalize(sessionId, { status: 'FAILED', intent, workflowId: workflow.workflowId, message: buildFailureMessage() });
   }
 }
 

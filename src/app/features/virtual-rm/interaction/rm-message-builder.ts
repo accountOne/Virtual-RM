@@ -371,18 +371,27 @@ function buildPreviewMetrics(preview: Record<string, unknown>): RMMetricItem[] {
 export function buildAgentMessages(response: AgentResponse): RMMessage[] {
   const now = Date.now();
 
-  // Maker/Checker upgrade, Slice 5 (spec §7 "form-driven agent") — create_transfer hands off to
-  // a real BankingCommand draft instead of the Agent's own WAITING_APPROVAL card. Reuses the same
-  // NAVIGATE+payload mechanism the LC PO-upload assistant already established for passing
-  // structured prefill data via router state (see lc-create.page.ts's own `history.state` read).
+  // Maker/Checker upgrade, Slices 5+6 (spec §7 "form-driven agent") — every write intent hands
+  // off to a real BankingCommand draft instead of the Agent's own WAITING_APPROVAL card. Reuses
+  // the same NAVIGATE+payload mechanism the LC PO-upload assistant already established for
+  // passing structured prefill data via router state (see lc-create.page.ts's own
+  // `history.state` read) — each form reads `commandId` the same way single-transfer.page.ts
+  // does and loads the real draft from the server.
   if (response.commandId) {
+    const routeByIntent: Partial<Record<string, { route: string; label: string }>> = {
+      create_transfer: { route: '/payments/single-transfer', label: 'Mở form chuyển tiền' },
+      create_lc: { route: '/trade-finance/lc/create', label: 'Mở form mở LC' },
+      create_guarantee: { route: '/trade-finance/guarantees/create', label: 'Mở form phát hành bảo lãnh' },
+      create_collection: { route: '/trade-finance/collections/create', label: 'Mở form tạo nhờ thu' },
+    };
+    const target = routeByIntent[response.intent ?? ''] ?? routeByIntent['create_transfer']!;
     return [
       {
         id: nextId('agent-form-handoff'),
         from: 'RM',
         type: 'ACTION',
         content: response.message,
-        actions: [{ label: 'Mở form chuyển tiền', type: 'NAVIGATE', route: '/payments/single-transfer', payload: { commandId: response.commandId } }],
+        actions: [{ label: target.label, type: 'NAVIGATE', route: target.route, payload: { commandId: response.commandId } }],
         timestamp: now,
       },
     ];

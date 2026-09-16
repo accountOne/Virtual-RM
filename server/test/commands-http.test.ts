@@ -13,9 +13,9 @@
 import { assert, assertEqual, describe, test } from './test-runner';
 import { getAdminClient, getCheckerClient, getMakerClient } from './security/fixtures';
 import { TestClient } from './security/http-client';
-import { accountsRepository, auditEventsRepository, bankingCommandsRepository, commandSnapshotsRepository, transactionsRepository } from '../src/repositories';
+import { accountsRepository, auditEventsRepository, bankGuaranteesRepository, bankingCommandsRepository, collectionsRepository, commandSnapshotsRepository, letterOfCreditsRepository, transactionsRepository } from '../src/repositories';
 import { commandsService, CommandActor } from '../src/services/commands.service';
-import { BankingCommand } from '../src/models';
+import { BankingCommand, CommandType } from '../src/models';
 
 interface CommandBody {
   id: string;
@@ -36,6 +36,9 @@ const originalTransactions = transactionsRepository.readAll();
 const originalCommands = bankingCommandsRepository.readAll();
 const originalSnapshots = commandSnapshotsRepository.readAll();
 const originalAuditEvents = auditEventsRepository.readAll();
+const originalLcs = letterOfCreditsRepository.readAll();
+const originalGuarantees = bankGuaranteesRepository.readAll();
+const originalCollections = collectionsRepository.readAll();
 
 function transferFormData(overrides: Record<string, unknown> = {}) {
   return {
@@ -56,6 +59,11 @@ function transferFormData(overrides: Record<string, unknown> = {}) {
  * itself. */
 function buildSubmittedCommand(actor: CommandActor, overrides: Record<string, unknown> = {}): BankingCommand {
   const draft = commandsService.createDraft(actor, 'TRANSFER', transferFormData(overrides));
+  return commandsService.submit(draft, actor);
+}
+
+function buildSubmittedCommandOfType(actor: CommandActor, commandType: CommandType, formData: Record<string, unknown>): BankingCommand {
+  const draft = commandsService.createDraft(actor, commandType, formData);
   return commandsService.submit(draft, actor);
 }
 
@@ -235,6 +243,81 @@ describe('Scenario 9 — Checker cannot edit form data', () => {
   });
 });
 
+describe('Slice 6 — LC/Guarantee/Collection now have a real approve path (audit gap #2)', () => {
+  test('LC: approve creates a real LetterOfCredit via the existing trade-finance.service.ts', async () => {
+    const submitted = buildSubmittedCommandOfType(MAKER, 'LC', {
+      type: 'IMPORT',
+      subType: 'SIGHT',
+      beneficiary: 'Global Trading Co',
+      currency: 'USD',
+      amount: 40_000,
+      latestShipmentDate: '2026-11-01',
+      expiryDate: '2026-11-30',
+      requiredDocuments: ['COMMERCIAL_INVOICE'],
+    });
+    const before = letterOfCreditsRepository.readAll().length;
+    const res = await getCheckerClient().post<CommandBody & { executionResult?: { lcNumber?: string } }>(`/api/checker/commands/${submitted.id}/approve`, { idempotencyKey: submitted.idempotencyKey });
+    assertEqual(res.status, 200);
+    assertEqual(res.body.status, 'APPROVED');
+    assert(!!res.body.executionResult?.lcNumber, 'expected a real lcNumber in executionResult');
+    assertEqual(letterOfCreditsRepository.readAll().length, before + 1);
+  });
+
+  test('LC: reject leaves no LetterOfCredit created', async () => {
+    const submitted = buildSubmittedCommandOfType(MAKER, 'LC', {
+      type: 'EXPORT',
+      subType: 'SIGHT',
+      beneficiary: 'Another Co',
+      currency: 'USD',
+      amount: 10_000,
+      latestShipmentDate: '2026-11-01',
+      expiryDate: '2026-11-30',
+    });
+    const before = letterOfCreditsRepository.readAll().length;
+    const res = await getCheckerClient().post(`/api/checker/commands/${submitted.id}/reject`, { reason: 'Thiếu chứng từ' });
+    assertEqual(res.status, 200);
+    assertEqual(letterOfCreditsRepository.readAll().length, before);
+  });
+
+  test('GUARANTEE: approve creates a real BankGuarantee', async () => {
+    const submitted = buildSubmittedCommandOfType(MAKER, 'GUARANTEE', {
+      type: 'PERFORMANCE_BOND',
+      beneficiary: 'Global Trading Co',
+      currency: 'VND',
+      amount: 50_000_000,
+      expiryDate: '2026-12-31',
+    });
+    const before = bankGuaranteesRepository.readAll().length;
+    const res = await getCheckerClient().post<CommandBody & { executionResult?: { bgNumber?: string } }>(`/api/checker/commands/${submitted.id}/approve`, { idempotencyKey: submitted.idempotencyKey });
+    assertEqual(res.status, 200);
+    assert(!!res.body.executionResult?.bgNumber, 'expected a real bgNumber in executionResult');
+    assertEqual(bankGuaranteesRepository.readAll().length, before + 1);
+  });
+
+  test('COLLECTION: approve creates a real Collection', async () => {
+    const submitted = buildSubmittedCommandOfType(MAKER, 'COLLECTION', {
+      type: 'EXPORT',
+      subType: 'DP',
+      direction: 'OUTWARD',
+      drawer: 'ABC Manufacturing JSC',
+      drawee: 'Global Trading Co',
+      currency: 'USD',
+      amount: 15_000,
+      dueDate: '2027-01-15',
+    });
+    const before = collectionsRepository.readAll().length;
+    const res = await getCheckerClient().post<CommandBody & { executionResult?: { collectionNumber?: string } }>(`/api/checker/commands/${submitted.id}/approve`, { idempotencyKey: submitted.idempotencyKey });
+    assertEqual(res.status, 200);
+    assert(!!res.body.executionResult?.collectionNumber, 'expected a real collectionNumber in executionResult');
+    assertEqual(collectionsRepository.readAll().length, before + 1);
+  });
+
+  test('a Checker still cannot CREATE an LC command (role gate unchanged)', async () => {
+    const res = await getCheckerClient().post('/api/commands', { commandType: 'LC', formData: {} });
+    assertEqual(res.status, 403);
+  });
+});
+
 describe("Ownership — a Maker cannot see or act on another user's draft", () => {
   test('a non-owner Maker gets 404 on GET /api/commands/:id (not leaked as 403)', async () => {
     // Only one MAKER demo user exists — use the ADMIN-created draft (a genuinely different
@@ -252,6 +335,9 @@ describe('Maker/Checker upgrade — cleanup', () => {
     bankingCommandsRepository.writeAll(originalCommands);
     commandSnapshotsRepository.writeAll(originalSnapshots);
     auditEventsRepository.writeAll(originalAuditEvents);
+    letterOfCreditsRepository.writeAll(originalLcs);
+    bankGuaranteesRepository.writeAll(originalGuarantees);
+    collectionsRepository.writeAll(originalCollections);
     assertEqual(accountsRepository.readAll().length, originalAccounts.length);
     assertEqual(transactionsRepository.readAll().length, originalTransactions.length);
     assertEqual(bankingCommandsRepository.readAll().length, originalCommands.length);

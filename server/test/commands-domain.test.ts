@@ -35,21 +35,20 @@ describe('reference-data/beneficiary-banks', () => {
   });
 });
 
-describe('validation-engine — commandType gating (Slice 6 not wired yet)', () => {
-  test('TRANSFER is supported', () => {
-    assertEqual(isCommandTypeSupported('TRANSFER'), true);
-  });
-  test('LC/GUARANTEE/COLLECTION are not supported yet — validateCommand throws rather than silently passing', () => {
-    for (const type of ['LC', 'GUARANTEE', 'COLLECTION'] as const) {
-      assertEqual(isCommandTypeSupported(type), false);
-      let threw = false;
-      try {
-        validateCommand(type, {}, { actorUserId: MAKER_ID, existingCommands: [] });
-      } catch (e) {
-        threw = e instanceof UnsupportedCommandTypeError;
-      }
-      assert(threw, `expected UnsupportedCommandTypeError for ${type}`);
+describe('validation-engine — commandType gating', () => {
+  test('all 4 command types are supported (Slice 6 wired LC/GUARANTEE/COLLECTION)', () => {
+    for (const type of ['TRANSFER', 'LC', 'GUARANTEE', 'COLLECTION'] as const) {
+      assertEqual(isCommandTypeSupported(type), true);
     }
+  });
+  test('an unknown commandType still throws rather than silently passing', () => {
+    let threw = false;
+    try {
+      validateCommand('NOT_A_TYPE' as never, {}, { actorUserId: MAKER_ID, existingCommands: [] });
+    } catch (e) {
+      threw = e instanceof UnsupportedCommandTypeError;
+    }
+    assert(threw, 'expected UnsupportedCommandTypeError for an unknown type');
   });
 });
 
@@ -137,6 +136,101 @@ describe('validation-engine — TRANSFER', () => {
     };
     const result = validateCommand('TRANSFER', form, { actorUserId: MAKER_ID, existingCommands: [existing] });
     assert(!result.warnings.some((w) => w.code === 'DUPLICATE_TRANSACTION_WARNING'), 'must not flag duplicate across different makers');
+  });
+});
+
+function validLcForm(overrides: Record<string, unknown> = {}) {
+  return {
+    type: 'IMPORT',
+    subType: 'SIGHT',
+    beneficiary: 'Global Trading Co',
+    currency: 'USD',
+    amount: 50_000,
+    latestShipmentDate: '2026-11-01',
+    expiryDate: '2026-11-30',
+    requiredDocuments: ['COMMERCIAL_INVOICE'],
+    ...overrides,
+  };
+}
+
+describe('validation-engine — LC (Slice 6)', () => {
+  test('a fully valid LC form passes with no warnings', () => {
+    const result = validateCommand('LC', validLcForm(), { actorUserId: MAKER_ID, existingCommands: [] });
+    assertEqual(result.valid, true);
+    assertEqual(result.warnings.length, 0);
+  });
+
+  test('missing beneficiary is a schema ValidationError', () => {
+    const result = validateCommand('LC', validLcForm({ beneficiary: '' }), { actorUserId: MAKER_ID, existingCommands: [] });
+    assertEqual(result.valid, false);
+    assert(result.errors.some((e) => e.field === 'beneficiary'));
+  });
+
+  test('expiryDate before latestShipmentDate raises a BLOCKING warning', () => {
+    const result = validateCommand('LC', validLcForm({ latestShipmentDate: '2026-12-01', expiryDate: '2026-11-01' }), { actorUserId: MAKER_ID, existingCommands: [] });
+    const w = result.warnings.find((w) => w.code === 'LC_EXPIRY_BEFORE_SHIPMENT');
+    assert(!!w && w.blocking);
+    assertEqual(result.valid, false);
+  });
+
+  test('no required documents raises a non-blocking warning', () => {
+    const result = validateCommand('LC', validLcForm({ requiredDocuments: [] }), { actorUserId: MAKER_ID, existingCommands: [] });
+    const w = result.warnings.find((w) => w.code === 'LC_NO_REQUIRED_DOCUMENTS');
+    assert(!!w && !w.blocking);
+    assertEqual(result.valid, true);
+  });
+});
+
+function validGuaranteeForm(overrides: Record<string, unknown> = {}) {
+  return {
+    type: 'PERFORMANCE_BOND',
+    beneficiary: 'Global Trading Co',
+    currency: 'VND',
+    amount: 100_000_000,
+    expiryDate: '2026-12-31',
+    ...overrides,
+  };
+}
+
+describe('validation-engine — GUARANTEE (Slice 6)', () => {
+  test('a fully valid guarantee form passes', () => {
+    const result = validateCommand('GUARANTEE', validGuaranteeForm(), { actorUserId: MAKER_ID, existingCommands: [] });
+    assertEqual(result.valid, true);
+  });
+
+  test('amount over the available TRADE_FINANCE limit raises a non-blocking warning', () => {
+    const result = validateCommand('GUARANTEE', validGuaranteeForm({ amount: 999_000_000_000 }), { actorUserId: MAKER_ID, existingCommands: [] });
+    const w = result.warnings.find((w) => w.code === 'GUARANTEE_LIMIT_WARNING');
+    assert(!!w && !w.blocking, 'expected a non-blocking GUARANTEE_LIMIT_WARNING');
+    assertEqual(result.valid, true);
+  });
+});
+
+function validCollectionForm(overrides: Record<string, unknown> = {}) {
+  return {
+    type: 'EXPORT',
+    subType: 'DP',
+    direction: 'OUTWARD',
+    drawer: 'ABC Manufacturing JSC',
+    drawee: 'Global Trading Co',
+    currency: 'USD',
+    amount: 20_000,
+    dueDate: '2027-01-15',
+    ...overrides,
+  };
+}
+
+describe('validation-engine — COLLECTION (Slice 6)', () => {
+  test('a fully valid collection form passes', () => {
+    const result = validateCommand('COLLECTION', validCollectionForm(), { actorUserId: MAKER_ID, existingCommands: [] });
+    assertEqual(result.valid, true);
+  });
+
+  test('a due date in the past raises a non-blocking warning', () => {
+    const result = validateCommand('COLLECTION', validCollectionForm({ dueDate: '2020-01-01' }), { actorUserId: MAKER_ID, existingCommands: [] });
+    const w = result.warnings.find((w) => w.code === 'COLLECTION_DUE_DATE_PAST');
+    assert(!!w && !w.blocking);
+    assertEqual(result.valid, true);
   });
 });
 

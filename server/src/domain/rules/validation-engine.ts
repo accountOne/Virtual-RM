@@ -4,14 +4,22 @@
 // RM previewing a draft — never re-implemented per caller, which is exactly what spec §11 means
 // by "warning phải nhất quán giữa Maker và Checker".
 
+import { z } from 'zod';
 import { CommandType, ValidationResult } from '../../models';
+import { CollectionFormSchema, validateCollection } from './collection.rules';
+import { GuaranteeFormSchema, validateGuarantee } from './guarantee.rules';
+import { LcFormSchema, validateLc } from './lc.rules';
 import { TransferFormSchema, validateTransfer } from './transfer.rules';
 import { RuleContext } from './validation-engine.types';
 
-/** Commands types with a rule file wired in so far — LC/GUARANTEE/COLLECTION are added in
- * Slice 6 (docs/MAKER_CHECKER_AUDIT.md §7); calling validateCommand with one of those today
- * throws rather than silently returning `valid: true`. */
-const SUPPORTED_COMMAND_TYPES: ReadonlySet<CommandType> = new Set(['TRANSFER']);
+const SUPPORTED_COMMAND_TYPES: ReadonlySet<CommandType> = new Set(['TRANSFER', 'LC', 'GUARANTEE', 'COLLECTION']);
+
+const SCHEMA_BY_TYPE: Record<CommandType, z.ZodTypeAny> = {
+  TRANSFER: TransferFormSchema,
+  LC: LcFormSchema,
+  GUARANTEE: GuaranteeFormSchema,
+  COLLECTION: CollectionFormSchema,
+};
 
 export function isCommandTypeSupported(commandType: CommandType): boolean {
   return SUPPORTED_COMMAND_TYPES.has(commandType);
@@ -32,9 +40,9 @@ export class UnsupportedCommandTypeError extends Error {
  * copy, so a stored command always reflects exactly what the Maker submitted.
  */
 export function validateCommand(commandType: CommandType, formData: Record<string, unknown>, ctx: RuleContext): ValidationResult {
-  if (commandType !== 'TRANSFER') throw new UnsupportedCommandTypeError(commandType);
+  if (!isCommandTypeSupported(commandType)) throw new UnsupportedCommandTypeError(commandType);
 
-  const parsed = TransferFormSchema.safeParse(formData);
+  const parsed = SCHEMA_BY_TYPE[commandType].safeParse(formData);
   const checkedAt = new Date().toISOString();
 
   if (!parsed.success) {
@@ -46,7 +54,18 @@ export function validateCommand(commandType: CommandType, formData: Record<strin
     return { valid: false, errors, warnings: [], checkedAt };
   }
 
-  const { warnings } = validateTransfer(parsed.data, ctx);
+  // `parsed.data`'s type is `unknown` here because SCHEMA_BY_TYPE is keyed generically — but the
+  // schema actually used to produce it was already selected by the SAME commandType switch below,
+  // so the cast is sound: each branch's schema matches its validate function's expected input.
+  const data = parsed.data as never;
+  const { warnings } =
+    commandType === 'TRANSFER'
+      ? validateTransfer(data, ctx)
+      : commandType === 'LC'
+        ? validateLc(data, ctx)
+        : commandType === 'GUARANTEE'
+          ? validateGuarantee(data, ctx)
+          : validateCollection(data, ctx);
   const blocking = warnings.some((w) => w.blocking);
   return { valid: !blocking, errors: [], warnings, checkedAt };
 }

@@ -334,6 +334,76 @@ describe('agent-mock-tools — read tools use real seeded data, execute_transfer
   });
 });
 
+describe('agent-orchestrator — LC/GUARANTEE/COLLECTION also hand off to BankingCommand drafts (Slice 6)', () => {
+  const HANDOFF_SESSION = 'test-agent-tradefinance-handoff';
+  const originalCommands = bankingCommandsRepository.readAll();
+  const security = { companyId: MAKER_CTX.companyId, userId: MAKER_CTX.userId, role: MAKER_CTX.role };
+
+  test('create_lc hands off to a real LC BankingCommand draft with the extracted entities', async () => {
+    _resetAgentConversationsForTests();
+    const understanding: Understanding = {
+      intent: 'create_lc',
+      confidence: 0.9,
+      entities: {
+        lcType: { value: 'SIGHT', confidence: 0.9, source: 'user_message' },
+        lcAmount: { value: 25_000, confidence: 0.9, source: 'user_message' },
+        lcCurrency: { value: 'USD', confidence: 0.9, source: 'user_message' },
+        beneficiary: { value: 'Test Beneficiary Co', confidence: 0.9, source: 'user_message' },
+      },
+    };
+    const response = await dispatchIntent(understanding, MAKER_CTX, security, HANDOFF_SESSION);
+    assertEqual(response.status, 'ANSWERED');
+    assert(!!response.commandId, 'expected a commandId');
+    const command = bankingCommandsRepository.findById(response.commandId!);
+    assert(!!command, 'expected the BankingCommand to exist');
+    assertEqual(command!.commandType, 'LC');
+    assertEqual(command!.status, 'DRAFT');
+    assertEqual((command!.formData as { beneficiary: string }).beneficiary, 'Test Beneficiary Co');
+    assertEqual((command!.formData as { amount: number }).amount, 25_000);
+  });
+
+  test('create_guarantee hands off to a real GUARANTEE BankingCommand draft', async () => {
+    _resetAgentConversationsForTests();
+    const understanding: Understanding = {
+      intent: 'create_guarantee',
+      confidence: 0.9,
+      entities: {
+        guaranteeType: { value: 'BID_BOND', confidence: 0.9, source: 'user_message' },
+        guaranteeAmount: { value: 80_000_000, confidence: 0.9, source: 'user_message' },
+      },
+    };
+    const response = await dispatchIntent(understanding, MAKER_CTX, security, HANDOFF_SESSION);
+    assert(!!response.commandId, 'expected a commandId');
+    const command = bankingCommandsRepository.findById(response.commandId!);
+    assertEqual(command!.commandType, 'GUARANTEE');
+    assertEqual((command!.formData as { amount: number }).amount, 80_000_000);
+  });
+
+  test('create_collection hands off to a real COLLECTION BankingCommand draft', async () => {
+    _resetAgentConversationsForTests();
+    const understanding: Understanding = {
+      intent: 'create_collection',
+      confidence: 0.9,
+      entities: {
+        collectionType: { value: 'DP', confidence: 0.9, source: 'user_message' },
+        amount: { value: 12_000, confidence: 0.9, source: 'user_message' },
+      },
+    };
+    const response = await dispatchIntent(understanding, MAKER_CTX, security, HANDOFF_SESSION);
+    assert(!!response.commandId, 'expected a commandId');
+    const command = bankingCommandsRepository.findById(response.commandId!);
+    assertEqual(command!.commandType, 'COLLECTION');
+    assertEqual((command!.formData as { amount: number }).amount, 12_000);
+  });
+
+  test('cleanup: bankingCommandsRepository restored, workflow store reset', () => {
+    bankingCommandsRepository.writeAll(originalCommands);
+    _resetWorkflowsForTests();
+    _resetAgentConversationsForTests();
+    assertEqual(bankingCommandsRepository.readAll().length, originalCommands.length);
+  });
+});
+
 describe('agent-orchestrator — create_transfer hands off to a BankingCommand draft (Maker/Checker upgrade Slice 5)', () => {
   const HANDOFF_SESSION = 'test-agent-transfer-handoff';
   const originalCommands = bankingCommandsRepository.readAll();

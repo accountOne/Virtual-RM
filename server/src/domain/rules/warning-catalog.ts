@@ -52,6 +52,18 @@ export const WARNING_CATALOG: Record<string, WarningCatalogEntry> = {
     'Phát hiện một lệnh chuyển tiền khác cùng người thụ hưởng và số tiền vừa được tạo gần đây — vui lòng kiểm tra tránh gửi trùng.',
   ),
   SAME_MAKER_CHECKER: entry('SAME_MAKER_CHECKER', 'BLOCKING', 'Không thể tự duyệt lệnh của chính mình', 'Người khởi tạo và người phê duyệt không được là cùng một người.', 'BACKEND'),
+
+  // ---- LC / Guarantee / Collection (Slice 6 — docs/MAKER_CHECKER_AUDIT.md §7) --------------
+  LC_BENEFICIARY_REQUIRED: entry('LC_BENEFICIARY_REQUIRED', 'BLOCKING', 'Thiếu người thụ hưởng', 'Vui lòng nhập tên đơn vị thụ hưởng LC.'),
+  LC_EXPIRY_BEFORE_SHIPMENT: entry('LC_EXPIRY_BEFORE_SHIPMENT', 'BLOCKING', 'Ngày hết hạn không hợp lệ', 'Ngày hết hạn LC phải sau ngày giao hàng muộn nhất.'),
+  LC_NO_REQUIRED_DOCUMENTS: entry('LC_NO_REQUIRED_DOCUMENTS', 'WARNING', 'Chưa chọn chứng từ yêu cầu', 'LC chưa có chứng từ yêu cầu nào — Checker sẽ cần xem xét kỹ hơn.'),
+  GUARANTEE_LIMIT_WARNING: entry(
+    'GUARANTEE_LIMIT_WARNING',
+    'WARNING',
+    'Vượt hạn mức bảo lãnh khả dụng',
+    (ctx) => `Giá trị vượt hạn mức Trade Finance khả dụng (${formatMoney(ctx?.available)} ${ctx?.currency ?? ''}) — vẫn có thể gửi, Checker sẽ xem xét kỹ hơn.`,
+  ),
+  COLLECTION_DUE_DATE_PAST: entry('COLLECTION_DUE_DATE_PAST', 'WARNING', 'Ngày đến hạn đã qua', 'Ngày đến hạn nhờ thu đã ở trong quá khứ — vui lòng kiểm tra lại.'),
 };
 
 /** Builds a stored Warning from a catalog entry — the ONE place a rule file turns a code into

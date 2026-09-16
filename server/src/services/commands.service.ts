@@ -11,6 +11,7 @@ import { AuditEvent, AuditEventType, BankingCommand, CommandSemanticData, Comman
 import { validateCommand } from '../domain/rules/validation-engine';
 import { assertTransition } from '../domain/command-workflow';
 import { getAnchorDates } from './transactions.service';
+import { tradeFinanceService } from './trade-finance.service';
 
 export interface CommandActor {
   userId: string;
@@ -260,9 +261,19 @@ export const commandsService = {
  * PENDING_CHECKER phase already represents "not yet executed", so unlike the old Transaction
  * model there is no separate PENDING_APPROVAL ledger entry to reconcile afterward. */
 function executeApprovedCommand(command: BankingCommand): unknown {
-  if (command.commandType !== 'TRANSFER') {
-    throw new Error(`Execution for command type "${command.commandType}" is not implemented yet.`);
+  switch (command.commandType) {
+    case 'TRANSFER':
+      return executeTransfer(command);
+    case 'LC':
+      return executeLc(command);
+    case 'GUARANTEE':
+      return executeGuarantee(command);
+    case 'COLLECTION':
+      return executeCollection(command);
   }
+}
+
+function executeTransfer(command: BankingCommand): unknown {
   const form = command.formData as { sourceAccount: string; amount: number; currency: string; beneficiaryName: string; transferDescription?: string; transferPurpose: string };
   const accounts = accountsRepository.readAll();
   const account = accounts.find((a) => a.id === form.sourceAccount || a.accountNumber === form.sourceAccount);
@@ -287,4 +298,53 @@ function executeApprovedCommand(command: BankingCommand): unknown {
   transactionsRepository.writeAll([...transactionsRepository.readAll(), transaction]);
 
   return { transactionId: transaction.id, referenceNo: command.referenceNo };
+}
+
+/** LC/Guarantee/Collection execution all reuse the EXISTING trade-finance.service.ts creation
+ * functions (unchanged since Phase 7) — Checker approval is the new gate in front of them, not a
+ * reimplementation of what they already do. */
+function executeLc(command: BankingCommand): unknown {
+  const form = command.formData as {
+    type: 'IMPORT' | 'EXPORT';
+    subType: 'SIGHT' | 'USANCE' | 'DEFERRED_PAYMENT' | 'TRANSFERABLE' | 'STANDBY';
+    beneficiary: string;
+    applicant?: string;
+    issuingBank?: string;
+    advisingBank?: string;
+    currency: string;
+    amount: number;
+    latestShipmentDate: string;
+    expiryDate: string;
+    requiredDocuments?: string[];
+  };
+  const lc = tradeFinanceService.createLc(form);
+  return { lcNumber: lc.lcNumber, referenceNo: command.referenceNo };
+}
+
+function executeGuarantee(command: BankingCommand): unknown {
+  const form = command.formData as {
+    type: 'BID_BOND' | 'PERFORMANCE_BOND' | 'ADVANCE_PAYMENT' | 'PAYMENT_GUARANTEE' | 'WARRANTY' | 'CUSTOMS' | 'TAX' | 'OTHER';
+    beneficiary: string;
+    applicant?: string;
+    currency: string;
+    amount: number;
+    expiryDate: string;
+  };
+  const bg = tradeFinanceService.createGuarantee(form);
+  return { bgNumber: bg.bgNumber, referenceNo: command.referenceNo };
+}
+
+function executeCollection(command: BankingCommand): unknown {
+  const form = command.formData as {
+    type: 'IMPORT' | 'EXPORT';
+    subType: 'DP' | 'DA';
+    direction: 'INWARD' | 'OUTWARD';
+    drawer: string;
+    drawee: string;
+    currency: string;
+    amount: number;
+    dueDate: string;
+  };
+  const col = tradeFinanceService.createCollection(form);
+  return { collectionNumber: col.collectionNumber, referenceNo: command.referenceNo };
 }

@@ -159,8 +159,13 @@ export class ApprovalPageComponent implements OnInit {
     return { TRANSFER: 'Chuyển tiền', LC: 'Thư tín dụng', GUARANTEE: 'Bảo lãnh', COLLECTION: 'Nhờ thu' }[type];
   }
 
+  /** LC/Guarantee formData uses `beneficiary`, Collection uses `drawee` (its actual counterparty
+   * field) — Transfer is the only type with a `beneficiaryName` field. Checked in this order so
+   * the queue's "Người thụ hưởng" column reads sensibly for every commandType without needing a
+   * per-type branch in the template. */
   beneficiaryName(c: BankingCommand): string {
-    return (c.formData as { beneficiaryName?: string }).beneficiaryName ?? '—';
+    const data = c.formData as { beneficiaryName?: string; beneficiary?: string; drawee?: string };
+    return data.beneficiaryName ?? data.beneficiary ?? data.drawee ?? '—';
   }
 
   amount(c: BankingCommand): number {
