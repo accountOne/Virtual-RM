@@ -50,3 +50,9 @@ Thumbs.db
 # Runtime security audit log (server/src/auth/audit-log.ts) — generated at runtime, not seed
 # data like the other server/data/*.json files.
 server/data/audit-log.jsonl
+
+# Claude Code skills (installed via `npx skills add`) — a local dev-time design-reference
+# tool, not an application dependency. Not part of the deployed app.
+/.agents/
+/.claude/
+/skills-lock.json
