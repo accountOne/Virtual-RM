@@ -16,6 +16,7 @@ import { loansController } from '../controllers/loans.controller';
 import { footprintController } from '../controllers/footprint.controller';
 import { lcAssistController } from '../controllers/lc-assist.controller';
 import { agentController } from '../controllers/agent.controller';
+import { commandsController } from '../controllers/commands.controller';
 import { requireRole } from '../auth/session.middleware';
 import { loginRateLimiter, transactionRateLimiter, virtualRmRateLimiter } from '../auth/rate-limit';
 
@@ -81,6 +82,24 @@ apiRouter.post('/agent/message', virtualRmRateLimiter, agentController.message);
 apiRouter.post('/agent/workflow/:workflowId/approve', transactionRateLimiter, agentController.approve);
 apiRouter.post('/agent/workflow/:workflowId/cancel', virtualRmRateLimiter, agentController.cancel);
 apiRouter.get('/agent/workflow/:workflowId', virtualRmRateLimiter, agentController.status);
+
+// Maker/Checker BankingCommand — see docs/MAKER_CHECKER_AUDIT.md. Replaces the ad-hoc
+// Transaction/PaymentOrder approve/reject path above for NEW commands (that route stays for
+// historical/seeded data — see the audit's backward-compatibility plan). Maker routes: MAKER/
+// ADMIN only, same "raise != approve" role split trade-finance already uses below. Checker
+// routes: CHECKER/ADMIN only; ownership (Maker != Checker) is enforced inside commands.service.ts
+// itself since it needs the specific command's makerUserId, not just the caller's role.
+apiRouter.post('/commands', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), commandsController.create);
+apiRouter.get('/commands', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), commandsController.list);
+apiRouter.get('/commands/:id', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), commandsController.get);
+apiRouter.post('/commands/:id/validate', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), commandsController.validate);
+apiRouter.put('/commands/:id', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), commandsController.updateDraft);
+apiRouter.post('/commands/:id/submit', transactionRateLimiter, requireRole('MAKER', 'ADMIN'), commandsController.submit);
+
+apiRouter.get('/checker/commands', virtualRmRateLimiter, requireRole('CHECKER', 'ADMIN'), commandsController.checkerList);
+apiRouter.get('/checker/commands/:id', virtualRmRateLimiter, requireRole('CHECKER', 'ADMIN'), commandsController.checkerGet);
+apiRouter.post('/checker/commands/:id/approve', transactionRateLimiter, requireRole('CHECKER', 'ADMIN'), commandsController.approve);
+apiRouter.post('/checker/commands/:id/reject', transactionRateLimiter, requireRole('CHECKER', 'ADMIN'), commandsController.reject);
 
 // Phase 7 — dedicated Trade Finance Business Banking screens (system-of-record REST API,
 // separate from the chat query API above; both read the same underlying repositories).

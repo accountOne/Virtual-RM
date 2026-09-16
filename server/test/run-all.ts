@@ -38,6 +38,7 @@ import './security/audit-log.test';
 import './security/voice.test';
 import './lc-assist.test';
 import './agent-http.test';
+import './commands-http.test';
 import './security/session.test';
 
 import { runAll } from './test-runner';
