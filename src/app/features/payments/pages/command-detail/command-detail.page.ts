@@ -185,12 +185,14 @@ export class CommandDetailPageComponent implements OnInit {
           { label: 'Mục đích', value: String(d['transferPurpose'] ?? '—') },
           ...(d['transferDescription'] ? [{ label: 'Nội dung', value: String(d['transferDescription']) }] : []),
           { label: 'Người chịu phí', value: String(d['feeBearer'] ?? '—') },
+          ...(d['scheduledDate'] ? [{ label: 'Ngày hiệu lực', value: String(d['scheduledDate']) }] : []),
+          ...(d['notes'] ? [{ label: 'Ghi chú', value: String(d['notes']) }] : []),
         ];
       case 'LC':
         return [
           { label: 'Loại LC', value: `${d['type'] ?? '—'} · ${d['subType'] ?? '—'}` },
           { label: 'Người thụ hưởng', value: String(d['beneficiary'] ?? '—') },
-          { label: 'Applicant', value: String(d['applicant'] ?? '—') },
+          { label: 'Bên yêu cầu mở LC', value: String(d['applicant'] ?? '—') },
           { label: 'Giá trị', value: this.money(d['amount'], d['currency']) },
           { label: 'Ngày giao hàng muộn nhất', value: String(d['latestShipmentDate'] ?? '—') },
           { label: 'Ngày hết hạn', value: String(d['expiryDate'] ?? '—') },
@@ -199,15 +201,15 @@ export class CommandDetailPageComponent implements OnInit {
         return [
           { label: 'Loại bảo lãnh', value: String(d['type'] ?? '—') },
           { label: 'Người thụ hưởng', value: String(d['beneficiary'] ?? '—') },
-          { label: 'Applicant', value: String(d['applicant'] ?? '—') },
+          { label: 'Bên yêu cầu bảo lãnh', value: String(d['applicant'] ?? '—') },
           { label: 'Giá trị', value: this.money(d['amount'], d['currency']) },
           { label: 'Ngày hết hạn', value: String(d['expiryDate'] ?? '—') },
         ];
       case 'COLLECTION':
         return [
           { label: 'Chiều / Loại', value: `${d['direction'] ?? '—'} · ${d['subType'] ?? '—'}` },
-          { label: 'Drawer', value: String(d['drawer'] ?? '—') },
-          { label: 'Drawee', value: String(d['drawee'] ?? '—') },
+          { label: 'Bên ký phát', value: String(d['drawer'] ?? '—') },
+          { label: 'Bên trả tiền', value: String(d['drawee'] ?? '—') },
           { label: 'Giá trị', value: this.money(d['amount'], d['currency']) },
           { label: 'Ngày đến hạn', value: String(d['dueDate'] ?? '—') },
         ];

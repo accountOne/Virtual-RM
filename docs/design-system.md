@@ -129,6 +129,15 @@ xuyên suốt 743 test server đã pass; đổi tên sẽ là breaking change r�
 "SUCCESS" không phải là một mức độ cảnh báo — nơi cần xác nhận thành công (vd lệnh đã duyệt xong)
 dùng pattern card riêng bên dưới, không đi qua `app-warning-panel`.
 
+**Phạm vi dùng chung** (Phase 8 yêu cầu `<app-warning-panel>` xuất hiện ở Chat/Banking
+form/Review/Maker detail/Checker detail/Notification center): đã đúng ở Banking form (cả 4 loại),
+Review (cùng màn hình), Maker detail, Checker detail (5/6 điểm chạm — xác nhận qua code). Notification
+center (trang `Thông báo` mới) dùng model `Alert` (`CRITICAL/WARNING/INFO`) — một khái niệm nghiệp
+vụ khác `Warning` của BankingCommand (nhắc việc chủ động vs. lỗi validate 1 lệnh cụ thể), nên **không**
+ép dùng chung component — tương tự Chat: Agent không tự validate/cảnh báo nữa (quyết định kiến trúc
+đã chốt ở Slice 5/6 nâng cấp Maker/Checker — Agent chỉ tạo DRAFT, Maker luôn phải mở form thật để
+thấy warning thật), nên không có warning nào phát sinh trong Chat để hiển thị.
+
 **Success confirmation card** (pattern đã có ở `single-transfer.page.ts` màn "submitted"): nền
 `bg-teal-50`, viền `border-teal-200`, chữ `text-positive`, icon ✅ — không phải Warning, là trạng
 thái xác nhận riêng.

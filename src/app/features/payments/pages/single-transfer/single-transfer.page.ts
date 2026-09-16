@@ -33,6 +33,7 @@ interface TransferForm {
   transferDescription: string;
   feeBearer: 'SENDER' | 'BENEFICIARY' | 'SHARED';
   scheduledDate: string;
+  notes: string;
 }
 
 function emptyForm(): TransferForm {
@@ -47,6 +48,7 @@ function emptyForm(): TransferForm {
     transferDescription: '',
     feeBearer: 'SENDER',
     scheduledDate: '',
+    notes: '',
   };
 }
 
@@ -66,9 +68,23 @@ function emptyForm(): TransferForm {
             <select [(ngModel)]="form.sourceAccount" name="sourceAccount" class="input mt-1" required>
               <option value="" disabled>Chọn tài khoản nguồn</option>
               <option *ngFor="let acc of rmData.accounts()" [value]="acc.id">
-                {{ acc.accountName }} — {{ acc.availableBalance | vnd: acc.currency }}
+                {{ acc.accountNumber }} — {{ acc.accountName }}
               </option>
             </select>
+          </div>
+
+          <!-- Tên tài khoản nguồn / Số dư khả dụng — shown as standalone read-only fields once a
+               source account is selected (ui-ux-audit.md #21: these were previously only visible
+               inline inside the <option> label, not as fields a Maker could double-check). -->
+          <div class="grid grid-cols-2 gap-3" *ngIf="selectedAccount() as acc">
+            <div>
+              <label class="text-xs font-medium text-ink-600">Tên tài khoản nguồn</label>
+              <p class="input mt-1 bg-ink-50 text-ink-700">{{ acc.accountName }}</p>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-ink-600">Số dư khả dụng</label>
+              <p class="input mt-1 bg-ink-50 text-ink-700">{{ acc.availableBalance | vnd: acc.currency }}</p>
+            </div>
           </div>
 
           <div class="border-t border-ink-100 pt-4">
@@ -129,9 +145,13 @@ function emptyForm(): TransferForm {
                 </select>
               </div>
               <div>
-                <label class="text-xs font-medium text-ink-600">Ngày thực hiện (tuỳ chọn)</label>
+                <label class="text-xs font-medium text-ink-600">Ngày hiệu lực (tuỳ chọn)</label>
                 <input [(ngModel)]="form.scheduledDate" name="scheduledDate" type="date" class="input mt-1" />
               </div>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-ink-600">Ghi chú (tuỳ chọn)</label>
+              <textarea [(ngModel)]="form.notes" name="notes" rows="2" maxlength="255" class="input mt-1" placeholder="Ghi chú nội bộ, không hiển thị cho người thụ hưởng"></textarea>
             </div>
           </div>
 
@@ -151,6 +171,7 @@ function emptyForm(): TransferForm {
             <div class="flex justify-between"><dt class="text-ink-400">Ngân hàng</dt><dd class="text-ink-800">{{ bankName(form.beneficiaryBankCode) }}</dd></div>
             <div class="flex justify-between"><dt class="text-ink-400">Số tiền</dt><dd class="text-ink-800 font-semibold">{{ form.amount | vnd: form.currency }}</dd></div>
             <div class="flex justify-between"><dt class="text-ink-400">Người chịu phí</dt><dd class="text-ink-800">{{ feeBearerLabel(form.feeBearer) }}</dd></div>
+            <div class="flex justify-between" *ngIf="form.notes"><dt class="text-ink-400">Ghi chú</dt><dd class="text-ink-800">{{ form.notes }}</dd></div>
           </dl>
         </div>
 
@@ -227,6 +248,10 @@ export class SingleTransferPageComponent {
     return this.banks.find((b) => b.code === code)?.name ?? code;
   }
 
+  selectedAccount() {
+    return this.rmData.accounts().find((acc) => acc.id === this.form.sourceAccount) ?? null;
+  }
+
   feeBearerLabel(value: TransferForm['feeBearer']): string {
     return { SENDER: 'Người chuyển', BENEFICIARY: 'Người nhận', SHARED: 'Chia đôi' }[value];
   }
@@ -245,6 +270,7 @@ export class SingleTransferPageComponent {
       transferDescription: f.transferDescription,
       feeBearer: f.feeBearer,
       scheduledDate: f.scheduledDate || undefined,
+      notes: f.notes || undefined,
     };
   }
 

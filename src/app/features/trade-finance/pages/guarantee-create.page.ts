@@ -46,10 +46,10 @@ const STEP_LABELS = ['Loại bảo lãnh', 'Các bên liên quan', 'Giá trị &
           </ng-container>
 
           <ng-container *ngSwitchCase="2">
-            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Beneficiary</span>
+            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Người thụ hưởng</span>
               <input class="input" [(ngModel)]="form.beneficiary" name="beneficiary" placeholder="Bên thụ hưởng" />
             </label>
-            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Applicant</span>
+            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Bên yêu cầu bảo lãnh</span>
               <input class="input" [(ngModel)]="form.applicant" name="applicant" placeholder="ABC Manufacturing JSC" />
             </label>
           </ng-container>
@@ -64,7 +64,7 @@ const STEP_LABELS = ['Loại bảo lãnh', 'Các bên liên quan', 'Giá trị &
             <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Giá trị</span>
               <input class="input" type="number" [(ngModel)]="form.amount" name="amount" placeholder="0" />
             </label>
-            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Expiry Date</span>
+            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Ngày hết hạn</span>
               <input class="input" type="date" [(ngModel)]="form.expiryDate" name="expiryDate" />
             </label>
           </ng-container>
@@ -73,9 +73,9 @@ const STEP_LABELS = ['Loại bảo lãnh', 'Các bên liên quan', 'Giá trị &
             <p class="text-sm font-semibold text-ink-800">Xem lại yêu cầu</p>
             <dl class="text-sm space-y-1.5 mt-2">
               <div class="flex justify-between"><dt class="text-ink-400">Loại</dt><dd>{{ typeLabel(form.type) }}</dd></div>
-              <div class="flex justify-between"><dt class="text-ink-400">Beneficiary</dt><dd>{{ form.beneficiary || '—' }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-400">Người thụ hưởng</dt><dd>{{ form.beneficiary || '—' }}</dd></div>
               <div class="flex justify-between"><dt class="text-ink-400">Giá trị</dt><dd>{{ form.amount | number }} {{ form.currency }}</dd></div>
-              <div class="flex justify-between"><dt class="text-ink-400">Expiry</dt><dd>{{ form.expiryDate || '—' }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-400">Ngày hết hạn</dt><dd>{{ form.expiryDate || '—' }}</dd></div>
             </dl>
             <app-warning-panel [warnings]="command()?.warnings ?? []" />
             <p class="text-xs text-ink-400 mt-3">Đây là demo — yêu cầu sẽ được gửi tới Checker với trạng thái "Chờ duyệt".</p>

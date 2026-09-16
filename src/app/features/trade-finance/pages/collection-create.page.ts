@@ -58,10 +58,10 @@ const STEP_LABELS = ['Loại nhờ thu', 'Các bên liên quan', 'Giá trị & h
           </ng-container>
 
           <ng-container *ngSwitchCase="2">
-            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Drawer (bên ký phát)</span>
+            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Bên ký phát</span>
               <input class="input" [(ngModel)]="form.drawer" name="drawer" placeholder="ABC Manufacturing JSC" />
             </label>
-            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Drawee (bên trả tiền)</span>
+            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Bên trả tiền</span>
               <input class="input" [(ngModel)]="form.drawee" name="drawee" placeholder="Tên đối tác" />
             </label>
           </ng-container>
@@ -77,7 +77,7 @@ const STEP_LABELS = ['Loại nhờ thu', 'Các bên liên quan', 'Giá trị & h
             <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Giá trị</span>
               <input class="input" type="number" [(ngModel)]="form.amount" name="amount" placeholder="0" />
             </label>
-            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Due Date</span>
+            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Ngày đến hạn</span>
               <input class="input" type="date" [(ngModel)]="form.dueDate" name="dueDate" />
             </label>
           </ng-container>
@@ -86,9 +86,9 @@ const STEP_LABELS = ['Loại nhờ thu', 'Các bên liên quan', 'Giá trị & h
             <p class="text-sm font-semibold text-ink-800">Xem lại yêu cầu</p>
             <dl class="text-sm space-y-1.5 mt-2">
               <div class="flex justify-between"><dt class="text-ink-400">Chiều / Loại</dt><dd>{{ form.direction }} · {{ form.subType }}</dd></div>
-              <div class="flex justify-between"><dt class="text-ink-400">Drawer → Drawee</dt><dd>{{ form.drawer || '—' }} → {{ form.drawee || '—' }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-400">Bên ký phát → Bên trả tiền</dt><dd>{{ form.drawer || '—' }} → {{ form.drawee || '—' }}</dd></div>
               <div class="flex justify-between"><dt class="text-ink-400">Giá trị</dt><dd>{{ form.amount | number }} {{ form.currency }}</dd></div>
-              <div class="flex justify-between"><dt class="text-ink-400">Due Date</dt><dd>{{ form.dueDate || '—' }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-400">Ngày đến hạn</dt><dd>{{ form.dueDate || '—' }}</dd></div>
             </dl>
             <app-warning-panel [warnings]="command()?.warnings ?? []" />
             <p class="text-xs text-ink-400 mt-3">Đây là demo — yêu cầu sẽ được gửi tới Checker với trạng thái "Chờ duyệt".</p>

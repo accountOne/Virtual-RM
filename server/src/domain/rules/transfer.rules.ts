@@ -22,6 +22,9 @@ export const TransferFormSchema = z.object({
   transferDescription: z.string().max(255).optional().default(''),
   feeBearer: z.enum(['SENDER', 'BENEFICIARY', 'SHARED']),
   scheduledDate: z.string().optional(),
+  // 12-field checklist (docs/design-system.md §6 Transfer form; ui-ux-audit.md #21) — internal
+  // note, distinct from transferDescription which the beneficiary's bank statement may show.
+  notes: z.string().max(500).optional(),
 });
 
 export type TransferFormData = z.infer<typeof TransferFormSchema>;

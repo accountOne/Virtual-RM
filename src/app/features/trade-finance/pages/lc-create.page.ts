@@ -72,16 +72,16 @@ const REQUIRED_DOCUMENT_OPTIONS = ['COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_O
           </ng-container>
 
           <ng-container *ngSwitchCase="2">
-            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Beneficiary</span>
+            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Người thụ hưởng</span>
               <input class="input" [(ngModel)]="form.beneficiary" name="beneficiary" placeholder="Tên đơn vị thụ hưởng" />
             </label>
-            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Applicant</span>
+            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Bên yêu cầu mở LC</span>
               <input class="input" [(ngModel)]="form.applicant" name="applicant" placeholder="ABC Manufacturing JSC" />
             </label>
-            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Issuing Bank</span>
+            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Ngân hàng phát hành</span>
               <input class="input" [(ngModel)]="form.issuingBank" name="issuingBank" placeholder="MSB" />
             </label>
-            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Advising Bank</span>
+            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Ngân hàng thông báo</span>
               <input class="input" [(ngModel)]="form.advisingBank" name="advisingBank" placeholder="Tên ngân hàng thông báo" />
             </label>
           </ng-container>
@@ -100,10 +100,10 @@ const REQUIRED_DOCUMENT_OPTIONS = ['COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_O
           </ng-container>
 
           <ng-container *ngSwitchCase="4">
-            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Latest Shipment Date</span>
+            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Ngày giao hàng muộn nhất</span>
               <input class="input" type="date" [(ngModel)]="form.latestShipmentDate" name="latestShipmentDate" />
             </label>
-            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Expiry Date</span>
+            <label class="block"><span class="text-xs font-medium text-ink-600 mb-1 block">Ngày hết hạn</span>
               <input class="input" type="date" [(ngModel)]="form.expiryDate" name="expiryDate" />
             </label>
           </ng-container>
@@ -120,11 +120,11 @@ const REQUIRED_DOCUMENT_OPTIONS = ['COMMERCIAL_INVOICE', 'PACKING_LIST', 'BILL_O
             <p class="text-sm font-semibold text-ink-800">Xem lại yêu cầu</p>
             <dl class="text-sm space-y-1.5 mt-2">
               <div class="flex justify-between"><dt class="text-ink-400">Loại</dt><dd>{{ form.type }} · {{ form.subType }}</dd></div>
-              <div class="flex justify-between"><dt class="text-ink-400">Beneficiary</dt><dd>{{ form.beneficiary || '—' }}</dd></div>
-              <div class="flex justify-between"><dt class="text-ink-400">Applicant</dt><dd>{{ form.applicant || '—' }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-400">Người thụ hưởng</dt><dd>{{ form.beneficiary || '—' }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-400">Bên yêu cầu mở LC</dt><dd>{{ form.applicant || '—' }}</dd></div>
               <div class="flex justify-between"><dt class="text-ink-400">Giá trị</dt><dd>{{ form.amount | number }} {{ form.currency }}</dd></div>
-              <div class="flex justify-between"><dt class="text-ink-400">Latest Shipment</dt><dd>{{ form.latestShipmentDate || '—' }}</dd></div>
-              <div class="flex justify-between"><dt class="text-ink-400">Expiry</dt><dd>{{ form.expiryDate || '—' }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-400">Ngày giao hàng muộn nhất</dt><dd>{{ form.latestShipmentDate || '—' }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-400">Ngày hết hạn</dt><dd>{{ form.expiryDate || '—' }}</dd></div>
               <div class="flex justify-between"><dt class="text-ink-400">Chứng từ</dt><dd>{{ form.requiredDocuments.length }} loại</dd></div>
             </dl>
             <app-warning-panel [warnings]="command()?.warnings ?? []" />
