@@ -96,6 +96,7 @@ apiRouter.post('/commands/:id/validate', virtualRmRateLimiter, requireRole('MAKE
 apiRouter.put('/commands/:id', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), commandsController.updateDraft);
 apiRouter.post('/commands/:id/submit', transactionRateLimiter, requireRole('MAKER', 'ADMIN'), commandsController.submit);
 apiRouter.get('/commands/:id/audit-events', virtualRmRateLimiter, requireRole('MAKER', 'ADMIN'), commandsController.auditTrail);
+apiRouter.get('/activity-history', virtualRmRateLimiter, commandsController.activityHistory);
 
 apiRouter.get('/checker/commands', virtualRmRateLimiter, requireRole('CHECKER', 'ADMIN'), commandsController.checkerList);
 apiRouter.get('/checker/commands/:id', virtualRmRateLimiter, requireRole('CHECKER', 'ADMIN'), commandsController.checkerGet);

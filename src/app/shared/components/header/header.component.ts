@@ -129,6 +129,11 @@ interface SearchResult {
                 Không có thông báo mới
               </p>
             </div>
+            <a
+              routerLink="/notifications"
+              (click)="bellOpen.set(false)"
+              class="block text-center text-xs font-medium text-brand-600 hover:underline px-3.5 py-2 border-t border-ink-100"
+            >Xem tất cả</a>
           </div>
         </div>
 

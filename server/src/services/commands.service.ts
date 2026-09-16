@@ -190,6 +190,24 @@ export const commandsService = {
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   },
 
+  /** Cross-command activity feed for the "Lịch sử hoạt động" nav item (docs/ui-ux-audit.md #3) —
+   * newest first, unlike auditTrail()'s oldest-first per-command timeline. A Maker only sees
+   * events on commands they own (same ownership boundary as listForMaker/assertOwnedByMaker);
+   * CHECKER/ADMIN already see every command via the unfiltered Checker queue, so they see every
+   * event here too — this exposes no data those roles couldn't already reach one command at a
+   * time via the Checker detail screen's own audit trail. */
+  activityHistoryFor(actor: CommandActor): AuditEvent[] {
+    const events = auditEventsRepository.readAll();
+    const scoped =
+      actor.role === 'CHECKER' || actor.role === 'ADMIN'
+        ? events
+        : events.filter((e) => {
+            const command = bankingCommandsRepository.findById(e.commandId);
+            return command?.makerUserId === actor.userId;
+          });
+    return scoped.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+
   /** Records that a Checker opened this command — spec §13's AuditEvent list includes
    * VIEWED_BY_CHECKER explicitly, so "the Checker looked at this before deciding" is provable. */
   recordCheckerView(command: BankingCommand, actor: CommandActor): void {

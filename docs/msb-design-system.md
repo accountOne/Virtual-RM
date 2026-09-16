@@ -1,5 +1,9 @@
 # MSB Business Banking + Virtual RM — Design System
 
+> **See also**: `docs/design-system.md` (Phase 3 of the UI redesign, 16/09/2026) formalizes
+> button variants, form field states, table styles, alert styles, badge styles, modal/drawer
+> styles, and accessibility rules on top of the tokens documented here.
+
 This documents the visual language used across the demo shell. It formalizes tokens
 that already exist in `tailwind.config.js` and `src/styles.scss`, and mirrors them as
 plain SCSS variables in `src/styles/design-tokens.scss` for the rare case a component
@@ -26,8 +30,11 @@ Background: page background is `ink-50`, surfaces (cards, header, sidebar) are w
 
 ## 2. Typography
 
-- Font family: **Satoshi** (loaded via Fontshare in `index.html`), falling back to the
-  system sans-serif stack.
+> See `docs/design-system.md` §2 for the current, authoritative typography spec.
+
+- Font family: **Be Vietnam Pro** (Google Fonts) — falling back to the system sans-serif
+  stack. Satoshi was dropped early on: it has no Vietnamese glyph coverage, so diacritics
+  fell back to a different font mid-word.
 - Heading hierarchy (Tailwind classes actually used):
   - Page title: `text-xl font-semibold` (e.g. "Xin chào, {company}")
   - Section/card title: `text-sm font-semibold`

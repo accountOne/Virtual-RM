@@ -328,6 +328,33 @@ describe("Ownership — a Maker cannot see or act on another user's draft", () =
   });
 });
 
+describe('GET /api/activity-history — Lịch sử hoạt động (UI redesign, Phase 4)', () => {
+  test('a Maker only sees events for commands they own', async () => {
+    const own = buildSubmittedCommand(MAKER, { amount: 113_000 });
+    const other = commandsService.createDraft(ADMIN, 'TRANSFER', transferFormData());
+    const res = await getMakerClient().get<{ commandId: string }[]>('/api/activity-history');
+    assertEqual(res.status, 200);
+    assert(res.body.some((e) => e.commandId === own.id), 'expected the Maker\'s own command to appear');
+    assert(!res.body.some((e) => e.commandId === other.id), "expected another user's draft to be excluded");
+  });
+
+  test('a Checker sees events across every command (same visibility as the unfiltered queue)', async () => {
+    const own = buildSubmittedCommand(MAKER, { amount: 114_000 });
+    const res = await getCheckerClient().get<{ commandId: string }[]>('/api/activity-history');
+    assertEqual(res.status, 200);
+    assert(res.body.some((e) => e.commandId === own.id), "expected the Checker to see the Maker's command too");
+  });
+
+  test('newest events come first', async () => {
+    const first = buildSubmittedCommand(MAKER, { amount: 115_000 });
+    const second = buildSubmittedCommand(MAKER, { amount: 116_000 });
+    const res = await getMakerClient().get<{ commandId: string; createdAt: string }[]>('/api/activity-history');
+    const firstIdx = res.body.findIndex((e) => e.commandId === first.id);
+    const secondIdx = res.body.findIndex((e) => e.commandId === second.id);
+    assert(secondIdx < firstIdx, 'expected the more recently created command\'s events to sort earlier (newest first)');
+  });
+});
+
 describe('Maker/Checker upgrade — cleanup', () => {
   test('cleanup: every write this file made is reverted', () => {
     accountsRepository.writeAll(originalAccounts);

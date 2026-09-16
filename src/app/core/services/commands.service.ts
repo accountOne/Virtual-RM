@@ -110,10 +110,27 @@ export class CommandsService {
     return firstValueFrom(this.http.post<BankingCommand>(`/api/commands/${id}/submit`, {}));
   }
 
+  /** Maker-legal audit trail (ownership-checked server-side) — distinct from `auditTrail()` below,
+   * which hits the Checker-only route. Used by the "Lệnh giao dịch" (my-commands) Maker view. */
+  async makerAuditTrail(id: string): Promise<AuditEvent[]> {
+    return firstValueFrom(this.http.get<AuditEvent[]>(`/api/commands/${id}/audit-events`));
+  }
+
+  /** Cross-command activity feed for the "Lịch sử hoạt động" nav item — server scopes this by
+   * role (see commandsService.activityHistoryFor()). */
+  async activityHistory(): Promise<AuditEvent[]> {
+    return firstValueFrom(this.http.get<AuditEvent[]>('/api/activity-history'));
+  }
+
   // ---- Checker --------------------------------------------------------------------------------
 
-  async checkerQueue(status: CommandStatus = 'PENDING_CHECKER'): Promise<BankingCommand[]> {
-    return firstValueFrom(this.http.get<BankingCommand[]>('/api/checker/commands', { params: { status } }));
+  /** Omit `status` to fetch every command regardless of status (server already supports this —
+   * `commandsService.listForChecker()` with no status returns all) so the Checker queue page can
+   * filter client-side across statuses without N round-trips. */
+  async checkerQueue(status?: CommandStatus): Promise<BankingCommand[]> {
+    return firstValueFrom(
+      this.http.get<BankingCommand[]>('/api/checker/commands', { params: status ? { status } : {} }),
+    );
   }
 
   async checkerDetail(id: string): Promise<BankingCommand> {

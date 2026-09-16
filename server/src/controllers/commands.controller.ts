@@ -101,6 +101,12 @@ export const commandsController = {
     }
   },
 
+  /** "Lịch sử hoạt động" nav item — cross-command feed, see commandsService.activityHistoryFor()
+   * for the ownership scoping (Maker: own commands only; Checker/Admin: everything). */
+  activityHistory(req: Request, res: Response) {
+    res.json(commandsService.activityHistoryFor(actorFrom(req)));
+  },
+
   submit(req: Request, res: Response) {
     try {
       const command = commandsService.getById(req.params.id);

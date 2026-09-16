@@ -27,11 +27,12 @@ const NAV_GROUPS: NavGroup[] = [
     heading: 'Chuyển khoản & thanh toán',
     items: [
       { label: 'Thanh toán', link: '/payments', icon: '💸' },
-      { label: 'Phê duyệt', link: '/payments/approval', icon: '✅', rolesAllowed: ['CHECKER', 'ADMIN'] },
+      { label: 'Lệnh giao dịch', link: '/payments/my-commands', icon: '🗂️', rolesAllowed: ['MAKER', 'ADMIN'] },
+      { label: 'Chờ duyệt', link: '/payments/approval', icon: '✅', rolesAllowed: ['CHECKER', 'ADMIN'] },
     ],
   },
   {
-    heading: 'Trade Finance',
+    heading: 'Tài trợ thương mại',
     items: [
       { label: 'Tổng quan Trade Finance', link: '/trade-finance', icon: '📊' },
       { label: 'Thư tín dụng (LC)', link: '/trade-finance/lc', icon: '📄' },
@@ -48,7 +49,14 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   { items: [{ label: 'Báo cáo', link: '/reports', icon: '📊' }] },
-  { items: [{ label: 'Virtual RM', link: '/virtual-rm', icon: '👩‍💼' }] },
+  {
+    items: [
+      { label: 'Thông báo', link: '/notifications', icon: '🔔' },
+      { label: 'Trợ lý RM ảo', link: '/virtual-rm', icon: '👩‍💼' },
+      { label: 'Lịch sử hoạt động', link: '/activity-history', icon: '🕘' },
+    ],
+  },
+  { items: [{ label: 'Cài đặt', link: '/settings', icon: '⚙️' }] },
 ];
 
 @Component({

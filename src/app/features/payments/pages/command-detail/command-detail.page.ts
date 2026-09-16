@@ -29,16 +29,21 @@ const AUDIT_EVENT_LABEL: Record<string, string> = {
   FAILED: 'Thất bại',
 };
 
-/** Read-only Checker view of a BankingCommand — the SAME data the Maker submitted (spec §2/§14
- * "Checker phải xem chính xác các lệnh Maker đã tạo"), same <app-warning-panel> the Maker form
- * uses (Slice 3), plus the audit timeline and Approve/Reject actions. */
+/** Checker view of a BankingCommand — the SAME data the Maker submitted (spec §2/§14 "Checker
+ * phải xem chính xác các lệnh Maker đã tạo"), same <app-warning-panel> the Maker form uses
+ * (Slice 3), plus the audit timeline and Approve/Reject actions.
+ *
+ * Also reused (read-only, no Approve/Reject) as the Maker's own command detail view at
+ * `/payments/my-commands/:id` (Phase 4/7 of the UI redesign, docs/ui-ux-audit.md #1/#7/#23) — the
+ * route's `data: { viewerRole: 'maker' }` switches which Maker-legal vs. Checker-only endpoints
+ * this component calls, and hides the approval action panel. */
 @Component({
   selector: 'app-command-detail-page',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, LoadingSpinnerComponent, WarningPanelComponent],
   template: `
     <div class="max-w-2xl mx-auto p-4 sm:p-6 space-y-5 pb-24">
-      <a routerLink="/payments/approval" class="text-xs text-ink-400 hover:text-ink-600">← Hàng chờ duyệt</a>
+      <a [routerLink]="backLink()" class="text-xs text-ink-400 hover:text-ink-600">{{ backLabel() }}</a>
 
       <app-loading-spinner *ngIf="loading()" />
 
@@ -63,7 +68,7 @@ const AUDIT_EVENT_LABEL: Record<string, string> = {
 
         <app-warning-panel [warnings]="cmd.warnings" />
 
-        <div class="card p-5" *ngIf="cmd.status === 'PENDING_CHECKER'">
+        <div class="card p-5" *ngIf="cmd.status === 'PENDING_CHECKER' && viewerRole() === 'checker'">
           <div class="flex gap-3" *ngIf="!showRejectForm()">
             <button class="btn-secondary flex-1" (click)="showRejectForm.set(true)" [disabled]="busy()">Từ chối</button>
             <button class="btn-primary flex-1" (click)="approve(cmd)" [disabled]="busy()">
@@ -102,16 +107,6 @@ const AUDIT_EVENT_LABEL: Record<string, string> = {
       </ng-container>
     </div>
   `,
-  styles: [
-    `
-      .input {
-        @apply w-full rounded-lg border border-ink-200 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400;
-      }
-      .btn-danger {
-        @apply rounded-lg bg-red-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-red-700 disabled:opacity-50;
-      }
-    `,
-  ],
 })
 export class CommandDetailPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -126,24 +121,38 @@ export class CommandDetailPageComponent implements OnInit {
   readonly auditEvents = signal<AuditEvent[]>([]);
   readonly busy = signal(false);
   readonly showRejectForm = signal(false);
+  readonly viewerRole = signal<'maker' | 'checker'>('checker');
   rejectReason = '';
 
   ngOnInit(): void {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((pm) => {
+      this.viewerRole.set(this.route.snapshot.data['viewerRole'] === 'maker' ? 'maker' : 'checker');
       const id = pm.get('id');
       if (id) this.load(id);
     });
   }
 
+  backLink(): string {
+    return this.viewerRole() === 'maker' ? '/payments/my-commands' : '/payments/approval';
+  }
+
+  backLabel(): string {
+    return this.viewerRole() === 'maker' ? '← Lệnh giao dịch của tôi' : '← Hàng chờ duyệt';
+  }
+
   private async load(id: string): Promise<void> {
     this.loading.set(true);
     try {
-      const [cmd, events] = await Promise.all([this.commands.checkerDetail(id), this.commands.auditTrail(id)]);
+      const isMaker = this.viewerRole() === 'maker';
+      const [cmd, events] = await Promise.all([
+        isMaker ? this.commands.get(id) : this.commands.checkerDetail(id),
+        isMaker ? this.commands.makerAuditTrail(id) : this.commands.auditTrail(id),
+      ]);
       this.command.set(cmd);
       this.auditEvents.set(events);
     } catch {
       this.toast.show('Không tìm thấy lệnh này.', 'error');
-      this.router.navigateByUrl('/payments/approval');
+      this.router.navigateByUrl(this.backLink());
     } finally {
       this.loading.set(false);
     }
@@ -210,7 +219,7 @@ export class CommandDetailPageComponent implements OnInit {
   }
 
   statusLabel(status: string): string {
-    return { DRAFT: 'Nháp', PENDING_CHECKER: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Đã từ chối', CANCELLED: 'Đã hủy', FAILED: 'Thất bại' }[status] ?? status;
+    return { DRAFT: 'Nháp', PENDING_CHECKER: 'Chờ kiểm soát', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối', CANCELLED: 'Đã hủy', FAILED: 'Thất bại' }[status] ?? status;
   }
 
   statusClass(status: string): Record<string, boolean> {

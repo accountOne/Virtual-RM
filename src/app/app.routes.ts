@@ -56,14 +56,29 @@ export const routes: Routes = [
     path: 'payments/approval',
     loadComponent: () => import('./features/payments/pages/approval/approval.page').then((m) => m.ApprovalPageComponent),
     canActivate: [authGuard, roleGuard('CHECKER', 'ADMIN')],
-    title: 'Phê duyệt giao dịch — MSB Business Banking',
+    title: 'Chờ duyệt — MSB Business Banking',
   },
   {
     path: 'payments/approval/:id',
     loadComponent: () =>
       import('./features/payments/pages/command-detail/command-detail.page').then((m) => m.CommandDetailPageComponent),
     canActivate: [authGuard, roleGuard('CHECKER', 'ADMIN')],
+    data: { viewerRole: 'checker' },
     title: 'Chi tiết lệnh chờ duyệt — MSB Business Banking',
+  },
+  {
+    path: 'payments/my-commands',
+    loadComponent: () => import('./features/payments/pages/my-commands/my-commands.page').then((m) => m.MyCommandsPageComponent),
+    canActivate: [authGuard, roleGuard('MAKER', 'ADMIN')],
+    title: 'Lệnh giao dịch — MSB Business Banking',
+  },
+  {
+    path: 'payments/my-commands/:id',
+    loadComponent: () =>
+      import('./features/payments/pages/command-detail/command-detail.page').then((m) => m.CommandDetailPageComponent),
+    canActivate: [authGuard, roleGuard('MAKER', 'ADMIN')],
+    data: { viewerRole: 'maker' },
+    title: 'Chi tiết lệnh giao dịch — MSB Business Banking',
   },
   {
     path: 'payments/single-transfer',
@@ -200,6 +215,24 @@ export const routes: Routes = [
     loadComponent: () => import('./features/footprint/footprint.page').then((m) => m.FootprintPageComponent),
     canActivate: [authGuard],
     title: 'Dấu ấn — MSB Business Banking',
+  },
+  {
+    path: 'notifications',
+    loadComponent: () => import('./features/notifications/notifications.page').then((m) => m.NotificationsPageComponent),
+    canActivate: [authGuard],
+    title: 'Thông báo — MSB Business Banking',
+  },
+  {
+    path: 'activity-history',
+    loadComponent: () => import('./features/activity-history/activity-history.page').then((m) => m.ActivityHistoryPageComponent),
+    canActivate: [authGuard],
+    title: 'Lịch sử hoạt động — MSB Business Banking',
+  },
+  {
+    path: 'settings',
+    loadComponent: () => import('./features/settings/settings.page').then((m) => m.SettingsPageComponent),
+    canActivate: [authGuard],
+    title: 'Cài đặt — MSB Business Banking',
   },
   { path: '**', redirectTo: 'dashboard' },
 ];
