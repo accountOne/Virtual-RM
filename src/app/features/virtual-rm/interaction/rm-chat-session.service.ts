@@ -59,6 +59,15 @@ export class RmChatSessionService {
   readonly messages = signal<RMMessage[]>([]);
   readonly busy = signal(false);
   readonly hasUserAsked = computed(() => this.messages().some((m) => m.from === 'USER'));
+  /** Unread badge for the floating launcher (UI redesign Phase 5 — see
+   * rm-chat-launcher.component.ts) — counts RM messages that arrived after the last time the
+   * chat page itself was open. `markAllRead()` is called from the chat page's constructor. */
+  private readonly lastReadCount = signal(0);
+  readonly unreadCount = computed(() => Math.max(0, this.messages().filter((m) => m.from === 'RM').length - this.lastReadCount()));
+
+  markAllRead(): void {
+    this.lastReadCount.set(this.messages().filter((m) => m.from === 'RM').length);
+  }
   readonly state = this.rmState.state;
   /** Gemini AI Agent toggle (docs/AI_AGENT_ARCHITECTURE.md) — additive, off by default: the
    * existing deterministic-engine `submit()` path is unchanged and untouched by this signal.

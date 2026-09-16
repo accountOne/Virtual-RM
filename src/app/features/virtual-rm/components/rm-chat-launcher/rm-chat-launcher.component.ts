@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
+import { RmChatSessionService } from '../../interaction/rm-chat-session.service';
 
 const BUTTON_SIZE = 56;
 const EDGE_MARGIN = 8;
@@ -38,19 +39,26 @@ interface Point {
       (pointermove)="onPointerMove($event)"
       (pointerup)="onPointerUp($event)"
       (pointercancel)="onPointerUp($event)"
-      class="fixed z-40 w-14 h-14 rounded-full bg-brand-500 text-white shadow-pop flex items-center justify-center text-2xl select-none touch-none"
+      class="fixed z-40 w-14 h-14 rounded-full bg-brand-500 text-white shadow-pop flex items-center justify-center text-2xl select-none touch-none relative"
       [class.right-5]="!buttonPos()"
       [class.bottom-5]="!buttonPos()"
       [style.left.px]="buttonPos()?.x ?? null"
       [style.top.px]="buttonPos()?.y ?? null"
-      aria-label="Mở Virtual RM (giữ để kéo di chuyển)"
+      [attr.aria-label]="unreadCount() > 0 ? 'Mở Trợ lý RM ảo, ' + unreadCount() + ' tin nhắn chưa đọc (giữ để kéo di chuyển)' : 'Mở Trợ lý RM ảo (giữ để kéo di chuyển)'"
     >
       👩‍💼
+      <span
+        *ngIf="unreadCount() > 0"
+        class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-negative text-white text-[10px] font-semibold leading-none flex items-center justify-center ring-2 ring-white"
+        aria-hidden="true"
+      >{{ unreadCount() > 9 ? '9+' : unreadCount() }}</span>
     </button>
   `,
 })
 export class RmChatLauncherComponent {
   private readonly router = inject(Router);
+  private readonly session = inject(RmChatSessionService);
+  readonly unreadCount = this.session.unreadCount;
 
   readonly buttonPos = signal<Point | null>(restorePos());
   readonly onChatPage = signal(this.router.url.startsWith(CHAT_ROUTE));

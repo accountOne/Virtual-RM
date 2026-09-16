@@ -32,25 +32,33 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 /**
- * Full-screen Virtual RM chat (UI redesign, replaces the old popup/bottom-sheet widget
- * entirely). `position: fixed; inset: 0` so it covers the standard app header/sidebar chrome
- * without needing to restructure app.component.html's shell per route — the same trick a modal
- * takeover uses. Its own header re-uses `app-sidebar` locally (own open/close state) so the
- * hamburger can still reach the rest of the app.
+ * Virtual RM chat — responsive per docs/design-system.md §9 (UI redesign Phase 5): full-screen
+ * takeover on mobile (\`< lg\`, replaces the old popup/bottom-sheet widget entirely — the original
+ * reasoning below still holds at that width), but a floating side-panel on desktop (\`>= lg\`) that
+ * leaves the dashboard/sidebar visible behind it, so opening Virtual RM no longer hides the page
+ * the customer was working on. \`app-sidebar\` (and the hamburger that opens it) is therefore only
+ * relevant in the mobile takeover — the real app sidebar is already visible behind the desktop
+ * panel — so both are wrapped in \`lg:hidden\`.
  *
- * Conversation state lives in `RmChatSessionService` (see that file's doc comment) — this page
- * is a thin view over it, same as the retired `RmChatComponent` was.
+ * Conversation state lives in \`RmChatSessionService\` (see that file's doc comment) — this page
+ * is a thin view over it, same as the retired \`RmChatComponent\` was.
  */
 @Component({
   selector: 'app-virtual-rm-chat-page',
   standalone: true,
   imports: [CommonModule, FormsModule, SidebarComponent, RmMessageComponent, RmTypingComponent],
   template: `
-    <div class="fixed inset-0 z-50 bg-white flex">
-      <!-- app-sidebar is "lg:static" (a normal permanent column at desktop widths, an overlay
-           drawer below that) — same row layout app.component.html itself uses, so it must be a
-           sibling of the content column below, not a flex-col child alongside the header. -->
-      <app-sidebar [open]="sidebarOpen()" (close)="sidebarOpen.set(false)" />
+    <div
+      class="fixed inset-0 z-50 bg-white flex
+             lg:inset-auto lg:top-20 lg:bottom-6 lg:right-6 lg:left-auto lg:w-[420px] lg:max-w-[calc(100vw-3rem)]
+             lg:rounded-2xl lg:shadow-pop lg:border lg:border-ink-200 lg:overflow-hidden"
+    >
+      <!-- Mobile-only: app-sidebar is "lg:static" (a normal permanent column at desktop widths) —
+           at desktop this whole wrapper is hidden since the real sidebar is already visible
+           behind the floating panel. -->
+      <div class="lg:hidden contents">
+        <app-sidebar [open]="sidebarOpen()" (close)="sidebarOpen.set(false)" />
+      </div>
 
       <div class="flex-1 min-w-0 flex flex-col h-full">
       <!-- Header — brand-700→900 gradient (the same MSB brand palette used everywhere else in
@@ -60,12 +68,14 @@ const SUGGESTED_QUESTIONS = [
         class="shrink-0 bg-gradient-to-br from-brand-700 to-brand-900 text-white px-4 py-3.5 flex items-center gap-3"
         style="padding-top: max(0.875rem, env(safe-area-inset-top))"
       >
-        <button class="p-1.5 -ml-1 rounded-lg hover:bg-white/10 shrink-0" (click)="sidebarOpen.set(true)" aria-label="Menu">
+        <button class="p-1.5 -ml-1 rounded-lg hover:bg-white/10 shrink-0 lg:hidden" (click)="sidebarOpen.set(true)" aria-label="Menu">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
         <div class="flex-1 min-w-0">
-          <p class="font-semibold leading-tight truncate">Virtual RM</p>
-          <p class="text-[11px] text-white/70 truncate">Đồng hành cùng doanh nghiệp của bạn</p>
+          <p class="font-semibold leading-tight truncate">Trợ lý RM ảo</p>
+          <p class="text-[11px] text-white/70 truncate flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-positive shrink-0"></span> Đang sẵn sàng hỗ trợ
+          </p>
         </div>
         <button class="p-1.5 rounded-lg hover:bg-white/10 shrink-0" (click)="router.navigateByUrl('/virtual-rm')" aria-label="Thông báo">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 01-3.4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -110,8 +120,14 @@ const SUGGESTED_QUESTIONS = [
         </button>
       </header>
 
-      <!-- Message list -->
-      <div #scrollEl class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3.5 max-w-xl w-full mx-auto">
+      <!-- Message list. aria-live="polite" so a screen reader announces new RM replies as they
+           arrive (design-system.md §12 — previously a recorded gap, phase-5.6-conversational-ux.md). -->
+      <div
+        #scrollEl
+        class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3.5 max-w-xl w-full mx-auto"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
         <app-rm-message
           *ngFor="let msg of messages()"
           [message]="msg"
@@ -235,7 +251,12 @@ export class VirtualRmChatPageComponent {
   private spokenCount = 0;
 
   constructor() {
+    // Unread badge on the floating launcher (rm-chat-launcher.component.ts) resets whenever the
+    // chat page is actually open — a fresh navigation here, or resuming a route the user never
+    // left, both count as "seen everything so far".
+    this.session.markAllRead();
     effect(() => {
+      this.session.markAllRead();
       const list = this.messages();
       this.scrollToBottom();
       if (list.length < this.spokenCount) this.spokenCount = 0; // resetChat() started a new list
