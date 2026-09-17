@@ -279,6 +279,9 @@ export class VirtualRmChatPageComponent {
   }
 
   ask(question: string): void {
+    // Direct user-gesture entry point — see RmVoiceService.unlockAudio()'s own doc comment for
+    // why this needs to happen here rather than when the RM's (auto-spoken) reply arrives later.
+    this.voice.unlockAudio();
     this.draft = '';
     this.session.ask(question);
   }
@@ -286,6 +289,7 @@ export class VirtualRmChatPageComponent {
   async submit(): Promise<void> {
     const question = this.draft.trim();
     if (!question) return;
+    this.voice.unlockAudio();
     this.draft = '';
     await this.session.submit(question);
   }
@@ -351,6 +355,7 @@ export class VirtualRmChatPageComponent {
       this.voice.stopListening();
       return;
     }
+    this.voice.unlockAudio();
     void this.voice.startListening(
       (interim) => (this.draft = interim),
       (final) => (this.draft = final),

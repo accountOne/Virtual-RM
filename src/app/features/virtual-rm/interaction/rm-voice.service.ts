@@ -19,6 +19,9 @@ import { ToastService } from '../../../core/services/toast.service';
 const SPEECH_OUTPUT_KEY = 'vrm_voice_output';
 const RECOGNITION_LANG = 'vi-VN';
 const RECORDER_MIME_CANDIDATES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+// Minimal valid 44-byte WAV (PCM, 8kHz, 8-bit, zero-length silent data) — used only to "unlock"
+// programmatic audio playback on iOS Safari (see unlockAudio() below), never actually heard.
+const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 
 interface CloudSpeakResponse {
   audioBase64: string;
@@ -70,7 +73,9 @@ export class RmVoiceService {
   private recognition: SpeechRecognitionLike | null = null;
   private mediaRecorder: MediaRecorder | null = null;
   private mediaStream: MediaStream | null = null;
-  private currentAudio: HTMLAudioElement | null = null;
+  // One reusable <audio> element instead of a fresh `new Audio()` per reply — see unlockAudio().
+  private readonly audioEl = typeof Audio !== 'undefined' ? new Audio() : null;
+  private audioUnlocked = false;
 
   /** True while a voice-input capture (recording, or mid-transcription waiting on the cloud) is
    * in progress — the mic button reflects this. */
@@ -89,7 +94,30 @@ export class RmVoiceService {
     } catch {
       // ignore — the toggle just won't survive a reload
     }
-    if (!next) this.stopSpeaking();
+    if (next) this.unlockAudio();
+    else this.stopSpeaking();
+  }
+
+  /** iOS Safari (and some other WebKit browsers) only allow `HTMLAudioElement.play()` without a
+   * direct user gesture once that SAME element has already successfully played as a direct
+   * result of one. `speak()` below is triggered automatically — seconds after the user's actual
+   * tap, once an RM reply arrives via `effect()` in virtual-rm-chat.page.ts — which is well
+   * outside any gesture WebKit still recognizes, so auto-played replies silently produced no
+   * sound at all on iPhone even when voice output was toggled on and a real API key was
+   * configured server-side. Call this synchronously from a genuine gesture handler (the send
+   * button, the mic button, or this toggle) to "prime" the one shared `audioEl` with a silent
+   * clip; every later `playBase64Audio()` call reuses that same already-unlocked element instead
+   * of a fresh one, so it keeps working without needing a gesture each time. Idempotent/cheap to
+   * call from multiple gesture entry points. */
+  unlockAudio(): void {
+    if (this.audioUnlocked || !this.audioEl) return;
+    this.audioUnlocked = true;
+    this.audioEl.src = SILENT_WAV_DATA_URI;
+    this.audioEl.play().catch(() => {
+      // If even the silent clip is blocked, allow a retry on the next gesture instead of
+      // permanently giving up.
+      this.audioUnlocked = false;
+    });
   }
 
   /** Starts one voice-input capture. `onInterim` gives immediate UI feedback while
@@ -190,21 +218,18 @@ export class RmVoiceService {
   }
 
   stopSpeaking(): void {
-    if (this.currentAudio) {
-      this.currentAudio.pause();
-      this.currentAudio = null;
-    }
+    this.audioEl?.pause();
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   }
 
   private playBase64Audio(base64: string, mimeType: string): void {
+    if (!this.audioEl) return;
     const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
     const blob = new Blob([bytes], { type: mimeType });
     const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    this.currentAudio = audio;
-    audio.onended = () => URL.revokeObjectURL(url);
-    audio.play().catch(() => URL.revokeObjectURL(url));
+    this.audioEl.src = url;
+    this.audioEl.onended = () => URL.revokeObjectURL(url);
+    this.audioEl.play().catch(() => URL.revokeObjectURL(url));
   }
 
   private speakBrowser(text: string): void {
