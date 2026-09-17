@@ -39,7 +39,7 @@ interface Point {
       (pointermove)="onPointerMove($event)"
       (pointerup)="onPointerUp($event)"
       (pointercancel)="onPointerUp($event)"
-      class="fixed z-40 w-14 h-14 rounded-full bg-brand-500 text-white shadow-pop flex items-center justify-center text-2xl select-none touch-none relative"
+      class="fixed z-40 w-14 h-14 rounded-full bg-brand-500 text-white shadow-pop flex items-center justify-center text-2xl select-none touch-none"
       [class.right-5]="!buttonPos()"
       [class.bottom-5]="!buttonPos()"
       [style.left.px]="buttonPos()?.x ?? null"
