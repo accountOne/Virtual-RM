@@ -7,6 +7,7 @@ import fs from 'fs';
 import { apiRouter } from './routes';
 import { requireCsrf, requireSession, requireSessionReadOnly, stripIdentityOverrides } from './auth/session.middleware';
 import { geminiConfigured } from './agent/gemini-client';
+import { cloudVoiceConfigured } from './voice/openai-voice-client';
 
 const CLIENT_DIST = path.join(__dirname, '..', '..', 'dist', 'client', 'browser');
 
@@ -76,9 +77,10 @@ export function createApp() {
   app.use(cookieParser());
   app.use(express.json());
 
-  // `geminiConfigured` is a boolean only — never the key itself — added as a deploy-diagnostic
-  // aid (spec §19 still holds: no secret ever leaves the server). Safe to expose unauthenticated.
-  app.get('/api/health', (_req, res) => res.json({ status: 'ok', geminiConfigured: geminiConfigured() }));
+  // `geminiConfigured`/`voiceConfigured` are booleans only — never the key itself — added as
+  // deploy-diagnostic aids (spec §19 still holds: no secret ever leaves the server). Safe to
+  // expose unauthenticated.
+  app.get('/api/health', (_req, res) => res.json({ status: 'ok', geminiConfigured: geminiConfigured(), voiceConfigured: cloudVoiceConfigured() }));
 
   // Every other /api/* route requires a valid session. `/api/health` above already fully
   // handled its own request and never reaches this middleware; `/api/auth/login` is the one
