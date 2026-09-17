@@ -50,7 +50,7 @@ apiRouter.get('/loans', loansController.list);
 apiRouter.get('/rm/briefing', rmController.briefing);
 apiRouter.post('/rm/query', rmController.query);
 
-// Voice chat (TTS + STT via OpenAI) — see server/src/voice/openai-voice-client.ts. Reuses the
+// Voice chat (TTS + STT via Gemini) — see server/src/voice/gemini-voice-client.ts. Reuses the
 // Virtual RM query rate limiter: same "authenticated demo user chatting with the RM" traffic
 // shape, and these calls cost real money per request so they shouldn't go unlimited either.
 apiRouter.post('/voice/speak', virtualRmRateLimiter, voiceController.speak);

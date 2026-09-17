@@ -32,7 +32,7 @@ rm-chat-session.service.ts  State hội thoại (Angular signal), gọi RmDataSe
 rm-state.service.ts       RMState: IDLE/GREETING/PROCESSING/ANALYZING/RESPONDING/... (label UX, không lộ chain-of-thought)
 rm-stream.service.ts      Hiệu ứng "gõ chữ" tuần tự khi hiện nhiều bubble — chỉ ở frontend, không phải SSE thật
 rm-context.service.ts     Gắn thêm entityId màn hình hiện tại vào câu hỏi ngắn ("còn thiếu gì?")
-rm-voice.service.ts       STT/TTS qua OpenAI (POST /api/voice/transcribe, /api/voice/speak), fallback Web Speech API
+rm-voice.service.ts       STT/TTS qua Gemini (POST /api/voice/transcribe, /api/voice/speak), fallback Web Speech API
 ```
 
 `RMAction.type: 'NAVIGATE' | 'QUERY' | 'CONFIRM' | 'UPLOAD' | 'DOWNLOAD' | 'HANDOFF'` — chỉ
@@ -151,7 +151,7 @@ currency ("Còn tài khoản USD?") và theo sau bằng số LC/BG. **Không có
 | Phê duyệt giao dịch (Approve/Reject) | ✅ Hoạt động thật, ghi thật | `POST /transactions/:id/approve\|reject`, giới hạn `CHECKER`/`ADMIN` — đây là **phê duyệt nghiệp vụ Maker→Checker của ngân hàng**, khác khái niệm "Approval Gate" mà Agent mới cần (xem Risk List) |
 | PAYMENT_CREATE / LC_REQUEST / GUARANTEE_REQUEST / APPROVAL_APPROVE / APPROVAL_REJECT (intent chat) | ⚠️ **CHỈ THÔNG BÁO/ĐIỀU HƯỚNG** | Mỗi handler trả về text tĩnh + điều hướng sang form/màn hình có sẵn — **không tự thực hiện gì**. Đây thật ra đã đúng tinh thần "human-in-the-loop" mà nhiệm vụ Gemini Agent yêu cầu — chỉ cần nâng cấp thành workflow thật |
 | LC PO-upload Assistant (chat dẫn dắt tải PO → điền form LC) | ✅ Hoạt động, **trích xuất giả lập (mock, không đọc file thật)** | Xây ở phiên trước — tiền lệ gần nhất cho draft→approve, xem mục 2 |
-| Voice input/output | ✅ Hoạt động thật (OpenAI Whisper + TTS), fallback Web Speech | Cần `OPENAI_API_KEY`, không có thì fallback trình duyệt |
+| Voice input/output | ✅ Hoạt động thật (Gemini STT + TTS), fallback Web Speech | Dùng chung `GEMINI_API_KEY` với Agent, không có thì fallback trình duyệt |
 | Dấu ấn cá nhân/doanh nghiệp (Canvas infographic) | ✅ Hoạt động thật, số liệu thật | Không liên quan Agent, không đụng tới |
 
 ---

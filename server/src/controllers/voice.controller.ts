@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { cloudVoiceConfigured, synthesizeSpeech, transcribeSpeech } from '../voice/openai-voice-client';
+import { cloudVoiceConfigured, synthesizeSpeech, transcribeSpeech } from '../voice/gemini-voice-client';
 
 const MAX_TEXT_LENGTH = 2000;
 // Base64 is ~4/3 the size of the raw bytes; this caps a voice note at roughly 8MB of actual

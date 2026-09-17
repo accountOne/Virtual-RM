@@ -2,7 +2,7 @@
 // that imports the Gemini SDK directly. Every call site above this (gemini-semantic-engine.ts)
 // goes through `generateStructuredResponse()`, never the SDK itself, so swapping models/providers
 // later stays a one-file change — same boundary discipline as server/src/ai/ai-client.ts and
-// server/src/voice/openai-voice-client.ts already use for their own providers.
+// server/src/voice/gemini-voice-client.ts already use for their own providers.
 //
 // Security (spec §19): the API key is read once from GEMINI_API_KEY and never appears in a log
 // line, error message, or thrown Error's own text — only high-level outcome (ok/timeout/quota/

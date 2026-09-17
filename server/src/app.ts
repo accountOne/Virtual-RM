@@ -7,7 +7,7 @@ import fs from 'fs';
 import { apiRouter } from './routes';
 import { requireCsrf, requireSession, requireSessionReadOnly, stripIdentityOverrides } from './auth/session.middleware';
 import { geminiConfigured } from './agent/gemini-client';
-import { cloudVoiceConfigured } from './voice/openai-voice-client';
+import { cloudVoiceConfigured } from './voice/gemini-voice-client';
 
 const CLIENT_DIST = path.join(__dirname, '..', '..', 'dist', 'client', 'browser');
 

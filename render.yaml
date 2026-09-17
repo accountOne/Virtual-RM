@@ -35,17 +35,20 @@ services:
       # the default COOKIE_SAME_SITE=lax (server/src/auth/session.middleware.ts) is the more
       # secure choice once cross-site isn't a requirement. See docs/security/csrf-cors.md for
       # the cross-site notes, kept for reference in case a split deployment is ever needed again.
-      # Voice chat (TTS + STT — see server/src/voice/openai-voice-client.ts). `sync: false` means
-      # Render prompts for this in its dashboard instead of reading a value from this committed
-      # file — never put a real key here. Without it set, voice chat falls back to the browser's
-      # own (more limited, no-cost) Web Speech API automatically; nothing breaks.
-      - key: OPENAI_API_KEY
-        sync: false
-      # Gemini AI Agent (see server/src/agent/gemini-client.ts, docs/GEMINI_SETUP.md). Same
-      # `sync: false` pattern as OPENAI_API_KEY above — Render prompts for the real value in its
-      # dashboard, never committed here. Without it set, the Agent falls back to the deterministic
-      # rule engine automatically (server/src/agent/fallback-rule-engine.ts); nothing breaks.
+      # Gemini AI Agent (see server/src/agent/gemini-client.ts, docs/GEMINI_SETUP.md) AND voice
+      # chat TTS/STT (see server/src/voice/gemini-voice-client.ts) both read this same key —
+      # voice used to need a separate OPENAI_API_KEY, switched to Gemini so one key covers both.
+      # `sync: false` means Render prompts for the real value in its dashboard instead of reading
+      # one from this committed file — never put a real key here. Without it set, the Agent falls
+      # back to the deterministic rule engine (server/src/agent/fallback-rule-engine.ts) and voice
+      # chat falls back to the browser's own (more limited, no-cost) Web Speech API; nothing
+      # breaks either way.
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
         value: gemini-flash-latest
+      # TTS-capable Gemini models are a separate family from the plain chat model above —
+      # GEMINI_MODEL does not support audio output. Override only if this preview model name
+      # changes; GEMINI_STT_MODEL defaults to GEMINI_MODEL and rarely needs setting separately.
+      - key: GEMINI_TTS_MODEL
+        value: gemini-2.5-flash-preview-tts
