@@ -17,7 +17,10 @@ export const voiceController = {
       res.json({ audioBase64: buffer.toString('base64'), mimeType });
     } catch (err) {
       console.error('Voice TTS error', err);
-      res.status(502).json({ message: 'Không thể tạo giọng đọc lúc này', fallback: true });
+      // TEMP diagnostic (remove once the live 502 is root-caused) — err.message is only ever
+      // this client's own wrapping text or Google's own error response body (never the API key,
+      // which is sent as a header, not echoed back), so safe to expose short-term.
+      res.status(502).json({ message: 'Không thể tạo giọng đọc lúc này', fallback: true, detail: err instanceof Error ? err.message.slice(0, 500) : String(err) });
     }
   },
 
@@ -32,7 +35,8 @@ export const voiceController = {
       res.json({ text });
     } catch (err) {
       console.error('Voice STT error', err);
-      res.status(502).json({ message: 'Không thể nhận diện giọng nói lúc này', fallback: true });
+      // TEMP diagnostic — see the matching comment in speak() above.
+      res.status(502).json({ message: 'Không thể nhận diện giọng nói lúc này', fallback: true, detail: err instanceof Error ? err.message.slice(0, 500) : String(err) });
     }
   },
 };
