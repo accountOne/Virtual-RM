@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { Fido2Service } from '../../core/services/fido2.service';
+import { HERO_DARK_BG } from '../../shared/ui-tokens';
 
 interface DemoAccount {
   role: string;
@@ -170,7 +171,12 @@ export class LoginPageComponent {
   readonly passwordVisible = signal(false);
   readonly submitting = signal(false);
   readonly phase = signal<LoginPhase>('welcome');
-  readonly heroBg = 'radial-gradient(120% 140% at 0% 0%, #ff9f6e 0%, #ef4b2a 45%, #8a1e17 100%)';
+  // Premium dark hero (mockup screens 1/2) — dark navy/near-black base with a warm orange glow as
+  // an ACCENT, not the dominant fill. The earlier version used the site's bright orange-to-red
+  // brand gradient full-bleed, which read as a vivid orange screen — visibly off from the
+  // reference mockup's much darker, moodier tone. Shared with Fido2ModalComponent so the login →
+  // FIDO2 transition reads as one continuous screen, not a jump between two different palettes.
+  readonly heroBg = HERO_DARK_BG;
 
   username = '';
   password = '';

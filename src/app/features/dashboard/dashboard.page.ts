@@ -5,6 +5,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { RmDataService } from '../../core/services/rm-data.service';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { QuickAction, QuickActionGridComponent } from '../../shared/components/quick-action-grid/quick-action-grid.component';
+import { HERO_DARK_BG } from '../../shared/ui-tokens';
 import { VndPipe } from '../../shared/pipes/vnd.pipe';
 
 const SEVERITY_ICON: Record<string, string> = { CRITICAL: '🚨', WARNING: '⚠️', INFO: 'ℹ️' };
@@ -14,36 +15,40 @@ const SEVERITY_ICON: Record<string, string> = { CRITICAL: '🚨', WARNING: '⚠�
   standalone: true,
   imports: [CommonModule, RouterLink, LoadingSpinnerComponent, VndPipe, QuickActionGridComponent],
   template: `
-    <div class="max-w-5xl mx-auto p-4 sm:p-6 space-y-5 pb-24">
-      <app-loading-spinner *ngIf="rmData.loading() && !rmData.loaded()" />
+    <app-loading-spinner *ngIf="rmData.loading() && !rmData.loaded()" class="block max-w-5xl mx-auto p-4 sm:p-6" />
 
-      <ng-container *ngIf="rmData.loaded()">
-        <div>
-          <h1 class="text-xl font-semibold text-ink-800">Xin chào, {{ rmData.customer()?.companyName }}</h1>
-          <p class="text-sm text-ink-500 mt-1">Tổng quan tài khoản doanh nghiệp hôm nay</p>
-        </div>
+    <ng-container *ngIf="rmData.loaded()">
+      <!-- Dark hero band (mockup screen 3) — company greeting + total balance, full-bleed so it
+           reads edge-to-edge on mobile instead of sitting inside the same padded card column as
+           the rest of the page. -->
+      <div class="text-white px-4 sm:px-6 pt-6 pb-8" [style.background]="heroBg">
+        <div class="max-w-5xl mx-auto">
+          <p class="text-xs text-white/60">Xin chào, Doanh nghiệp</p>
+          <h1 class="text-lg font-semibold mt-0.5">{{ rmData.customer()?.companyName }}</h1>
+          <p class="text-xs text-white/50 mt-0.5">MSB Business Banking</p>
 
-        <div class="card p-5">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-semibold text-ink-800">Tổng quan tài sản</h2>
+          <div class="flex items-center gap-2 mt-6 mb-1">
+            <p class="text-xs text-white/60">Tổng số dư</p>
             <button
-              class="text-ink-400 hover:text-ink-600 p-1"
+              class="text-white/60 hover:text-white p-0.5"
               [attr.aria-label]="balanceHidden() ? 'Hiện số dư' : 'Ẩn số dư'"
               (click)="balanceHidden.set(!balanceHidden())"
             >
-              <svg *ngIf="!balanceHidden()" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/></svg>
-              <svg *ngIf="balanceHidden()" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.24 4.24M9.9 5.1A11.6 11.6 0 0 1 12 5c7 0 11 7 11 7a13.4 13.4 0 0 1-3.2 3.9M6.6 6.6C3.5 8.6 1 12 1 12s4 7 11 7a10.6 10.6 0 0 0 4.2-.86" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <svg *ngIf="!balanceHidden()" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/></svg>
+              <svg *ngIf="balanceHidden()" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.24 4.24M9.9 5.1A11.6 11.6 0 0 1 12 5c7 0 11 7 11 7a13.4 13.4 0 0 1-3.2 3.9M6.6 6.6C3.5 8.6 1 12 1 12s4 7 11 7a10.6 10.6 0 0 0 4.2-.86" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </div>
-          <div class="flex flex-wrap gap-x-6 gap-y-2">
-            <div *ngFor="let entry of balanceByCurrency()">
-              <p class="text-xs text-ink-400">Số dư {{ entry.currency }}</p>
-              <p class="text-lg font-semibold text-ink-800 mt-0.5">
-                {{ balanceHidden() ? '••••••' : (entry.total | vnd: entry.currency) }}
-              </p>
-            </div>
+          <div class="flex flex-wrap gap-x-6 gap-y-1">
+            <p *ngFor="let entry of balanceByCurrency()" class="text-2xl font-bold">
+              {{ balanceHidden() ? '••••••' : (entry.total | vnd: entry.currency) }}
+              <span class="text-sm font-normal text-white/60">{{ entry.currency }}</span>
+            </p>
           </div>
         </div>
+      </div>
+
+      <div class="max-w-5xl mx-auto p-4 sm:p-6 space-y-5 pb-24 -mt-4 relative z-10 bg-ink-50 rounded-t-2xl">
+        <p class="text-sm text-ink-500">Tổng quan tài khoản doanh nghiệp hôm nay</p>
 
         <div class="grid sm:grid-cols-2 gap-4">
           <div *ngFor="let acc of rmData.accounts()" class="card p-5">
@@ -125,8 +130,8 @@ const SEVERITY_ICON: Record<string, string> = { CRITICAL: '🚨', WARNING: '⚠�
             </div>
           </div>
         </div>
-      </ng-container>
-    </div>
+      </div>
+    </ng-container>
   `,
 })
 export class DashboardPageComponent {
@@ -134,6 +139,7 @@ export class DashboardPageComponent {
   readonly auth = inject(AuthService);
   readonly balanceHidden = signal(false);
   readonly severityIcon = SEVERITY_ICON;
+  readonly heroBg = HERO_DARK_BG;
 
   readonly balanceByCurrency = computed(() => {
     const totals = new Map<string, number>();

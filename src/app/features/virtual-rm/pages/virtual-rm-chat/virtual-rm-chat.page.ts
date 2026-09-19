@@ -11,6 +11,7 @@ import { RmMessageComponent } from '../../components/rm-message/rm-message.compo
 import { RmTypingComponent } from '../../components/rm-typing/rm-typing.component';
 import { RmAvatarComponent } from '../../../../shared/components/rm-avatar/rm-avatar.component';
 import { VoiceOverlayComponent } from '../../../../shared/components/voice-overlay/voice-overlay.component';
+import { QuickAction, QuickActionGridComponent } from '../../../../shared/components/quick-action-grid/quick-action-grid.component';
 
 // Phase 5 (AI Reasoning) quick actions (spec §25) up front, each a full natural-language
 // question so it routes correctly through the Model Router — the emoji is just a visual
@@ -49,7 +50,16 @@ const SUGGESTED_QUESTIONS = [
 @Component({
   selector: 'app-virtual-rm-chat-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent, RmMessageComponent, RmTypingComponent, RmAvatarComponent, VoiceOverlayComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    SidebarComponent,
+    RmMessageComponent,
+    RmTypingComponent,
+    RmAvatarComponent,
+    VoiceOverlayComponent,
+    QuickActionGridComponent,
+  ],
   template: `
     <div
       class="fixed inset-0 z-50 bg-white flex
@@ -144,32 +154,30 @@ const SUGGESTED_QUESTIONS = [
         <app-rm-typing *ngIf="busy()" [state]="rmState()" />
 
         <ng-container *ngIf="!hasUserAsked()">
-          <div class="flex gap-1.5 flex-wrap">
-            <button
-              *ngFor="let n of quickNav"
-              (click)="goTo(n.link)"
-              class="text-xs px-2.5 py-1.5 rounded-full border border-ink-200 text-ink-700 hover:bg-ink-50 transition-colors font-medium"
-            >
-              {{ n.icon }} {{ n.label }}
-            </button>
+          <div>
+            <p class="text-xs font-semibold text-ink-500 mb-2">Bạn có thể</p>
+            <app-quick-action-grid [actions]="quickActions" />
             <!-- LC PO-upload assistant (docs/phase-5.5-lc-assistant.md) — starts a guided
                  in-chat flow instead of a plain navigation, so it needs its own handler rather
-                 than goTo(). -->
+                 than the grid's routerLink. -->
             <button
               (click)="startLcAssist()"
-              class="text-xs px-2.5 py-1.5 rounded-full border border-brand-200 text-brand-700 bg-brand-50/60 hover:bg-brand-50 transition-colors font-medium"
+              class="w-full mt-2 text-left text-xs px-3.5 py-2.5 rounded-xl border border-brand-200 text-brand-700 bg-brand-50/60 hover:bg-brand-50 transition-colors font-medium"
             >
               🧾 Tạo LC từ đơn hàng (PO)
             </button>
           </div>
-          <div class="flex gap-1.5 flex-wrap">
-            <button
-              *ngFor="let q of suggested"
-              (click)="ask(q)"
-              class="text-xs px-2.5 py-1.5 rounded-full bg-ink-50 text-ink-600 hover:bg-ink-100 transition-colors"
-            >
-              {{ q }}
-            </button>
+          <div>
+            <p class="text-xs font-semibold text-ink-500 mb-2">Hoặc hỏi em</p>
+            <div class="flex gap-1.5 flex-wrap">
+              <button
+                *ngFor="let q of suggested"
+                (click)="ask(q)"
+                class="text-xs px-2.5 py-1.5 rounded-full bg-ink-50 text-ink-600 hover:bg-ink-100 transition-colors"
+              >
+                {{ q }}
+              </button>
+            </div>
           </div>
         </ng-container>
       </div>
@@ -234,15 +242,18 @@ export class VirtualRmChatPageComponent {
   @ViewChild('scrollEl') scrollEl?: ElementRef<HTMLDivElement>;
 
   readonly suggested = SUGGESTED_QUESTIONS;
-  readonly quickNav = [
-    { icon: '📄', label: 'LC', link: '/trade-finance/lc' },
-    { icon: '🛡️', label: 'Bảo lãnh', link: '/trade-finance/guarantees' },
-    { icon: '📥', label: 'Nhờ thu', link: '/trade-finance/collections' },
-    { icon: '📊', label: 'Trade Finance', link: '/trade-finance' },
+  // Icon-grid quick actions (mockup screen 4's "Bạn có thể" 2x2 grid) — previously a wrapping pill
+  // row (`quickNav`); same 5 destinations, `QuickAction`-shaped so `<app-quick-action-grid>` (the
+  // same component Dashboard uses) can render them.
+  readonly quickActions: QuickAction[] = [
+    { icon: '📄', label: 'LC', route: '/trade-finance/lc' },
+    { icon: '🛡️', label: 'Bảo lãnh', route: '/trade-finance/guarantees' },
+    { icon: '📥', label: 'Nhờ thu', route: '/trade-finance/collections' },
+    { icon: '📊', label: 'Trade Finance', route: '/trade-finance' },
     // BRD "Virtual RM gợi ý các câu hỏi liên quan đến Daily Dashboard hoặc dấu ấn cá nhân" — a
     // direct nav chip (like the others here) rather than teaching the deterministic Semantic
     // Engine a whole new intent just to redirect to a static page.
-    { icon: '🎖️', label: 'Dấu ấn', link: '/footprint' },
+    { icon: '🎖️', label: 'Dấu ấn', route: '/footprint' },
   ];
   readonly sidebarOpen = signal(false);
 

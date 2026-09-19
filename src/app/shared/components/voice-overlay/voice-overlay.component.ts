@@ -22,7 +22,8 @@ const WAVEFORM_BARS = [0, 1, 2, 3, 4, 5, 6];
   template: `
     <div
       *ngIf="listening"
-      class="fixed inset-0 z-[65] bg-gradient-to-b from-brand-800 to-ink-900 text-white flex flex-col items-center justify-center gap-6 p-6"
+      class="fixed inset-0 z-[65] text-white flex flex-col items-center justify-center gap-6 p-6"
+      style="background: radial-gradient(80% 60% at 50% 35%, rgba(56,189,248,0.4) 0%, rgba(14,116,144,0.2) 25%, transparent 55%), #05070d"
       role="dialog"
       aria-modal="true"
       aria-label="Đang nghe giọng nói"
@@ -31,10 +32,13 @@ const WAVEFORM_BARS = [0, 1, 2, 3, 4, 5, 6];
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
 
+      <!-- Blue/cyan glow (distinct from the brand-orange used elsewhere) — a "the app is
+           listening" state reads as a different color language than brand/primary-action orange
+           in the reference mockup. -->
       <div class="relative w-32 h-32 flex items-center justify-center">
-        <span class="absolute inset-0 rounded-full bg-white/10 animate-ping"></span>
-        <span class="absolute inset-4 rounded-full bg-white/10 animate-pulse"></span>
-        <span class="relative w-20 h-20 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+        <span class="absolute inset-0 rounded-full bg-sky-400/20 animate-ping"></span>
+        <span class="absolute inset-4 rounded-full bg-sky-400/15 animate-pulse"></span>
+        <span class="relative w-20 h-20 rounded-full bg-sky-400/25 border border-sky-300/40 backdrop-blur flex items-center justify-center text-sky-100">
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><rect x="9" y="2" width="6" height="12" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M5 11a7 7 0 0014 0M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </span>
       </div>
@@ -48,10 +52,10 @@ const WAVEFORM_BARS = [0, 1, 2, 3, 4, 5, 6];
       </div>
 
       <div class="flex items-end gap-1 h-8">
-        <span *ngFor="let bar of bars" class="w-1 rounded-full bg-white/60 voice-bar" [style.animation-delay.ms]="bar * 90"></span>
+        <span *ngFor="let bar of bars" class="w-1 rounded-full bg-sky-300/80 voice-bar" [style.animation-delay.ms]="bar * 90"></span>
       </div>
 
-      <button type="button" class="mt-4 w-14 h-14 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center" (click)="stop.emit()" aria-label="Dừng ghi âm">
+      <button type="button" class="mt-4 w-14 h-14 rounded-full bg-sky-400/20 hover:bg-sky-400/30 border border-sky-300/30 flex items-center justify-center" (click)="stop.emit()" aria-label="Dừng ghi âm">
         <span class="w-5 h-5 rounded bg-white"></span>
       </button>
     </div>
