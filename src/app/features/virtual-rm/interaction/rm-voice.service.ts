@@ -5,17 +5,18 @@ import { ToastService } from '../../../core/services/toast.service';
 
 // Phase 5.6 follow-up — voice input/output for the full-screen chat.
 //
-// Output (TTS): tries the backend's cloud endpoint first (POST /api/voice/speak — OpenAI
-// gpt-4o-mini-tts, natural-sounding Vietnamese; see server/src/voice/openai-voice-client.ts) and
-// falls back to the browser's own `speechSynthesis` if that call fails for any reason (no
-// OPENAI_API_KEY configured on the server, network error, ...) — never a hard failure, just a
-// lower-quality voice.
+// Output (TTS): tries the backend's cloud endpoint first (POST /api/voice/speak — Gemini TTS,
+// natural-sounding Vietnamese; see server/src/voice/gemini-voice-client.ts) and falls back to the
+// browser's own `speechSynthesis` if that call fails for any reason (no GEMINI_API_KEY configured
+// on the server, network error, free-tier quota exhausted — Gemini's free tier caps TTS at a low
+// per-day request count, so this fallback is the COMMON case in practice, not a rare edge case —
+// never a hard failure, just a lower-quality voice.
 //
 // Input (STT): records audio with MediaRecorder (supported on every mainstream browser,
 // including Safari/iOS — unlike SpeechRecognition, which Safari never implemented; that gap was
 // the actual cause of the mic silently doing nothing there) and sends it to the backend's cloud
-// endpoint (POST /api/voice/transcribe — OpenAI Whisper) for transcription. Falls back to the
-// older browser-native SpeechRecognition only on the rare browser with no MediaRecorder at all.
+// endpoint (POST /api/voice/transcribe — Gemini) for transcription. Falls back to the older
+// browser-native SpeechRecognition only on the rare browser with no MediaRecorder at all.
 const SPEECH_OUTPUT_KEY = 'vrm_voice_output';
 const RECOGNITION_LANG = 'vi-VN';
 const RECORDER_MIME_CANDIDATES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
@@ -118,6 +119,22 @@ export class RmVoiceService {
       // permanently giving up.
       this.audioUnlocked = false;
     });
+    this.primeSpeechSynthesis();
+  }
+
+  /** `speechSynthesis.speak()` on iOS Safari has a stricter version of the same restriction
+   * unlockAudio() above works around for `<audio>` — every call must be directly, synchronously
+   * gesture-connected; there is no fully-reliable "unlock once, reuse later" guarantee like
+   * `<audio>.play()` has. Speaking an empty utterance from within a real gesture (immediately
+   * cancelled) is a commonly-used best-effort priming trick that measurably helps on many iOS
+   * Safari versions even though it is not part of any spec — worth doing since it's nearly free,
+   * but this is the browser fallback path (used whenever cloud TTS is down or, in practice, quota-
+   * exhausted — see the top-of-file comment), so it may still occasionally miss on iOS regardless. */
+  private primeSpeechSynthesis(): void {
+    if (!('speechSynthesis' in window)) return;
+    const utterance = new SpeechSynthesisUtterance('');
+    utterance.volume = 0;
+    window.speechSynthesis.speak(utterance);
   }
 
   /** Starts one voice-input capture. `onInterim` gives immediate UI feedback while
