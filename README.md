@@ -357,3 +357,30 @@ published site resets the Render-hosted `server/data/*.json`, exactly like local
 - **Pre-login landing page** (`/`, unauthenticated only) introduces MSB Business
   Banking and the 5 Virtual RM capabilities before the login CTA — an authenticated
   visitor to `/` is redirected straight to `/dashboard`.
+
+  > This file predates several later phases of the project (real session-cookie auth,
+  > Maker/Checker BankingCommand workflow, the Gemini AI Agent, voice TTS/STT, and the
+  > premium mobile redesign below) and hasn't been fully rewritten to match every detail
+  > above — the docs listed in each phase's own section are the current source of truth
+  > where they disagree with this file's older prose.
+
+---
+
+## 14. Premium mobile redesign, Demo FIDO2 & 3D avatar
+
+A later round upgraded Login, Dashboard/Home, the Virtual RM chat surface, Transfer +
+Review, and the Maker/Checker approval flow to a mobile-first visual language, added a
+client-side-simulated **"Demo FIDO2"** authentication/approval step, and laid the
+infrastructure for an optional 3D RM avatar. Full design rationale, file-by-file
+before/after, and screen-by-screen verification notes:
+
+- [`docs/phase-8-premium-redesign.md`](docs/phase-8-premium-redesign.md) — UI/UX changes.
+- [`docs/fido2-demo-design.md`](docs/fido2-demo-design.md) — the `Fido2Service` contract,
+  exact insertion points, and how to swap in a real WebAuthn implementation later.
+- [`docs/3d-avatar-guide.md`](docs/3d-avatar-guide.md) — how `RmAvatarComponent`'s lazy
+  `<model-viewer>` upgrade path works, and how to produce and wire in a real `.glb` avatar.
+
+**Important**: the FIDO2 step is a UI/timing simulation only — no `navigator.credentials`
+call anywhere, no new backend endpoint, no change to how a real session is created. It is
+always visibly labeled "Demo FIDO2" and must never be presented as production-grade
+authentication.

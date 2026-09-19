@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuditEvent, BankingCommand, CommandsService } from '../../../../core/services/commands.service';
-import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
+import { Fido2Service } from '../../../../core/services/fido2.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { WarningPanelComponent } from '../../../../shared/components/warning-panel/warning-panel.component';
@@ -113,7 +113,7 @@ export class CommandDetailPageComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly commands = inject(CommandsService);
   private readonly toast = inject(ToastService);
-  private readonly confirm = inject(ConfirmDialogService);
+  private readonly fido2 = inject(Fido2Service);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
@@ -234,12 +234,13 @@ export class CommandDetailPageComponent implements OnInit {
   }
 
   async approve(cmd: BankingCommand): Promise<void> {
-    const ok = await this.confirm.ask({
-      title: 'Phê duyệt lệnh chuyển tiền',
-      message: `Xác nhận phê duyệt ${cmd.referenceNo}? Đây là thao tác mô phỏng trên dữ liệu demo.`,
-      confirmLabel: 'Phê duyệt',
-    });
-    if (!ok || !cmd.idempotencyKey) return;
+    // Demo FIDO2 step-up (docs/fido2-demo-design.md) — this is the app's one true "approval"
+    // action in the real Maker/Checker 4-eyes flow, so it's where the spec's "Transaction
+    // Approval – FIDO2 Demo" step attaches (the Maker's own "Gửi duyệt" submit is left
+    // untouched — that's a submission, not an approval). Everything from the idempotencyKey
+    // guard onward is byte-for-byte the same as before this replaced the plain confirm dialog.
+    const fido2Result = await this.fido2.authenticate('transaction-approval');
+    if (!fido2Result.ok || !cmd.idempotencyKey) return;
     this.busy.set(true);
     try {
       const approved = await this.commands.approve(cmd.id, cmd.idempotencyKey);

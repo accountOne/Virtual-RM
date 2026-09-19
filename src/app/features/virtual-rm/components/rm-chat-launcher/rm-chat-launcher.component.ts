@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
+import { RmAvatarComponent } from '../../../../shared/components/rm-avatar/rm-avatar.component';
 import { RmChatSessionService } from '../../interaction/rm-chat-session.service';
 
 const BUTTON_SIZE = 56;
@@ -31,7 +32,7 @@ interface Point {
 @Component({
   selector: 'app-rm-chat-launcher',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RmAvatarComponent],
   template: `
     <button
       *ngIf="!onChatPage()"
@@ -39,14 +40,13 @@ interface Point {
       (pointermove)="onPointerMove($event)"
       (pointerup)="onPointerUp($event)"
       (pointercancel)="onPointerUp($event)"
-      class="fixed z-40 w-14 h-14 rounded-full bg-brand-500 text-white shadow-pop flex items-center justify-center text-2xl select-none touch-none"
-      [class.right-5]="!buttonPos()"
-      [class.bottom-5]="!buttonPos()"
+      class="fixed z-40 w-14 h-14 rounded-full shadow-pop flex items-center justify-center select-none touch-none overflow-hidden"
+      [ngClass]="!buttonPos() ? 'right-5 bottom-20 lg:bottom-5' : ''"
       [style.left.px]="buttonPos()?.x ?? null"
       [style.top.px]="buttonPos()?.y ?? null"
       [attr.aria-label]="unreadCount() > 0 ? 'Mở Trợ lý RM ảo, ' + unreadCount() + ' tin nhắn chưa đọc (giữ để kéo di chuyển)' : 'Mở Trợ lý RM ảo (giữ để kéo di chuyển)'"
     >
-      👩‍💼
+      <app-rm-avatar size="md" ariaLabel="" />
       <span
         *ngIf="unreadCount() > 0"
         class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-negative text-white text-[10px] font-semibold leading-none flex items-center justify-center ring-2 ring-white"

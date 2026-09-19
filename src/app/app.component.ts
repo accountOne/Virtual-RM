@@ -8,6 +8,8 @@ import { HeaderComponent } from './shared/components/header/header.component';
 import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
 import { ToastContainerComponent } from './shared/components/toast-container/toast-container.component';
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
+import { Fido2ModalComponent } from './shared/components/fido2-modal/fido2-modal.component';
+import { BottomTabBarComponent } from './shared/components/bottom-tab-bar/bottom-tab-bar.component';
 import { RmChatLauncherComponent } from './features/virtual-rm/components/rm-chat-launcher/rm-chat-launcher.component';
 import { RmChatSessionService } from './features/virtual-rm/interaction/rm-chat-session.service';
 import { SessionTimeoutService } from './core/services/session-timeout.service';
@@ -22,6 +24,8 @@ import { SessionTimeoutService } from './core/services/session-timeout.service';
     SidebarComponent,
     ToastContainerComponent,
     ConfirmDialogComponent,
+    Fido2ModalComponent,
+    BottomTabBarComponent,
     RmChatLauncherComponent,
   ],
   templateUrl: './app.component.html',

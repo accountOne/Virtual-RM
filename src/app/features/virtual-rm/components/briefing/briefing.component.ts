@@ -2,11 +2,12 @@ import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import { Briefing } from '../../../../core/models';
 import { VndPipe } from '../../../../shared/pipes/vnd.pipe';
+import { RmAvatarComponent } from '../../../../shared/components/rm-avatar/rm-avatar.component';
 
 @Component({
   selector: 'app-briefing-card',
   standalone: true,
-  imports: [CommonModule, VndPipe],
+  imports: [CommonModule, VndPipe, RmAvatarComponent],
   template: `
     <div class="card p-5" *ngIf="briefing as b">
       <div class="flex items-start justify-between gap-3 mb-4">
@@ -14,7 +15,7 @@ import { VndPipe } from '../../../../shared/pipes/vnd.pipe';
           <p class="text-lg font-semibold text-ink-800">Chào buổi sáng, {{ b.companyName }} 👋</p>
           <p class="text-sm text-ink-500 mt-0.5">Tình hình doanh nghiệp hôm nay</p>
         </div>
-        <div class="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-lg shrink-0">👩‍💼</div>
+        <app-rm-avatar size="sm" />
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">

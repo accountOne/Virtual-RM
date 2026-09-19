@@ -6,6 +6,8 @@ import { routes } from './app.routes';
 import { apiUrlInterceptor } from './core/interceptors/api-url.interceptor';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { AuthService } from './core/services/auth.service';
+import { DemoFido2Service } from './core/services/demo-fido2.service';
+import { Fido2Service } from './core/services/fido2.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -22,5 +24,9 @@ export const appConfig: ApplicationConfig = {
     // flight, and a genuinely expired session is caught immediately instead of flashing
     // authenticated content first.
     provideAppInitializer(() => inject(AuthService).restoreSession()),
+    // Demo FIDO2 step-up (docs/fido2-demo-design.md) — every call site injects the abstract
+    // Fido2Service token, never DemoFido2Service directly, so a later real WebAuthn
+    // implementation is a one-line provider swap here.
+    { provide: Fido2Service, useClass: DemoFido2Service },
   ],
 };

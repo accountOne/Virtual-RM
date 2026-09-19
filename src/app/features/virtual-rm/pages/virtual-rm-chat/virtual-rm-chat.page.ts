@@ -9,6 +9,8 @@ import { RmVoiceQueueService } from '../../interaction/rm-voice-queue.service';
 import { RmVoiceService } from '../../interaction/rm-voice.service';
 import { RmMessageComponent } from '../../components/rm-message/rm-message.component';
 import { RmTypingComponent } from '../../components/rm-typing/rm-typing.component';
+import { RmAvatarComponent } from '../../../../shared/components/rm-avatar/rm-avatar.component';
+import { VoiceOverlayComponent } from '../../../../shared/components/voice-overlay/voice-overlay.component';
 
 // Phase 5 (AI Reasoning) quick actions (spec §25) up front, each a full natural-language
 // question so it routes correctly through the Model Router — the emoji is just a visual
@@ -47,7 +49,7 @@ const SUGGESTED_QUESTIONS = [
 @Component({
   selector: 'app-virtual-rm-chat-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent, RmMessageComponent, RmTypingComponent],
+  imports: [CommonModule, FormsModule, SidebarComponent, RmMessageComponent, RmTypingComponent, RmAvatarComponent, VoiceOverlayComponent],
   template: `
     <div
       class="fixed inset-0 z-50 bg-white flex
@@ -110,7 +112,7 @@ const SUGGESTED_QUESTIONS = [
           🤖 Agent
         </button>
         <div class="relative shrink-0">
-          <div class="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-lg">👩‍💼</div>
+          <app-rm-avatar size="sm" />
           <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-positive ring-2 ring-brand-800"></span>
         </div>
         <!-- Collapses the full-screen chat back to wherever the customer tapped the floating
@@ -219,6 +221,7 @@ const SUGGESTED_QUESTIONS = [
       </form>
       </div>
     </div>
+    <app-voice-overlay [listening]="voice.listening()" (stop)="voice.stopListening()" />
   `,
 })
 export class VirtualRmChatPageComponent {

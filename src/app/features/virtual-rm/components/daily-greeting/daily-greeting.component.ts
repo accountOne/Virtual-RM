@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import { CashflowSummary, Greeting } from '../../../../core/models';
 import { VndShortPipe } from '../../../../shared/pipes/vnd.pipe';
+import { RmAvatarComponent } from '../../../../shared/components/rm-avatar/rm-avatar.component';
 
 /** Phase 5.5 BRD alignment — Daily Dashboard greeting + cashflow (docs/phase-5.5-daily-dashboard.md).
  * Replaces the old BriefingCardComponent's hard-coded "Chào buổi sáng" (which never actually
@@ -10,12 +11,12 @@ import { VndShortPipe } from '../../../../shared/pipes/vnd.pipe';
 @Component({
   selector: 'app-daily-greeting-card',
   standalone: true,
-  imports: [CommonModule, VndShortPipe],
+  imports: [CommonModule, VndShortPipe, RmAvatarComponent],
   template: `
     <div class="card p-5" *ngIf="greeting as g">
       <div class="flex items-start justify-between gap-3 mb-4">
         <p class="text-base font-semibold text-ink-800 leading-relaxed">{{ g.message }}</p>
-        <div class="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-lg shrink-0">👩‍💼</div>
+        <app-rm-avatar size="sm" />
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" *ngIf="cashflow as c">

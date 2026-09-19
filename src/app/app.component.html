@@ -4,17 +4,20 @@
   <div class="flex flex-1 min-h-0">
     <app-sidebar [open]="mobileMenuOpen()" (close)="mobileMenuOpen.set(false)" />
 
-    <main class="flex-1 min-w-0">
+    <main class="flex-1 min-w-0 pb-16 lg:pb-0">
       <router-outlet />
     </main>
   </div>
 
+  <app-bottom-tab-bar [open]="mobileMenuOpen()" (moreClick)="mobileMenuOpen.set(true)" />
   <app-toast-container />
   <app-confirm-dialog />
+  <app-fido2-modal />
   <app-rm-chat-launcher />
 </div>
 
 <ng-template #guestOutlet>
   <router-outlet />
   <app-toast-container />
+  <app-fido2-modal />
 </ng-template>

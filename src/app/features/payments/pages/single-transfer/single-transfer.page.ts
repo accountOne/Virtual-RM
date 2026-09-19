@@ -1,11 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BankingCommand, CommandsService } from '../../../../core/services/commands.service';
 import { RmDataService } from '../../../../core/services/rm-data.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { WarningPanelComponent } from '../../../../shared/components/warning-panel/warning-panel.component';
+import { StepperComponent } from '../../../../shared/components/stepper/stepper.component';
 import { VndPipe } from '../../../../shared/pipes/vnd.pipe';
+
+const STEPS = [{ label: 'Nhập thông tin' }, { label: 'Xem lại' }, { label: 'Hoàn tất' }];
+const STAGE_INDEX: Record<Stage, number> = { editing: 0, previewing: 1, submitted: 2 };
 
 // Mirrors server/src/domain/reference-data/beneficiary-banks.ts — deliberately duplicated (not
 // fetched) since it's small, static reference data, same pattern the rest of this app already
@@ -55,10 +59,11 @@ function emptyForm(): TransferForm {
 @Component({
   selector: 'app-single-transfer-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, VndPipe, WarningPanelComponent],
+  imports: [CommonModule, FormsModule, VndPipe, WarningPanelComponent, StepperComponent],
   template: `
     <div class="max-w-lg mx-auto p-4 sm:p-6 space-y-5 pb-24">
       <h1 class="text-xl font-semibold text-ink-800">Chuyển tiền</h1>
+      <app-stepper [steps]="steps" [activeIndex]="stageIndex()" />
 
       <!-- EDITING -->
       <div class="card p-5" *ngIf="stage() === 'editing'">
@@ -76,7 +81,7 @@ function emptyForm(): TransferForm {
           <!-- Tên tài khoản nguồn / Số dư khả dụng — shown as standalone read-only fields once a
                source account is selected (ui-ux-audit.md #21: these were previously only visible
                inline inside the <option> label, not as fields a Maker could double-check). -->
-          <div class="grid grid-cols-2 gap-3" *ngIf="selectedAccount() as acc">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" *ngIf="selectedAccount() as acc">
             <div>
               <label class="text-xs font-medium text-ink-600">Tên tài khoản nguồn</label>
               <p class="input mt-1 bg-ink-50 text-ink-700">{{ acc.accountName }}</p>
@@ -135,7 +140,7 @@ function emptyForm(): TransferForm {
               <label class="text-xs font-medium text-ink-600">Nội dung chuyển tiền</label>
               <input [(ngModel)]="form.transferDescription" name="transferDescription" class="input mt-1" maxlength="255" placeholder="Nội dung (tuỳ chọn)" />
             </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="text-xs font-medium text-ink-600">Người chịu phí</label>
                 <select [(ngModel)]="form.feeBearer" name="feeBearer" class="input mt-1">
@@ -207,8 +212,10 @@ export class SingleTransferPageComponent {
 
   readonly banks = BENEFICIARY_BANKS;
   readonly form: TransferForm = emptyForm();
+  readonly steps = STEPS;
 
   readonly stage = signal<Stage>('editing');
+  readonly stageIndex = computed(() => STAGE_INDEX[this.stage()]);
   readonly command = signal<BankingCommand | null>(null);
   readonly previewing = signal(false);
   readonly submitting = signal(false);

@@ -18,12 +18,22 @@ export type RMState =
   | 'SUCCESS'
   | 'HANDOFF';
 
-/** User-facing label for each state — short, no chain-of-thought, per spec §4's own examples. */
+/** User-facing label for each state — short, no chain-of-thought, per spec §4's own examples.
+ * Premium redesign — expanded from the original 4 entries (LISTENING/PROCESSING/ANALYZING/
+ * RESPONDING) to cover all 11 `RMState` values, so `RmTypingComponent` shows a distinct message
+ * for every state instead of falling back to one generic string for 7 of them. IDLE has no label
+ * on purpose (nothing is shown while the RM isn't doing anything). */
 export const RM_STATE_LABEL: Partial<Record<RMState, string>> = {
+  GREETING: 'Em đang chuẩn bị lời chào...',
   LISTENING: 'Em đang lắng nghe...',
   PROCESSING: 'Em đang kiểm tra thông tin...',
   ANALYZING: 'Em đang phân tích...',
   RESPONDING: 'Em đang chuẩn bị câu trả lời...',
+  RECOMMENDING: 'Em đang tìm gợi ý phù hợp...',
+  WAITING_FOR_USER: 'Em đang chờ anh/chị xác nhận...',
+  NAVIGATING: 'Em đang mở màn hình liên quan...',
+  SUCCESS: 'Hoàn tất!',
+  HANDOFF: 'Em đang kết nối anh/chị với RM thật...',
 };
 
 export type RMMessageType =
