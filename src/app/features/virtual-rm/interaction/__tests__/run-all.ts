@@ -13,6 +13,7 @@ import './message-builder.test';
 import './timing.test';
 import './state.test';
 import './context.test';
+import './voice-queue.test';
 
 import { runAll } from './test-runner';
 

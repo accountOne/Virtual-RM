@@ -77,6 +77,11 @@ export class RmVoiceService {
   // One reusable <audio> element instead of a fresh `new Audio()` per reply — see unlockAudio().
   private readonly audioEl = typeof Audio !== 'undefined' ? new Audio() : null;
   private audioUnlocked = false;
+  /** Resolves the in-flight `speak()` call's promise early — set only while a speak() is
+   * actually in progress, so `stopSpeaking()` can unblock a caller awaiting completion (a real
+   * sequential queue needs `speak()` to resolve on STOP too, not just on natural end, or an
+   * interrupted message would hang the whole queue forever). */
+  private pendingSpeechResolve: (() => void) | null = null;
 
   /** True while a voice-input capture (recording, or mid-transcription waiting on the cloud) is
    * in progress — the mic button reflects this. */
@@ -222,38 +227,78 @@ export class RmVoiceService {
   }
 
   /** Reads text aloud if voice output is enabled: cloud TTS first (natural-sounding, see
-   * server/src/voice/openai-voice-client.ts), falling back to the browser's own `speechSynthesis`
-   * if that call fails for any reason (no key configured, network error, ...). */
+   * server/src/voice/gemini-voice-client.ts), falling back to the browser's own `speechSynthesis`
+   * if that call fails for any reason (no key configured, network error, free-tier quota, ...).
+   * The returned promise resolves only once playback actually FINISHES (or is stopped) — not just
+   * once it starts — so `RmVoiceQueueService` can safely await one message before starting the
+   * next instead of letting replies overlap. No-op (resolves immediately) when voice output is
+   * off or the text is empty, so a queue awaiting this never hangs on a muted session. */
   async speak(text: string): Promise<void> {
     if (!this.speechEnabled() || !text) return;
     try {
       const res = await firstValueFrom(this.http.post<CloudSpeakResponse>('/api/voice/speak', { text }));
-      this.playBase64Audio(res.audioBase64, res.mimeType);
+      await this.playBase64Audio(res.audioBase64, res.mimeType);
     } catch {
-      this.speakBrowser(text);
+      await this.speakBrowser(text);
     }
   }
 
+  /** Stops whatever is currently playing/speaking and immediately resolves the `speak()` call
+   * that was waiting on it, if any — required so a queue's `await speak(...)` can't be left
+   * hanging forever by an interrupted message. */
   stopSpeaking(): void {
     this.audioEl?.pause();
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    this.resolvePendingSpeech();
   }
 
-  private playBase64Audio(base64: string, mimeType: string): void {
-    if (!this.audioEl) return;
-    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-    const blob = new Blob([bytes], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    this.audioEl.src = url;
-    this.audioEl.onended = () => URL.revokeObjectURL(url);
-    this.audioEl.play().catch(() => URL.revokeObjectURL(url));
+  /** Best-effort pause/resume of whatever is currently playing — both `<audio>` and
+   * `speechSynthesis` support pausing in place natively; used by `RmVoiceQueueService`'s PAUSED
+   * state. Does not resolve the pending `speak()` promise (unlike `stopSpeaking()`) since the
+   * message isn't actually finished. */
+  pauseSpeaking(): void {
+    this.audioEl?.pause();
+    if ('speechSynthesis' in window) window.speechSynthesis.pause();
   }
 
-  private speakBrowser(text: string): void {
-    if (!('speechSynthesis' in window)) return;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = RECOGNITION_LANG;
-    window.speechSynthesis.speak(utterance);
+  resumeSpeaking(): void {
+    if (this.audioEl && this.audioEl.src && this.audioEl.paused) void this.audioEl.play().catch(() => {});
+    if ('speechSynthesis' in window) window.speechSynthesis.resume();
+  }
+
+  private resolvePendingSpeech(): void {
+    const resolve = this.pendingSpeechResolve;
+    this.pendingSpeechResolve = null;
+    resolve?.();
+  }
+
+  private playBase64Audio(base64: string, mimeType: string): Promise<void> {
+    if (!this.audioEl) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.pendingSpeechResolve = resolve;
+      const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      this.audioEl!.src = url;
+      const finish = () => {
+        URL.revokeObjectURL(url);
+        this.resolvePendingSpeech();
+      };
+      this.audioEl!.onended = finish;
+      this.audioEl!.play().catch(finish);
+    });
+  }
+
+  private speakBrowser(text: string): Promise<void> {
+    if (!('speechSynthesis' in window)) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.pendingSpeechResolve = resolve;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = RECOGNITION_LANG;
+      utterance.onend = () => this.resolvePendingSpeech();
+      utterance.onerror = () => this.resolvePendingSpeech();
+      window.speechSynthesis.speak(utterance);
+    });
   }
 }
 

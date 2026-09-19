@@ -1,15 +1,17 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { AgentService, AgentWorkflowRecord } from '../../../core/services/agent.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { DailyDashboard } from '../../../core/models/daily-dashboard.model';
 import { DailyDashboardService } from '../../../core/services/daily-dashboard.service';
 import { LcAssistService, PoExtractedFields } from '../../../core/services/lc-assist.service';
 import { RmDataService } from '../../../core/services/rm-data.service';
 import { RmContextService } from './rm-context.service';
 import { RMAction, RMMessage } from './rm-interaction.types';
-import { buildAgentMessages, buildProactiveGreeting, buildRmMessages } from './rm-message-builder';
+import { buildAgentMessages, buildDailyBriefingSpokenText, buildProactiveGreeting, buildRmMessages } from './rm-message-builder';
 import { RmStateService } from './rm-state.service';
 import { RmStreamService } from './rm-stream.service';
 import { RmTimingService } from './rm-timing.service';
+import { RmVoiceQueueService } from './rm-voice-queue.service';
 
 // LC PO-upload assistant (docs/phase-5.5-lc-assistant.md) — a small set of natural-language
 // triggers that start the flow client-side, without teaching the deterministic Semantic Engine
@@ -55,6 +57,7 @@ export class RmChatSessionService {
   private readonly auth = inject(AuthService);
   private readonly lcAssist = inject(LcAssistService);
   private readonly agent = inject(AgentService);
+  private readonly voiceQueue = inject(RmVoiceQueueService);
 
   readonly messages = signal<RMMessage[]>([]);
   readonly busy = signal(false);
@@ -82,6 +85,21 @@ export class RmChatSessionService {
   private lcAssistType: 'IMPORT' | 'EXPORT' | null = null;
 
   constructor() {
+    // Voice UX upgrade (spec §9/§11) — registered unconditionally, before the restored-history
+    // branch below can `return` early: this service is a root singleton constructed ONCE at app
+    // bootstrap (see app.component.ts), so on a browser that already has chat history in
+    // localStorage from an earlier session, `startProactiveGreeting()` below never runs again on
+    // a later login — it would be the wrong place to gate the daily briefing on. Keying off
+    // `auth.loginSessionId()` instead (set fresh by AuthService.login() on every explicit login,
+    // reused on a mere page refresh) means this correctly re-arms on a genuine new login even
+    // when the visible greeting itself doesn't rebuild, and correctly stays silent on
+    // refresh/navigate/reopen within the same login (`hasSpokenDailyBriefing()`'s sessionStorage
+    // gate, keyed by that same loginSessionId, does the actual dedup).
+    effect(() => {
+      const dashboard = this.dailyDashboard.dashboard();
+      if (dashboard && this.auth.loginSessionId()) this.speakDailyBriefingOnce(dashboard);
+    });
+
     const restored = restoreMessages();
     if (restored && restored.length > 0) {
       this.messages.set(restored);
@@ -106,7 +124,10 @@ export class RmChatSessionService {
     const content =
       this.rmData.briefing()?.greeting ??
       `Chào anh/chị${customer ? ', ' + customer.companyName : ''} 👋 Tôi là Virtual RM của doanh nghiệp. Anh/chị cần tôi hỗ trợ gì?`;
-    return { id: localId('greet'), from: 'RM', type: 'TEXT', content, timestamp: Date.now() };
+    // Voice UX upgrade — same reasoning as buildProactiveGreeting()'s `silent` bubbles: this
+    // generic filler is superseded by the separate spoken daily-briefing summary, not something
+    // to read verbatim itself.
+    return { id: localId('greet'), from: 'RM', type: 'TEXT', content, timestamp: Date.now(), voice: { enabled: false } };
   }
 
   /** Phase 5.6 Proactive RM (Flow 6) — builds the multi-bubble greeting from real Daily
@@ -125,6 +146,38 @@ export class RmChatSessionService {
     this.rmState.set('GREETING');
     await this.stream.reveal(buildProactiveGreeting(dashboard), (msg) => this.pushMessage(msg));
     this.rmState.set('IDLE');
+  }
+
+  /** Voice UX upgrade (spec §9/§11) — the one voice event that fires after login: a short spoken
+   * summary, gated to at most once per login session by `RmVoiceQueueService`'s sessionStorage
+   * key (survives refresh/navigate/close-reopen-RM, resets on a genuine new login — see
+   * auth.service.ts's `loginSessionId`). Spoken directly via the queue rather than through
+   * `pushMessage()`, since this is a voice-only event, not a new visible chat bubble (the visible
+   * greeting above already covers the same ground on screen). Triggered by the constructor's own
+   * `effect()` (keyed off `auth.loginSessionId()` + the dashboard loading) rather than from here,
+   * so it still fires on a second/third login even when restored chat history skips rebuilding
+   * the visible greeting entirely — see that effect's doc comment. */
+  private speakDailyBriefingOnce(dashboard: DailyDashboard): void {
+    if (this.voiceQueue.hasSpokenDailyBriefing()) return;
+    // Same reasoning as RmVoiceQueueService.enqueueAssistantMessage()'s own ordering (discovered
+    // live, via Playwright, testing this exact flow): voice output is off by default, so a
+    // customer who logs in and only turns it on a moment later must still get to hear this login
+    // session's briefing. Not consuming the once-per-session sessionStorage slot while voice is
+    // off means the constructor's `effect()` above (which re-evaluates on every
+    // `voice.speechEnabled()` change, since this call chain reads that signal) naturally retries
+    // and succeeds the moment the customer enables voice — no extra plumbing needed.
+    if (!this.voiceQueue.isEnabled()) return;
+    this.voiceQueue.markDailyBriefingSpoken();
+    const spokenText = buildDailyBriefingSpokenText(dashboard);
+    if (!spokenText) return; // nothing urgent today — correct to stay silent
+    this.voiceQueue.enqueueAssistantMessage({
+      id: localId('daily-briefing'),
+      from: 'RM',
+      type: 'ALERT',
+      content: spokenText,
+      voice: { enabled: true, priority: 'important', spokenText },
+      timestamp: Date.now(),
+    });
   }
 
   ask(question: string): void {
@@ -389,9 +442,19 @@ export class RmChatSessionService {
     }
   }
 
+  /** The single choke point for every genuinely NEW message entering this conversation (as
+   * opposed to restored history set directly in the constructor via `messages.set(restored)`) —
+   * see this class's own doc comment history for why that distinction matters. Voice UX upgrade:
+   * this is therefore also the one place a new RM message is offered to the voice queue
+   * (spec §5's "explicit event" requirement — never a render-triggered effect that could fire
+   * more than once for the same message). `enqueueAssistantMessage()` itself decides whether the
+   * message is actually eligible to be spoken (see rm-voice-queue.service.ts's
+   * `resolveSpokenText()`); restored/historical messages never reach this method, so reopening an
+   * old conversation or refreshing the page never re-speaks anything (spec §6/§7). */
   private pushMessage(msg: RMMessage): void {
     this.messages.update((list) => [...list, msg]);
     persistMessages(this.messages());
+    if (msg.from === 'RM') this.voiceQueue.enqueueAssistantMessage(msg);
   }
 }
 

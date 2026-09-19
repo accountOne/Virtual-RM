@@ -265,6 +265,11 @@ function buildCategoryShortcuts(now: number): RMMessage {
       { label: 'Dấu ấn', icon: '🎖️', type: 'NAVIGATE', route: '/footprint' },
     ],
     timestamp: now,
+    // Voice UX upgrade — this whole rich greeting is superseded, for voice purposes, by the
+    // short buildDailyBriefingSpokenText() summary spoken once by rm-chat-session.service.ts;
+    // reading every bubble here verbatim (including a chip row) would violate the "never read
+    // button/menu text" policy. See docs/virtual-rm-voice-design.md §"Daily briefing".
+    voice: { enabled: false },
   };
 }
 
@@ -276,8 +281,15 @@ function buildCategoryShortcuts(now: number): RMMessage {
 export function buildProactiveGreeting(dashboard: DailyDashboard): RMMessage[] {
   const now = Date.now();
   const messages: RMMessage[] = [];
+  // Voice UX upgrade — every bubble in this rich, multi-card greeting is visual-only for voice
+  // purposes (spec §10: "never read raw UI notification text"); the one thing actually spoken on
+  // login is the separate short buildDailyBriefingSpokenText() summary below, triggered once by
+  // rm-chat-session.service.ts. `voice: { enabled: false }` on each bubble here is what makes
+  // re-showing this same greeting on "Hội thoại mới" silent, without needing a separate suppress
+  // flag — see docs/virtual-rm-voice-design.md.
+  const silent = { enabled: false as const };
 
-  messages.push({ id: nextId('greet'), from: 'RM', type: 'TEXT', content: dashboard.greeting.message, timestamp: now });
+  messages.push({ id: nextId('greet'), from: 'RM', type: 'TEXT', content: dashboard.greeting.message, timestamp: now, voice: silent });
 
   if (dashboard.cashflow) {
     const cf = dashboard.cashflow;
@@ -292,9 +304,10 @@ export function buildProactiveGreeting(dashboard: DailyDashboard): RMMessage[] {
         { label: 'Chi ra', value: formatVnd(cf.totalOutgoing) },
       ],
       timestamp: now,
+      voice: silent,
     });
     if (cf.insight) {
-      messages.push({ id: nextId('cashflow-insight'), from: 'RM', type: 'INSIGHT', content: cf.insight, timestamp: now });
+      messages.push({ id: nextId('cashflow-insight'), from: 'RM', type: 'INSIGHT', content: cf.insight, timestamp: now, voice: silent });
     }
   }
 
@@ -312,6 +325,7 @@ export function buildProactiveGreeting(dashboard: DailyDashboard): RMMessage[] {
         action: toUrgentItemAction(item),
       })),
       timestamp: now,
+      voice: silent,
     });
   } else {
     messages.push({
@@ -320,12 +334,36 @@ export function buildProactiveGreeting(dashboard: DailyDashboard): RMMessage[] {
       type: 'TEXT',
       content: 'Mọi việc hôm nay đều ổn, không có gì cần anh/chị xử lý gấp ạ.',
       timestamp: now,
+      voice: silent,
     });
   }
 
   messages.push(buildCategoryShortcuts(now));
 
   return messages;
+}
+
+const BRIEFING_ORDINALS = ['Một', 'Hai', 'Ba', 'Bốn', 'Năm'];
+
+/** Voice UX upgrade (spec §10) — the ONE thing actually spoken right after login: a short,
+ * spoken-only summary built from real Daily Dashboard numbers, never the rich greeting bubbles
+ * above verbatim. Returns `null` when there's nothing urgent to mention (no approvals pending, no
+ * open tasks, no new insights) — silence is correct there, not an empty announcement. */
+export function buildDailyBriefingSpokenText(dashboard: DailyDashboard): string | null {
+  const items: string[] = [];
+  if (dashboard.pendingApprovals.count > 0) {
+    items.push(`${dashboard.pendingApprovals.count} lệnh đang chờ kiểm soát`);
+  }
+  if (dashboard.tasks.openCount > 0) {
+    items.push(`${dashboard.tasks.openCount} việc cần xử lý`);
+  }
+  if (dashboard.insights.length > 0) {
+    items.push(dashboard.insights.length === 1 ? 'một thông báo mới từ ngân hàng' : `${dashboard.insights.length} thông báo mới từ ngân hàng`);
+  }
+  if (!items.length) return null;
+
+  const listed = items.map((text, i) => `${BRIEFING_ORDINALS[i] ?? String(i + 1)}, ${text}.`).join(' ');
+  return `Chào anh/chị. Hôm nay có ${items.length} thông báo cần lưu ý: ${listed}`;
 }
 
 // --- Gemini AI Agent (docs/AI_AGENT_ARCHITECTURE.md) -----------------------------------------

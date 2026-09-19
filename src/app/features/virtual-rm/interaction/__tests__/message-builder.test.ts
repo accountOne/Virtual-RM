@@ -1,6 +1,6 @@
 import { DailyDashboard, PriorityTask } from '../../../../core/models/daily-dashboard.model';
 import { SemanticAnswer } from '../../../../core/services/rm-data.service';
-import { buildProactiveGreeting, buildRmMessages } from '../rm-message-builder';
+import { buildDailyBriefingSpokenText, buildProactiveGreeting, buildRmMessages } from '../rm-message-builder';
 import { assert, assertEqual, describe, test } from './test-runner';
 
 function baseAnswer(overrides: Partial<SemanticAnswer> = {}): SemanticAnswer {
@@ -267,5 +267,59 @@ describe('rm-message-builder — buildProactiveGreeting', () => {
       last.actions!.every((a) => !!a.icon),
       'every category-shortcut action must carry an icon (renders as a pill chip)',
     );
+  });
+
+  // Voice UX upgrade — every bubble in this rich greeting must stay silent for voice purposes;
+  // the short buildDailyBriefingSpokenText() summary below is what's actually spoken, and
+  // rm-chat-session.service.ts relies on this to keep "Hội thoại mới" from auto-speaking when it
+  // rebuilds this exact greeting (docs/virtual-rm-voice-design.md).
+  test('every bubble in the greeting is voice-silent (spoken separately via the daily briefing)', () => {
+    const messages = buildProactiveGreeting(
+      baseDashboard({
+        cashflow: { period: 'TODAY', currentBalance: 1, totalIncoming: 1, totalOutgoing: 1, net: 1, insight: 'Dòng tiền ổn định' },
+        urgentItems: [urgentItem({ id: 'a' })],
+      }),
+    );
+    assert(messages.length > 1, 'sanity: expected more than one bubble in this greeting');
+    assert(
+      messages.every((m) => m.voice?.enabled === false),
+      'every proactive-greeting bubble must have voice.enabled === false',
+    );
+  });
+});
+
+describe('rm-message-builder — buildDailyBriefingSpokenText', () => {
+  test('nothing urgent today -> null (silence is correct, not an empty announcement)', () => {
+    const text = buildDailyBriefingSpokenText(baseDashboard());
+    assertEqual(text, null);
+  });
+
+  test('one bucket urgent -> one-item spoken summary', () => {
+    const text = buildDailyBriefingSpokenText(baseDashboard({ pendingApprovals: { count: 2, totalAmount: 0, items: [] } }));
+    assert(!!text, 'expected a spoken summary');
+    assert(text!.includes('2 lệnh đang chờ kiểm soát'), `expected approval count in: ${text}`);
+    assert(text!.includes('Một,'), `expected ordinal "Một" for the single item: ${text}`);
+    assert(!text!.includes('Hai,'), 'must not list a second item that was not urgent');
+  });
+
+  test('three buckets urgent -> three ordinal items in a stable order', () => {
+    const text = buildDailyBriefingSpokenText(
+      baseDashboard({
+        pendingApprovals: { count: 2, totalAmount: 0, items: [] },
+        tasks: { openCount: 1, items: [] },
+        insights: [{ message: 'Thị trường USD biến động' }],
+      }),
+    );
+    assert(!!text, 'expected a spoken summary');
+    assert(text!.includes('Hôm nay có 3 thông báo cần lưu ý'), `expected a count-3 lead-in: ${text}`);
+    assert(text!.includes('Một, 2 lệnh đang chờ kiểm soát.'), text!);
+    assert(text!.includes('Hai, 1 việc cần xử lý.'), text!);
+    assert(text!.includes('Ba, một thông báo mới từ ngân hàng.'), text!);
+  });
+
+  test('never contains markdown/emoji markers (must already be clean spoken prose)', () => {
+    const text = buildDailyBriefingSpokenText(baseDashboard({ pendingApprovals: { count: 1, totalAmount: 0, items: [] } }));
+    assert(!!text, 'expected a spoken summary');
+    assert(!/[*_#<>]/.test(text!), `unexpected markdown/HTML marker in: ${text}`);
   });
 });

@@ -48,6 +48,22 @@ export type RMMessageType =
 
 export type RMSeverity = 'INFO' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
+/** Voice UX upgrade — semantic TTS metadata, separate from `content`/display fields on purpose
+ * (docs/virtual-rm-voice-design.md §3 "Do not use DOM text as TTS source"). `RmVoiceQueueService`
+ * reads ONLY `voice.spokenText` (falling back to `content` when absent, never to anything
+ * rendered — no button label, icon, badge, or timestamp is ever a valid TTS source). Every
+ * RMMessage builder function in rm-message-builder.ts sets this explicitly rather than leaving it
+ * to an implicit "if it has content, read it" rule, so a new message type defaults to SILENT
+ * (voice.enabled undefined/false) until someone deliberately opts it in. */
+export interface RMMessageVoice {
+  enabled: boolean;
+  priority?: 'normal' | 'important' | 'critical';
+  /** Plain sentence(s) to speak — no markdown, no emoji, no UI-only wording ("nhấn nút",
+   * "xem bên dưới"). Falls back to `content` (also expected to already be clean prose) when
+   * omitted on an `enabled: true` message. */
+  spokenText?: string;
+}
+
 export interface RMAction {
   label: string;
   type: 'NAVIGATE' | 'QUERY' | 'CONFIRM' | 'UPLOAD' | 'DOWNLOAD' | 'HANDOFF';
@@ -102,4 +118,5 @@ export interface RMMessage {
   actions?: RMAction[];
   quickReplies?: string[];
   timestamp: number;
+  voice?: RMMessageVoice;
 }

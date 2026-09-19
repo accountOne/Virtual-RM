@@ -27,6 +27,13 @@ interface SessionApiResponse {
 export type LoginResult = { ok: true } | { ok: false; message: string };
 
 const GENERIC_LOGIN_ERROR = 'Không thể đăng nhập. Vui lòng thử lại.';
+// Voice UX upgrade — scopes "has the daily briefing already been spoken this login session"
+// (docs/virtual-rm-voice-design.md §11) to a genuine fresh login, not just a page load. Kept in
+// sessionStorage (not a new field on the server's own session payload — the server doesn't need
+// to know about this, it's a pure frontend voice-UX concern) so a page refresh reuses the same id
+// (the underlying httpOnly session cookie is unchanged), while an explicit logout+login again —
+// even within the same browser tab — gets a fresh one.
+const LOGIN_SESSION_ID_KEY = 'vrm_login_session_id';
 
 /**
  * Login & Session Security upgrade — identity now comes exclusively from the server's
@@ -56,6 +63,8 @@ export class AuthService {
    * guards run after this, so a real, still-valid session survives a hard refresh instead of
    * bouncing to /login before the check completes. */
   readonly initialized = signal(false);
+  /** See LOGIN_SESSION_ID_KEY above — null when logged out. */
+  readonly loginSessionId = signal<string | null>(null);
 
   /** Called once at app bootstrap (see app.config.ts's `provideAppInitializer`). Read-only on
    * the server (see `requireSessionReadOnly` in server/src/app.ts) — restoring on refresh must
@@ -64,6 +73,7 @@ export class AuthService {
     try {
       const res = await firstValueFrom(this.http.get<SessionApiResponse>('/api/auth/me'));
       this.applySession(res);
+      if (res.authenticated) this.ensureLoginSessionId();
     } catch {
       this.clear();
     } finally {
@@ -77,11 +87,38 @@ export class AuthService {
         this.http.post<SessionApiResponse>('/api/auth/login', { username, password }),
       );
       this.applySession(res);
+      // Unlike restoreSession()'s reuse-if-present above, an explicit login is always a genuinely
+      // NEW session even if one was already sitting in sessionStorage (e.g. logout then log back
+      // in within the same tab) — the daily briefing must be allowed to speak again.
+      this.regenerateLoginSessionId();
       return { ok: true };
     } catch (err) {
       this.clear();
       return { ok: false, message: extractMessage(err) };
     }
+  }
+
+  /** Page refresh reuses the same id (the underlying session cookie didn't change); first load
+   * in a fresh tab creates one. */
+  private ensureLoginSessionId(): void {
+    if (this.loginSessionId()) return;
+    try {
+      const existing = sessionStorage.getItem(LOGIN_SESSION_ID_KEY);
+      this.loginSessionId.set(existing ?? this.regenerateLoginSessionId());
+    } catch {
+      this.loginSessionId.set(cryptoRandomId());
+    }
+  }
+
+  private regenerateLoginSessionId(): string {
+    const id = cryptoRandomId();
+    this.loginSessionId.set(id);
+    try {
+      sessionStorage.setItem(LOGIN_SESSION_ID_KEY, id);
+    } catch {
+      // ignore — voice daily-briefing dedup just won't survive a refresh this session
+    }
+    return id;
   }
 
   /** Tells the server first, then clears local state — in that order. `firstValueFrom` subscribes
@@ -151,7 +188,18 @@ export class AuthService {
     this.csrfToken = null;
     this.sessionExpiresAt.set(null);
     this.sessionIdleExpiresAt.set(null);
+    this.loginSessionId.set(null);
+    try {
+      sessionStorage.removeItem(LOGIN_SESSION_ID_KEY);
+    } catch {
+      // ignore
+    }
   }
+}
+
+function cryptoRandomId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function extractMessage(err: unknown): string {

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RMAction, RMMessage, RMSeverity } from '../../interaction/rm-interaction.types';
+import { resolveSpokenText } from '../../interaction/rm-voice-queue.service';
 
 const SEVERITY_CLASS: Record<RMSeverity, string> = {
   INFO: 'border-l-4 border-brand-400 bg-brand-50/40',
@@ -180,15 +181,34 @@ const ROW_ICON_CLASS: Record<RMSeverity, string> = {
       <div class="flex items-center gap-1 mt-1 px-1" [class.mr-1]="message.from === 'USER'" [class.ml-1]="message.from !== 'USER'">
         <span class="text-[10px] text-ink-300">{{ message.timestamp | date: 'HH:mm' }}</span>
         <span *ngIf="message.from === 'USER'" class="text-[10px] text-sky-400" aria-label="Đã gửi">✓✓</span>
+        <!-- Voice UX upgrade §16 — the ONLY way to re-hear an already-spoken (or never
+             auto-spoken, e.g. an old/restored) RM message: opening a conversation, reopening it,
+             or a re-render never triggers TTS on their own, this button is the sole manual
+             trigger. Only shown when there's actually something speakable (never on a
+             button/metric-only bubble or a user's own message). -->
+        <button
+          *ngIf="canReadAloud"
+          type="button"
+          class="text-[10px] text-ink-400 hover:text-brand-600 flex items-center gap-0.5"
+          (click)="isSpeaking ? stopReading.emit() : readAloud.emit()"
+          [attr.aria-label]="isSpeaking ? 'Dừng đọc' : 'Đọc nội dung'"
+        >
+          {{ isSpeaking ? '⏹ Dừng' : '🔊 Đọc' }}
+        </button>
       </div>
     </div>
   `,
 })
 export class RmMessageComponent {
   @Input({ required: true }) message!: RMMessage;
+  /** True while this exact message is the one currently playing through the voice queue — driven
+   * by the parent page comparing `voiceQueue.getCurrentMessage()?.id` against `message.id`. */
+  @Input() isSpeaking = false;
   @Output() actionClick = new EventEmitter<RMAction>();
   @Output() quickReply = new EventEmitter<string>();
   @Output() fileSelected = new EventEmitter<{ action: RMAction; file: File }>();
+  @Output() readAloud = new EventEmitter<void>();
+  @Output() stopReading = new EventEmitter<void>();
 
   readonly severityClass = SEVERITY_CLASS;
   readonly severityIcon = SEVERITY_ICON;
@@ -212,6 +232,13 @@ export class RmMessageComponent {
   get prefixIcon(): string {
     if (this.message.title) return '';
     return RmMessageComponent.PREFIX[this.message.type] ?? '';
+  }
+
+  /** Same eligibility rule the voice queue itself uses for auto-speak (spec §16's manual button
+   * respects `voice.enabled: false` exactly like the automatic path does — a message explicitly
+   * marked "never speak this" stays silent even on a deliberate click). */
+  get canReadAloud(): boolean {
+    return this.message.from === 'RM' && resolveSpokenText(this.message) !== null;
   }
 
   get hasActions(): boolean {

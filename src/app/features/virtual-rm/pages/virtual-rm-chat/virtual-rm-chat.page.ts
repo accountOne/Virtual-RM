@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 import { RmChatSessionService } from '../../interaction/rm-chat-session.service';
-import { RMAction } from '../../interaction/rm-interaction.types';
+import { RMAction, RMMessage } from '../../interaction/rm-interaction.types';
+import { RmVoiceQueueService } from '../../interaction/rm-voice-queue.service';
 import { RmVoiceService } from '../../interaction/rm-voice.service';
 import { RmMessageComponent } from '../../components/rm-message/rm-message.component';
 import { RmTypingComponent } from '../../components/rm-typing/rm-typing.component';
@@ -131,9 +132,12 @@ const SUGGESTED_QUESTIONS = [
         <app-rm-message
           *ngFor="let msg of messages()"
           [message]="msg"
+          [isSpeaking]="voiceQueue.currentMessage()?.id === msg.id"
           (actionClick)="handleAction($event)"
           (quickReply)="ask($event)"
           (fileSelected)="handleFileSelected($event)"
+          (readAloud)="readAloud(msg)"
+          (stopReading)="voiceQueue.stop()"
         />
         <app-rm-typing *ngIf="busy()" [state]="rmState()" />
 
@@ -222,6 +226,7 @@ export class VirtualRmChatPageComponent {
   private readonly location = inject(Location);
   private readonly session = inject(RmChatSessionService);
   readonly voice = inject(RmVoiceService);
+  readonly voiceQueue = inject(RmVoiceQueueService);
 
   @ViewChild('scrollEl') scrollEl?: ElementRef<HTMLDivElement>;
 
@@ -245,26 +250,24 @@ export class VirtualRmChatPageComponent {
   readonly agentMode = this.session.agentMode;
   draft = '';
 
-  /** Count of messages already handed to `voice.speak()` — an `effect` re-runs in full on every
-   * `messages()` change, so this is what keeps auto-speak from re-reading the whole history back
-   * out loud each time a new message arrives. */
-  private spokenCount = 0;
-
   constructor() {
     // Unread badge on the floating launcher (rm-chat-launcher.component.ts) resets whenever the
     // chat page is actually open — a fresh navigation here, or resuming a route the user never
     // left, both count as "seen everything so far".
     this.session.markAllRead();
+    // Voice UX upgrade — auto-speaking a new RM message no longer happens here. A component
+    // instance (and any `effect()` bound to it) is recreated on every navigation to this route,
+    // while `messages()` is a root-singleton signal that keeps the FULL conversation history —
+    // that mismatch is exactly what made the old effect-based version here re-read the entire
+    // conversation from message 1 on every revisit, and re-read the whole greeting on every
+    // "Hội thoại mới" (docs/virtual-rm-voice-design.md). Speaking now happens exactly once, at
+    // the moment a message is genuinely new, via `RmChatSessionService.pushMessage()` →
+    // `RmVoiceQueueService.enqueueAssistantMessage()` — this effect only needs to keep scrolling
+    // to the bottom as the list grows.
     effect(() => {
       this.session.markAllRead();
-      const list = this.messages();
+      this.messages();
       this.scrollToBottom();
-      if (list.length < this.spokenCount) this.spokenCount = 0; // resetChat() started a new list
-      for (let i = this.spokenCount; i < list.length; i++) {
-        const msg = list[i];
-        if (msg.from === 'RM' && msg.content) void this.voice.speak(msg.content);
-      }
-      this.spokenCount = list.length;
     });
   }
 
@@ -345,6 +348,14 @@ export class VirtualRmChatPageComponent {
 
   resetChat(): void {
     this.session.resetChat();
+  }
+
+  /** Spec §16's "the only case allowed to re-read an old message" — a deliberate click, never a
+   * re-render or a conversation reopen. `voiceQueue.speakManually()` bypasses the once-per-session
+   * dedup for exactly this call. */
+  readAloud(msg: RMMessage): void {
+    this.voice.unlockAudio();
+    this.voiceQueue.speakManually(msg);
   }
 
   /** Toggles voice-input capture. While listening/transcribing, progress text (recording,

@@ -158,8 +158,13 @@ export class LoginPageComponent {
         this.error.set(result.message);
         return;
       }
+      // Voice UX upgrade (spec §9) — login lands the customer straight on the full-screen
+      // Virtual RM chat (which speaks the daily briefing once it's there, see
+      // rm-chat-session.service.ts) instead of Dashboard, UNLESS they were sent to /login by a
+      // guard while trying to reach a specific page (`returnUrl`, e.g. a deep link) — that intent
+      // still wins.
       const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-      this.router.navigateByUrl(returnUrl || '/dashboard');
+      this.router.navigateByUrl(returnUrl || '/virtual-rm/chat');
     } finally {
       this.submitting.set(false);
     }
